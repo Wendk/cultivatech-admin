@@ -4,7 +4,160 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CultivaTech Admin</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+// ══ BOUTIQUES ══
+let allBoutiques=[], filteredBoutiques=[], boutiqueCurrentPage=1;
+const BOUTIQUES_PER_PAGE=8;
+let chartBoutiquesVilles=null, chartBoutiquesCategories=null, editingBoutiqueId=null;
+
+async function loadBoutiquesPage() {
+  const icon=document.getElementById('boutiquesRefreshIcon');
+  icon.classList.add('spinning');
+  try {
+    allBoutiques=await query('shops?select=*&is_deleted=eq.false&order=name.asc');
+    const vedettes=allBoutiques.filter(b=>b.is_featured).length;
+    const villes=[...new Set(allBoutiques.map(b=>b.city))].length;
+    const avgNote=allBoutiques.length>0?(allBoutiques.reduce((s,b)=>s+(b.rating||0),0)/allBoutiques.length).toFixed(1):0;
+    setKPI('bKpiTotal',allBoutiques.length,'bKpiTotalSub',`${allBoutiques.length} partenaires`);
+    setKPI('bKpiVedette',vedettes,'bKpiVedetteSub',`${vedettes} premium`);
+    setKPI('bKpiVilles',villes,'bKpiVillesSub','régions couvertes');
+    setKPI('bKpiNote',avgNote+' ⭐','bKpiNoteSub','sur 5.0');
+    const villeSet=[...new Set(allBoutiques.map(b=>b.city))].sort();
+    const sel=document.getElementById('boutiqueVilleFilter');
+    sel.innerHTML='<option value="">Toutes les villes</option>'+villeSet.map(v=>`<option value="${v}">${v}</option>`).join('');
+    loadBoutiquesCharts();
+    filteredBoutiques=[...allBoutiques];
+    boutiqueCurrentPage=1;
+    renderBoutiquesTable();
+  } catch(e){console.error(e);}
+  icon.classList.remove('spinning');
+}
+
+function loadBoutiquesCharts() {
+  const parVille={};
+  allBoutiques.forEach(b=>{parVille[b.city]=(parVille[b.city]||0)+1;});
+  const vs=Object.entries(parVille).sort((a,b)=>b[1]-a[1]);
+  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C'];
+  if(chartBoutiquesVilles)chartBoutiquesVilles.destroy();
+  chartBoutiquesVilles=new Chart(document.getElementById('chartBoutiquesVilles'),{type:'bar',data:{labels:vs.map(v=>v[0]),datasets:[{data:vs.map(v=>v[1]),backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+  const cats={'Engrais':allBoutiques.filter(b=>b.engrais&&b.engrais.trim()).length,'Semences':allBoutiques.filter(b=>b.semences&&b.semences.trim()).length,'Phyto':allBoutiques.filter(b=>b.phytosanitaires&&b.phytosanitaires.trim()).length,'Matériel':allBoutiques.filter(b=>b.materiel&&b.materiel.trim()).length};
+  if(chartBoutiquesCategories)chartBoutiquesCategories.destroy();
+  chartBoutiquesCategories=new Chart(document.getElementById('chartBoutiquesCategories'),{type:'doughnut',data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats),backgroundColor:['#36AF3B99','#C8A84B99','#4A9EE099','#E0525299'],borderColor:['#36AF3B','#C8A84B','#4A9EE0','#E05252'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+}
+
+function filterBoutiques() {
+  const search=document.getElementById('boutiqueSearch').value.toLowerCase();
+  const ville=document.getElementById('boutiqueVilleFilter').value;
+  const vedette=document.getElementById('boutiqueVedetteFilter').value;
+  filteredBoutiques=allBoutiques.filter(b=>{
+    const ms=!search||b.name.toLowerCase().includes(search)||b.city.toLowerCase().includes(search);
+    const mv=!ville||b.city===ville;
+    const mvd=vedette===''||String(b.is_featured)===vedette;
+    return ms&&mv&&mvd;
+  });
+  boutiqueCurrentPage=1;
+  renderBoutiquesTable();
+}
+
+function renderBoutiquesTable() {
+  const total=filteredBoutiques.length;
+  const start=(boutiqueCurrentPage-1)*BOUTIQUES_PER_PAGE;
+  const page=filteredBoutiques.slice(start,start+BOUTIQUES_PER_PAGE);
+  document.getElementById('boutiquesCountBadge').textContent=total;
+  document.getElementById('boutiquesCountText').textContent=`${start+1}–${Math.min(start+BOUTIQUES_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('boutiquesTableBody').innerHTML=page.map(b=>{
+    const p=[b.engrais?'🌿 Engrais':'',b.semences?'🌱 Semences':'',b.phytosanitaires?'💊 Phyto':'',b.materiel?'🔧 Matériel':''].filter(Boolean).join(' ');
+    return `<tr>
+      <td><strong>${b.name}</strong></td>
+      <td class="td-muted">${b.city}</td>
+      <td style="font-size:11px">${p||'—'}</td>
+      <td>⭐ ${b.rating?b.rating.toFixed(1):'—'}</td>
+      <td>${b.is_featured?'<span class="badge badge-amber">⭐ Vedette</span>':'<span class="td-muted">—</span>'}</td>
+      <td class="td-muted" style="font-size:11px">${b.phone_number||'—'}</td>
+      <td><div style="display:flex;gap:6px">
+        <button onclick="editBoutique(${b.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
+        <button onclick="toggleVedette(${b.id},${b.is_featured})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:${b.is_featured?'var(--amber)':'var(--muted)'};font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">${b.is_featured?'★':'☆'}</button>
+        <button onclick="deleteBoutique(${b.id},'${b.name.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Aucune boutique trouvée</td></tr>';
+  const tp=Math.ceil(total/BOUTIQUES_PER_PAGE);
+  let pages=`<button class="page-btn" onclick="goBoutiquePage(${boutiqueCurrentPage-1})" ${boutiqueCurrentPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-boutiqueCurrentPage)<=1)pages+=`<button class="page-btn ${i===boutiqueCurrentPage?'active':''}" onclick="goBoutiquePage(${i})">${i}</button>`;else if(Math.abs(i-boutiqueCurrentPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages+=`<button class="page-btn" onclick="goBoutiquePage(${boutiqueCurrentPage+1})" ${boutiqueCurrentPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('boutiquesPagination').innerHTML=tp>1?pages:'';
+}
+
+function goBoutiquePage(n){const t=Math.ceil(filteredBoutiques.length/BOUTIQUES_PER_PAGE);if(n<1||n>t)return;boutiqueCurrentPage=n;renderBoutiquesTable();}
+
+function addBoutiqueModal(){
+  editingBoutiqueId=null;
+  document.getElementById('bModalTitle').textContent='Ajouter une boutique';
+  document.getElementById('bModalSub').textContent='Nouveau partenaire commercial';
+  ['bFieldName','bFieldVille','bFieldPhone','bFieldEngrais','bFieldSemences','bFieldPhyto','bFieldMateriel','bFieldLat','bFieldLon'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bFieldNote').value='4.0';
+  document.getElementById('bFieldVedette').checked=false;
+  document.getElementById('bModalError').style.display='none';
+  document.getElementById('bSaveBtn').textContent='Ajouter';
+  document.getElementById('boutiqueModal').classList.add('open');
+}
+
+function editBoutique(id){
+  const b=allBoutiques.find(x=>x.id===id);if(!b)return;
+  editingBoutiqueId=id;
+  document.getElementById('bModalTitle').textContent='Modifier la boutique';
+  document.getElementById('bModalSub').textContent=b.name;
+  document.getElementById('bFieldName').value=b.name||'';
+  document.getElementById('bFieldVille').value=b.city||'';
+  document.getElementById('bFieldPhone').value=b.phone_number||'';
+  document.getElementById('bFieldNote').value=b.rating||4.0;
+  document.getElementById('bFieldLat').value=b.latitude||'';
+  document.getElementById('bFieldLon').value=b.longitude||'';
+  document.getElementById('bFieldEngrais').value=b.engrais||'';
+  document.getElementById('bFieldSemences').value=b.semences||'';
+  document.getElementById('bFieldPhyto').value=b.phytosanitaires||'';
+  document.getElementById('bFieldMateriel').value=b.materiel||'';
+  document.getElementById('bFieldVedette').checked=b.is_featured||false;
+  document.getElementById('bModalError').style.display='none';
+  document.getElementById('bSaveBtn').textContent='Enregistrer';
+  document.getElementById('boutiqueModal').classList.add('open');
+}
+
+async function saveBoutique(){
+  const name=document.getElementById('bFieldName').value.trim();
+  const ville=document.getElementById('bFieldVille').value.trim();
+  if(!name||!ville){document.getElementById('bModalError').textContent='Le nom et la ville sont obligatoires';document.getElementById('bModalError').style.display='block';return;}
+  const body={name,city:ville,phone_number:document.getElementById('bFieldPhone').value.trim(),rating:parseFloat(document.getElementById('bFieldNote').value)||4.0,latitude:parseFloat(document.getElementById('bFieldLat').value)||12.3714,longitude:parseFloat(document.getElementById('bFieldLon').value)||-1.5197,engrais:document.getElementById('bFieldEngrais').value.trim(),semences:document.getElementById('bFieldSemences').value.trim(),phytosanitaires:document.getElementById('bFieldPhyto').value.trim(),materiel:document.getElementById('bFieldMateriel').value.trim(),is_featured:document.getElementById('bFieldVedette').checked,is_deleted:false,address:ville,facebook_page:'',last_updated:Date.now()};
+  document.getElementById('bSaveBtn').textContent='⏳...';document.getElementById('bSaveBtn').disabled=true;
+  try{
+    const method=editingBoutiqueId?'PATCH':'POST';
+    const url=editingBoutiqueId?`${SUPABASE_URL}/rest/v1/shops?id=eq.${editingBoutiqueId}`:`${SUPABASE_URL}/rest/v1/shops`;
+    const res=await fetch(url,{method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('Erreur '+res.status);
+    document.getElementById('boutiqueModal').classList.remove('open');
+    await loadBoutiquesPage();
+  }catch(e){document.getElementById('bModalError').textContent='Erreur : '+e.message;document.getElementById('bModalError').style.display='block';}
+  document.getElementById('bSaveBtn').textContent='Enregistrer';document.getElementById('bSaveBtn').disabled=false;
+}
+
+async function toggleVedette(id,cur){
+  try{await fetch(`${SUPABASE_URL}/rest/v1/shops?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_featured:!cur})});await loadBoutiquesPage();}catch(e){alert('Erreur : '+e.message);}
+}
+
+async function deleteBoutique(id,name){
+  if(!confirm(`Supprimer "${name}" ?`))return;
+  try{await fetch(`${SUPABASE_URL}/rest/v1/shops?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});await loadBoutiquesPage();}catch(e){alert('Erreur : '+e.message);}
+}
+
+function closeBoutiqueModal(e){if(e.target.id==='boutiqueModal')document.getElementById('boutiqueModal').classList.remove('open');}
+
+function exportBoutiquesCSV(){
+  const h=['Nom','Ville','Téléphone','Note','Vedette','Engrais','Semences','Phyto','Matériel','Latitude','Longitude'];
+  const r=filteredBoutiques.map(b=>[b.name,b.city,b.phone_number||'',b.rating||0,b.is_featured?'Oui':'Non',b.engrais||'',b.semences||'',b.phytosanitaires||'',b.materiel||'',b.latitude||'',b.longitude||'']);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_boutiques_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
   :root{--vert:#1A5319;--vert2:#36AF3B;--vert-pale:#D6EFD8;--or:#C8A84B;--bg:#0A0F0A;--bg2:#111811;--bg3:#162016;--card:#1A241A;--border:#2A3A2A;--text:#E8F0E8;--muted:#7A9A7A;--red:#E05252;--amber:#E0A832;--blue:#4A9EE0}
@@ -273,7 +426,50 @@
 
     <!-- PAGES FUTURES -->
     <div class="page" id="page-pdfs"><div class="page-header"><div class="page-title">Formations PDF</div><div class="page-sub">Gestion du catalogue — à venir</div></div></div>
-    <div class="page" id="page-boutiques"><div class="page-header"><div class="page-title">Boutiques</div><div class="page-sub">Gestion des partenaires — à venir</div></div></div>
+    <!-- PAGE BOUTIQUES -->
+    <div class="page" id="page-boutiques">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Boutiques d'intrants</div>
+          <div class="page-sub">Gestion des partenaires commerciaux agricoles</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadBoutiquesPage()"><span class="spin" id="boutiquesRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="addBoutiqueModal()">+ Ajouter boutique</button>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">🏪</span><div class="kpi-value kpi-loading" id="bKpiTotal">—</div><div class="kpi-label">Boutiques actives</div><div class="kpi-trend trend-neutral" id="bKpiTotalSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">⭐</span><div class="kpi-value kpi-loading" id="bKpiVedette">—</div><div class="kpi-label">Boutiques vedettes</div><div class="kpi-trend trend-up" id="bKpiVedetteSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🏙️</span><div class="kpi-value kpi-loading" id="bKpiVilles">—</div><div class="kpi-label">Villes couvertes</div><div class="kpi-trend trend-neutral" id="bKpiVillesSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">📊</span><div class="kpi-value kpi-loading" id="bKpiNote">—</div><div class="kpi-label">Note moyenne</div><div class="kpi-trend trend-neutral" id="bKpiNoteSub"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><div class="chart-title">Boutiques par ville</div><div class="chart-sub">Répartition géographique des partenaires</div><div class="chart-wrap"><canvas id="chartBoutiquesVilles"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Catégories de produits</div><div class="chart-sub">Engrais, Semences, Phyto, Matériel</div><div class="chart-wrap"><canvas id="chartBoutiquesCategories"></canvas></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="boutiqueSearch" placeholder="🔍  Rechercher par nom ou ville..." oninput="filterBoutiques()"/>
+        <select class="filter-select" id="boutiqueVilleFilter" onchange="filterBoutiques()"><option value="">Toutes les villes</option></select>
+        <select class="filter-select" id="boutiqueVedetteFilter" onchange="filterBoutiques()">
+          <option value="">Toutes</option>
+          <option value="true">⭐ Vedettes seulement</option>
+          <option value="false">Non vedettes</option>
+        </select>
+        <button class="export-btn" onclick="exportBoutiquesCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Liste des boutiques <span class="badge badge-blue" id="boutiquesCountBadge">0</span></div>
+          <div class="users-count" id="boutiquesCountText"></div>
+        </div>
+        <table>
+          <thead><tr><th>Boutique</th><th>Ville</th><th>Produits</th><th>Note</th><th>Vedette</th><th>Téléphone</th><th>Actions</th></tr></thead>
+          <tbody id="boutiquesTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+        <div class="pagination" id="boutiquesPagination"></div>
+      </div>
+    </div>
     <div class="page" id="page-diagnostics"><div class="page-header"><div class="page-title">Diagnostics</div><div class="page-sub">Analyse phytosanitaire — à venir</div></div></div>
   </div>
 </div>
@@ -619,6 +815,193 @@ function exportCSV() {
   a.download = `cultivatech_utilisateurs_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
+
+// ══ BOUTIQUES ══
+let allBoutiques=[], filteredBoutiques=[], boutiqueCurrentPage=1;
+const BOUTIQUES_PER_PAGE=8;
+let chartBoutiquesVilles=null, chartBoutiquesCategories=null, editingBoutiqueId=null;
+
+async function loadBoutiquesPage() {
+  const icon=document.getElementById('boutiquesRefreshIcon');
+  icon.classList.add('spinning');
+  try {
+    allBoutiques=await query('shops?select=*&is_deleted=eq.false&order=name.asc');
+    const vedettes=allBoutiques.filter(b=>b.is_featured).length;
+    const villes=[...new Set(allBoutiques.map(b=>b.city))].length;
+    const avgNote=allBoutiques.length>0?(allBoutiques.reduce((s,b)=>s+(b.rating||0),0)/allBoutiques.length).toFixed(1):0;
+    setKPI('bKpiTotal',allBoutiques.length,'bKpiTotalSub',`${allBoutiques.length} partenaires`);
+    setKPI('bKpiVedette',vedettes,'bKpiVedetteSub',`${vedettes} premium`);
+    setKPI('bKpiVilles',villes,'bKpiVillesSub','régions couvertes');
+    setKPI('bKpiNote',avgNote+' ⭐','bKpiNoteSub','sur 5.0');
+    const villeSet=[...new Set(allBoutiques.map(b=>b.city))].sort();
+    const sel=document.getElementById('boutiqueVilleFilter');
+    sel.innerHTML='<option value="">Toutes les villes</option>'+villeSet.map(v=>`<option value="${v}">${v}</option>`).join('');
+    loadBoutiquesCharts();
+    filteredBoutiques=[...allBoutiques];
+    boutiqueCurrentPage=1;
+    renderBoutiquesTable();
+  } catch(e){console.error(e);}
+  icon.classList.remove('spinning');
+}
+
+function loadBoutiquesCharts() {
+  const parVille={};
+  allBoutiques.forEach(b=>{parVille[b.city]=(parVille[b.city]||0)+1;});
+  const vs=Object.entries(parVille).sort((a,b)=>b[1]-a[1]);
+  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C'];
+  if(chartBoutiquesVilles)chartBoutiquesVilles.destroy();
+  chartBoutiquesVilles=new Chart(document.getElementById('chartBoutiquesVilles'),{type:'bar',data:{labels:vs.map(v=>v[0]),datasets:[{data:vs.map(v=>v[1]),backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+  const cats={'Engrais':allBoutiques.filter(b=>b.engrais&&b.engrais.trim()).length,'Semences':allBoutiques.filter(b=>b.semences&&b.semences.trim()).length,'Phyto':allBoutiques.filter(b=>b.phytosanitaires&&b.phytosanitaires.trim()).length,'Matériel':allBoutiques.filter(b=>b.materiel&&b.materiel.trim()).length};
+  if(chartBoutiquesCategories)chartBoutiquesCategories.destroy();
+  chartBoutiquesCategories=new Chart(document.getElementById('chartBoutiquesCategories'),{type:'doughnut',data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats),backgroundColor:['#36AF3B99','#C8A84B99','#4A9EE099','#E0525299'],borderColor:['#36AF3B','#C8A84B','#4A9EE0','#E05252'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+}
+
+function filterBoutiques() {
+  const search=document.getElementById('boutiqueSearch').value.toLowerCase();
+  const ville=document.getElementById('boutiqueVilleFilter').value;
+  const vedette=document.getElementById('boutiqueVedetteFilter').value;
+  filteredBoutiques=allBoutiques.filter(b=>{
+    const ms=!search||b.name.toLowerCase().includes(search)||b.city.toLowerCase().includes(search);
+    const mv=!ville||b.city===ville;
+    const mvd=vedette===''||String(b.is_featured)===vedette;
+    return ms&&mv&&mvd;
+  });
+  boutiqueCurrentPage=1;
+  renderBoutiquesTable();
+}
+
+function renderBoutiquesTable() {
+  const total=filteredBoutiques.length;
+  const start=(boutiqueCurrentPage-1)*BOUTIQUES_PER_PAGE;
+  const page=filteredBoutiques.slice(start,start+BOUTIQUES_PER_PAGE);
+  document.getElementById('boutiquesCountBadge').textContent=total;
+  document.getElementById('boutiquesCountText').textContent=`${start+1}–${Math.min(start+BOUTIQUES_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('boutiquesTableBody').innerHTML=page.map(b=>{
+    const p=[b.engrais?'🌿 Engrais':'',b.semences?'🌱 Semences':'',b.phytosanitaires?'💊 Phyto':'',b.materiel?'🔧 Matériel':''].filter(Boolean).join(' ');
+    return `<tr>
+      <td><strong>${b.name}</strong></td>
+      <td class="td-muted">${b.city}</td>
+      <td style="font-size:11px">${p||'—'}</td>
+      <td>⭐ ${b.rating?b.rating.toFixed(1):'—'}</td>
+      <td>${b.is_featured?'<span class="badge badge-amber">⭐ Vedette</span>':'<span class="td-muted">—</span>'}</td>
+      <td class="td-muted" style="font-size:11px">${b.phone_number||'—'}</td>
+      <td><div style="display:flex;gap:6px">
+        <button onclick="editBoutique(${b.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
+        <button onclick="toggleVedette(${b.id},${b.is_featured})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:${b.is_featured?'var(--amber)':'var(--muted)'};font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">${b.is_featured?'★':'☆'}</button>
+        <button onclick="deleteBoutique(${b.id},'${b.name.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Aucune boutique trouvée</td></tr>';
+  const tp=Math.ceil(total/BOUTIQUES_PER_PAGE);
+  let pages=`<button class="page-btn" onclick="goBoutiquePage(${boutiqueCurrentPage-1})" ${boutiqueCurrentPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-boutiqueCurrentPage)<=1)pages+=`<button class="page-btn ${i===boutiqueCurrentPage?'active':''}" onclick="goBoutiquePage(${i})">${i}</button>`;else if(Math.abs(i-boutiqueCurrentPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages+=`<button class="page-btn" onclick="goBoutiquePage(${boutiqueCurrentPage+1})" ${boutiqueCurrentPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('boutiquesPagination').innerHTML=tp>1?pages:'';
+}
+
+function goBoutiquePage(n){const t=Math.ceil(filteredBoutiques.length/BOUTIQUES_PER_PAGE);if(n<1||n>t)return;boutiqueCurrentPage=n;renderBoutiquesTable();}
+
+function addBoutiqueModal(){
+  editingBoutiqueId=null;
+  document.getElementById('bModalTitle').textContent='Ajouter une boutique';
+  document.getElementById('bModalSub').textContent='Nouveau partenaire commercial';
+  ['bFieldName','bFieldVille','bFieldPhone','bFieldEngrais','bFieldSemences','bFieldPhyto','bFieldMateriel','bFieldLat','bFieldLon'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bFieldNote').value='4.0';
+  document.getElementById('bFieldVedette').checked=false;
+  document.getElementById('bModalError').style.display='none';
+  document.getElementById('bSaveBtn').textContent='Ajouter';
+  document.getElementById('boutiqueModal').classList.add('open');
+}
+
+function editBoutique(id){
+  const b=allBoutiques.find(x=>x.id===id);if(!b)return;
+  editingBoutiqueId=id;
+  document.getElementById('bModalTitle').textContent='Modifier la boutique';
+  document.getElementById('bModalSub').textContent=b.name;
+  document.getElementById('bFieldName').value=b.name||'';
+  document.getElementById('bFieldVille').value=b.city||'';
+  document.getElementById('bFieldPhone').value=b.phone_number||'';
+  document.getElementById('bFieldNote').value=b.rating||4.0;
+  document.getElementById('bFieldLat').value=b.latitude||'';
+  document.getElementById('bFieldLon').value=b.longitude||'';
+  document.getElementById('bFieldEngrais').value=b.engrais||'';
+  document.getElementById('bFieldSemences').value=b.semences||'';
+  document.getElementById('bFieldPhyto').value=b.phytosanitaires||'';
+  document.getElementById('bFieldMateriel').value=b.materiel||'';
+  document.getElementById('bFieldVedette').checked=b.is_featured||false;
+  document.getElementById('bModalError').style.display='none';
+  document.getElementById('bSaveBtn').textContent='Enregistrer';
+  document.getElementById('boutiqueModal').classList.add('open');
+}
+
+async function saveBoutique(){
+  const name=document.getElementById('bFieldName').value.trim();
+  const ville=document.getElementById('bFieldVille').value.trim();
+  if(!name||!ville){document.getElementById('bModalError').textContent='Le nom et la ville sont obligatoires';document.getElementById('bModalError').style.display='block';return;}
+  const body={name,city:ville,phone_number:document.getElementById('bFieldPhone').value.trim(),rating:parseFloat(document.getElementById('bFieldNote').value)||4.0,latitude:parseFloat(document.getElementById('bFieldLat').value)||12.3714,longitude:parseFloat(document.getElementById('bFieldLon').value)||-1.5197,engrais:document.getElementById('bFieldEngrais').value.trim(),semences:document.getElementById('bFieldSemences').value.trim(),phytosanitaires:document.getElementById('bFieldPhyto').value.trim(),materiel:document.getElementById('bFieldMateriel').value.trim(),is_featured:document.getElementById('bFieldVedette').checked,is_deleted:false,address:ville,facebook_page:'',last_updated:Date.now()};
+  document.getElementById('bSaveBtn').textContent='⏳...';document.getElementById('bSaveBtn').disabled=true;
+  try{
+    const method=editingBoutiqueId?'PATCH':'POST';
+    const url=editingBoutiqueId?`${SUPABASE_URL}/rest/v1/shops?id=eq.${editingBoutiqueId}`:`${SUPABASE_URL}/rest/v1/shops`;
+    const res=await fetch(url,{method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('Erreur '+res.status);
+    document.getElementById('boutiqueModal').classList.remove('open');
+    await loadBoutiquesPage();
+  }catch(e){document.getElementById('bModalError').textContent='Erreur : '+e.message;document.getElementById('bModalError').style.display='block';}
+  document.getElementById('bSaveBtn').textContent='Enregistrer';document.getElementById('bSaveBtn').disabled=false;
+}
+
+async function toggleVedette(id,cur){
+  try{await fetch(`${SUPABASE_URL}/rest/v1/shops?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_featured:!cur})});await loadBoutiquesPage();}catch(e){alert('Erreur : '+e.message);}
+}
+
+async function deleteBoutique(id,name){
+  if(!confirm(`Supprimer "${name}" ?`))return;
+  try{await fetch(`${SUPABASE_URL}/rest/v1/shops?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});await loadBoutiquesPage();}catch(e){alert('Erreur : '+e.message);}
+}
+
+function closeBoutiqueModal(e){if(e.target.id==='boutiqueModal')document.getElementById('boutiqueModal').classList.remove('open');}
+
+function exportBoutiquesCSV(){
+  const h=['Nom','Ville','Téléphone','Note','Vedette','Engrais','Semences','Phyto','Matériel','Latitude','Longitude'];
+  const r=filteredBoutiques.map(b=>[b.name,b.city,b.phone_number||'',b.rating||0,b.is_featured?'Oui':'Non',b.engrais||'',b.semences||'',b.phytosanitaires||'',b.materiel||'',b.latitude||'',b.longitude||'']);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_boutiques_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
 </script>
+
+<!-- MODAL BOUTIQUE -->
+<div class="modal-overlay" id="boutiqueModal" onclick="closeBoutiqueModal(event)">
+  <div class="modal" style="width:540px;max-width:95vw">
+    <div class="modal-title" id="bModalTitle">Boutique</div>
+    <div class="modal-sub" id="bModalSub">Détails du partenaire</div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Nom</div><input class="login-input" id="bFieldName" placeholder="Nom de la boutique" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Ville</div><input class="login-input" id="bFieldVille" placeholder="Ex: Ouagadougou" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Téléphone</div><input class="login-input" id="bFieldPhone" placeholder="+226 XX XX XX XX" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Note (0-5)</div><input class="login-input" id="bFieldNote" type="number" min="0" max="5" step="0.1" placeholder="4.5" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Latitude</div><input class="login-input" id="bFieldLat" placeholder="12.3714" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Longitude</div><input class="login-input" id="bFieldLon" placeholder="-1.5197" style="margin-bottom:0"/></div>
+    </div>
+    <div style="margin:12px 0">
+      <div class="modal-label" style="margin-bottom:6px">Produits disponibles</div>
+      <div class="modal-row" style="gap:8px"><input class="login-input" id="bFieldEngrais" placeholder="Engrais (ex: Urée, NPK)" style="flex:1;margin-bottom:0"/><input class="login-input" id="bFieldSemences" placeholder="Semences (ex: Maïs, Tomate)" style="flex:1;margin-bottom:0"/></div>
+      <div class="modal-row" style="gap:8px;margin-top:8px"><input class="login-input" id="bFieldPhyto" placeholder="Phytosanitaires (ex: Mancozèbe)" style="flex:1;margin-bottom:0"/><input class="login-input" id="bFieldMateriel" placeholder="Matériel (ex: Pulvérisateur)" style="flex:1;margin-bottom:0"/></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:10px;background:var(--bg2);border-radius:8px">
+      <input type="checkbox" id="bFieldVedette" style="width:16px;height:16px;accent-color:var(--amber)"/>
+      <label for="bFieldVedette" style="font-size:13px;color:var(--text);cursor:pointer">⭐ Boutique Vedette (apparaît en premier dans l'app)</label>
+    </div>
+    <div id="bModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="saveBoutique()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif" id="bSaveBtn">Enregistrer</button>
+      <button class="modal-close" style="flex:0" onclick="document.getElementById('boutiqueModal').classList.remove('open')">Annuler</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
