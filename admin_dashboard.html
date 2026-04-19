@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CultivaTech Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+
+  :root {
+    --vert:#1A5319; --vert2:#36AF3B; --vert-pale:#D6EFD8;
+    --or:#C8A84B; --bg:#0A0F0A; --bg2:#111811; --bg3:#162016;
+    --card:#1A241A; --border:#2A3A2A; --text:#E8F0E8; --muted:#7A9A7A;
+    --red:#E05252; --amber:#E0A832; --blue:#4A9EE0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+  /* LOGIN */
+  #loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:24px}
+  .login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:340px;text-align:center}
+  .login-logo{font-family:'Playfair Display',serif;font-size:28px;color:var(--vert2);margin-bottom:4px}
+  .login-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+  .login-input{width:100%;background:#0D160D;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;margin-bottom:12px;transition:border .2s}
+  .login-input:focus{border-color:var(--vert2)}
+  .login-btn{width:100%;background:var(--vert);border:none;border-radius:10px;padding:14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:background .2s}
+  .login-btn:hover{background:var(--vert2)}
+  .login-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+  /* SIDEBAR */
+  #app{display:none;min-height:100vh}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;z-index:100;display:flex;flex-direction:column}
+  .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .sidebar-logo-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--vert2)}
+  .sidebar-logo-sub{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .15s;border-left:2px solid transparent}
+  .nav-item:hover{color:var(--text);background:#1A241A}
+  .nav-item.active{color:var(--vert2);background:#1A2E1A;border-left-color:var(--vert2)}
+  .nav-icon{font-size:16px;width:20px;text-align:center}
+  .sidebar-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+  .sidebar-user{font-size:12px;color:var(--muted)}
+  .logout-btn{font-size:12px;color:var(--red);cursor:pointer;background:none;border:none;font-family:'Space Grotesk',sans-serif;padding:4px 0;margin-top:4px;display:block}
+
+  /* MAIN */
+  .main{margin-left:220px;padding:28px;min-height:100vh}
+  .page-header{margin-bottom:28px}
+  .page-title{font-family:'Playfair Display',serif;font-size:26px;color:var(--text);margin-bottom:4px}
+  .page-sub{font-size:13px;color:var(--muted)}
+  .last-update{font-size:11px;color:var(--muted);margin-top:4px}
+
+  /* KPI CARDS */
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:border .2s}
+  .kpi-card:hover{border-color:var(--vert2)}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+  .kpi-card.green::before{background:linear-gradient(90deg,var(--vert),var(--vert2))}
+  .kpi-card.amber::before{background:linear-gradient(90deg,#a07020,var(--amber))}
+  .kpi-card.blue::before{background:linear-gradient(90deg,#1a5a8a,var(--blue))}
+  .kpi-card.red::before{background:linear-gradient(90deg,#8a1a1a,var(--red))}
+  .kpi-icon{font-size:24px;margin-bottom:12px;display:block}
+  .kpi-value{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;margin-bottom:4px}
+  .kpi-card.green .kpi-value{color:var(--vert2)}
+  .kpi-card.amber .kpi-value{color:var(--amber)}
+  .kpi-card.blue .kpi-value{color:var(--blue)}
+  .kpi-card.red .kpi-value{color:var(--red)}
+  .kpi-label{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+  .kpi-trend{font-size:11px;margin-top:8px}
+  .trend-up{color:var(--vert2)}
+  .trend-neutral{color:var(--muted)}
+  .kpi-loading{color:var(--muted);font-size:20px;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* CHARTS ROW */
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+  .chart-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+  .chart-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+  .chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px}
+  .chart-wrap{position:relative;height:200px}
+
+  /* TABLES */
+  .tables-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px}
+  .table-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+  .badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+  .badge-green{background:#1A3A1A;color:var(--vert2)}
+  .badge-amber{background:#2A2010;color:var(--amber)}
+  .badge-red{background:#2A1010;color:var(--red)}
+  .badge-blue{background:#0A1A2A;color:var(--blue)}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:0 0 10px;text-align:left;font-weight:500}
+  td{font-size:12px;color:var(--text);padding:8px 0;border-top:1px solid var(--border)}
+  .td-muted{color:var(--muted)}
+  .score-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px}
+  .score-fill{height:100%;background:linear-gradient(90deg,var(--vert),var(--vert2));border-radius:2px;transition:width .8s}
+
+  /* ALERT BANNER */
+  .alert-row{margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap}
+  .alert-chip{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:12px;color:var(--muted)}
+  .alert-chip.warn{border-color:#3A2A10;background:#1A150A;color:var(--amber)}
+  .alert-chip.ok{border-color:#1A2E1A;background:#0D160D;color:var(--vert2)}
+  .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .dot-green{background:var(--vert2)}
+  .dot-amber{background:var(--amber)}
+
+  /* REFRESH BTN */
+  .refresh-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 16px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
+  .refresh-btn:hover{color:var(--vert2);border-color:var(--vert2)}
+  .spin{display:inline-block;transition:transform .3s}
+  .spinning{animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* PAGES */
+  .page{display:none}
+  .page.active{display:block}
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar{width:5px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">CultivaTech</div>
+    <div class="login-sub">Panneau d'administration BBI</div>
+    <input class="login-input" type="text" id="loginUser" placeholder="Identifiant admin" autocomplete="off"/>
+    <input class="login-input" type="password" id="loginPass" placeholder="Mot de passe" autocomplete="off"/>
+    <button class="login-btn" onclick="doLogin()">Se connecter</button>
+    <div class="login-error" id="loginError">Identifiants incorrects</div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-title">CultivaTech</div>
+      <div class="sidebar-logo-sub">Admin Panel</div>
+    </div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('pdfs')" id="nav-pdfs">
+      <span class="nav-icon">📚</span> Formations PDF
+    </div>
+    <div class="nav-item" onclick="showPage('boutiques')" id="nav-boutiques">
+      <span class="nav-icon">🏪</span> Boutiques
+    </div>
+    <div class="nav-item" onclick="showPage('users')" id="nav-users">
+      <span class="nav-icon">👥</span> Utilisateurs
+    </div>
+    <div class="nav-item" onclick="showPage('diagnostics')" id="nav-diagnostics">
+      <span class="nav-icon">🔍</span> Diagnostics
+    </div>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user" id="sidebarUser">Admin BBI</div>
+      <button class="logout-btn" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- PAGE DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Tableau de bord</div>
+          <div class="page-sub">Vue d'ensemble de CultivaTech — BBI SAS</div>
+          <div class="last-update" id="lastUpdate">Chargement...</div>
+        </div>
+        <button class="refresh-btn" onclick="loadDashboard()">
+          <span class="spin" id="refreshIcon">↻</span> Actualiser
+        </button>
+      </div>
+
+      <!-- ALERTES -->
+      <div class="alert-row" id="alertRow">
+        <div class="alert-chip ok"><span class="dot dot-green"></span>Supabase connecté</div>
+        <div class="alert-chip" id="syncStatus"><span class="dot dot-green"></span>Chargement...</div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card green">
+          <span class="kpi-icon">👨‍🌾</span>
+          <div class="kpi-value kpi-loading" id="kpiUsers">—</div>
+          <div class="kpi-label">Agriculteurs</div>
+          <div class="kpi-trend trend-up" id="kpiUsersNew"></div>
+        </div>
+        <div class="kpi-card amber">
+          <span class="kpi-icon">💰</span>
+          <div class="kpi-value kpi-loading" id="kpiRevenue">—</div>
+          <div class="kpi-label">Revenus FCFA</div>
+          <div class="kpi-trend trend-up" id="kpiRevenueSub"></div>
+        </div>
+        <div class="kpi-card blue">
+          <span class="kpi-icon">🌾</span>
+          <div class="kpi-value kpi-loading" id="kpiProductions">—</div>
+          <div class="kpi-label">Productions</div>
+          <div class="kpi-trend trend-neutral" id="kpiProductionsSub"></div>
+        </div>
+        <div class="kpi-card red">
+          <span class="kpi-icon">🔍</span>
+          <div class="kpi-value kpi-loading" id="kpiDiagnostics">—</div>
+          <div class="kpi-label">Diagnostics</div>
+          <div class="kpi-trend trend-neutral" id="kpiDiagnosticsSub"></div>
+        </div>
+      </div>
+
+      <!-- GRAPHIQUES -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Revenus mensuels</div>
+          <div class="chart-sub">Achats de formations PDF (FCFA)</div>
+          <div class="chart-wrap"><canvas id="chartRevenue"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Cultures les plus plantées</div>
+          <div class="chart-sub">Répartition des productions actives</div>
+          <div class="chart-wrap"><canvas id="chartCultures"></canvas></div>
+        </div>
+      </div>
+
+      <!-- TABLES -->
+      <div class="tables-row">
+        <div class="table-card">
+          <div class="table-title">
+            Top formations vendues
+            <span class="badge badge-amber">Revenus</span>
+          </div>
+          <table>
+            <thead><tr><th>Formation</th><th>Ventes</th><th>FCFA</th></tr></thead>
+            <tbody id="tableFormations"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-card">
+          <div class="table-title">
+            Scores agricoles
+            <span class="badge badge-green">Microfinance</span>
+          </div>
+          <table>
+            <thead><tr><th>Agriculteur</th><th>Score</th><th>Statut</th></tr></thead>
+            <tbody id="tableScores"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2e LIGNE DE TABLES -->
+      <div class="tables-row">
+        <div class="table-card">
+          <div class="table-title">
+            Boutiques actives
+            <span class="badge badge-blue">Partenaires</span>
+          </div>
+          <table>
+            <thead><tr><th>Boutique</th><th>Ville</th><th>Note</th><th>Vedette</th></tr></thead>
+            <tbody id="tableBoutiques"><tr><td colspan="4" class="td-muted">Chargement...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-card">
+          <div class="table-title">
+            Diagnostics récents
+            <span class="badge badge-red">Phytosanitaire</span>
+          </div>
+          <table>
+            <thead><tr><th>Culture</th><th>Maladie</th><th>Urgence</th></tr></thead>
+            <tbody id="tableDiagnostics"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGES FUTURES -->
+    <div class="page" id="page-pdfs">
+      <div class="page-header"><div class="page-title">Formations PDF</div><div class="page-sub">Gestion du catalogue — à venir</div></div>
+    </div>
+    <div class="page" id="page-boutiques">
+      <div class="page-header"><div class="page-title">Boutiques</div><div class="page-sub">Gestion des partenaires — à venir</div></div>
+    </div>
+    <div class="page" id="page-users">
+      <div class="page-header"><div class="page-title">Utilisateurs</div><div class="page-sub">Gestion des agriculteurs — à venir</div></div>
+    </div>
+    <div class="page" id="page-diagnostics">
+      <div class="page-header"><div class="page-title">Diagnostics</div><div class="page-sub">Analyse phytosanitaire — à venir</div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══ CONFIG SUPABASE ══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://vyqhzagajlbosikzfnit.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7Ax0Jt6liUTdWmyu8IAXZw_fSofp-3s';
+
+// ══ AUTH SIMPLE ══════════════════════════════════════════════════════
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'cultivatech2025';
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadDashboard();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+document.getElementById('loginPass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+// ══ NAVIGATION ════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+}
+
+// ══ API SUPABASE ══════════════════════════════════════════════════════
+async function query(endpoint) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ══ CHARGEMENT DASHBOARD ══════════════════════════════════════════════
+let chartRevenue = null;
+let chartCultures = null;
+
+async function loadDashboard() {
+  const icon = document.getElementById('refreshIcon');
+  icon.classList.add('spinning');
+
+  try {
+    await Promise.all([
+      loadKPIs(),
+      loadRevenueChart(),
+      loadCulturesChart(),
+      loadTableFormations(),
+      loadTableScores(),
+      loadTableBoutiques(),
+      loadTableDiagnostics()
+    ]);
+
+    const now = new Date().toLocaleString('fr-FR');
+    document.getElementById('lastUpdate').textContent = `Dernière mise à jour : ${now}`;
+    document.getElementById('syncStatus').innerHTML = '<span class="dot dot-green"></span>Données à jour';
+    document.getElementById('syncStatus').className = 'alert-chip ok';
+
+  } catch(e) {
+    document.getElementById('syncStatus').innerHTML = '<span class="dot dot-amber"></span>Erreur de connexion';
+    document.getElementById('syncStatus').className = 'alert-chip warn';
+    console.error(e);
+  }
+
+  icon.classList.remove('spinning');
+}
+
+// ── KPIs ─────────────────────────────────────────────────────────────
+async function loadKPIs() {
+  // Utilisateurs
+  const users = await query('users?select=id,created_at');
+  const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0);
+  const newUsers = users.filter(u => new Date(u.created_at) >= thisMonth).length;
+  setKPI('kpiUsers', users.length, `kpiUsersNew`, `+${newUsers} ce mois`);
+
+  // Revenus
+  const purchases = await query('user_purchases?select=document_id,purchased_at&is_deleted=eq.false');
+  const pdfs = await query('pdf_documents?select=id,price,title&is_deleted=eq.false');
+  const priceMap = Object.fromEntries(pdfs.map(p => [p.id, p.price]));
+  const total = purchases.reduce((sum, p) => sum + (priceMap[p.document_id] || 0), 0);
+  setKPI('kpiRevenue', total.toLocaleString('fr-FR'), 'kpiRevenueSub', `${purchases.length} achats`);
+
+  // Productions
+  const prods = await query('productions?select=id,is_completed&is_deleted=eq.false');
+  const enCours = prods.filter(p => !p.is_completed).length;
+  setKPI('kpiProductions', prods.length, 'kpiProductionsSub', `${enCours} en cours`);
+
+  // Diagnostics
+  try {
+    const diags = await query('diagnostic_logs?select=id');
+    setKPI('kpiDiagnostics', diags.length, 'kpiDiagnosticsSub', 'depuis installation');
+  } catch {
+    setKPI('kpiDiagnostics', '—', 'kpiDiagnosticsSub', 'table non disponible');
+  }
+}
+
+function setKPI(valueId, value, subId, sub) {
+  const el = document.getElementById(valueId);
+  el.textContent = value;
+  el.classList.remove('kpi-loading');
+  if (subId) document.getElementById(subId).textContent = sub;
+}
+
+// ── GRAPHIQUE REVENUS MENSUELS ────────────────────────────────────────
+async function loadRevenueChart() {
+  const purchases = await query(
+    'user_purchases?select=purchased_at,document_id&is_deleted=eq.false&order=purchased_at.asc'
+  );
+  const pdfs = await query('pdf_documents?select=id,price&is_deleted=eq.false');
+  const priceMap = Object.fromEntries(pdfs.map(p => [p.id, p.price]));
+
+  const monthly = {};
+  purchases.forEach(p => {
+    const d = new Date(p.purchased_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    monthly[key] = (monthly[key] || 0) + (priceMap[p.document_id] || 0);
+  });
+
+  const labels = Object.keys(monthly).sort().slice(-6);
+  const data   = labels.map(k => monthly[k] || 0);
+  const display = labels.map(k => {
+    const [y, m] = k.split('-');
+    return new Date(y, m-1).toLocaleDateString('fr-FR', {month:'short', year:'2-digit'});
+  });
+
+  if (chartRevenue) chartRevenue.destroy();
+  chartRevenue = new Chart(document.getElementById('chartRevenue'), {
+    type: 'bar',
+    data: {
+      labels: display,
+      datasets: [{
+        label: 'FCFA',
+        data,
+        backgroundColor: 'rgba(54,175,59,0.25)',
+        borderColor: '#36AF3B',
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2A3A2A' }, ticks: { color: '#7A9A7A', font: { size: 11 } } },
+        y: { grid: { color: '#2A3A2A' }, ticks: { color: '#7A9A7A', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ── GRAPHIQUE CULTURES ────────────────────────────────────────────────
+async function loadCulturesChart() {
+  const prods = await query('productions?select=culture_name&is_deleted=eq.false');
+  const counts = {};
+  prods.forEach(p => { counts[p.culture_name] = (counts[p.culture_name] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,7);
+
+  const colors = ['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C'];
+
+  if (chartCultures) chartCultures.destroy();
+  chartCultures = new Chart(document.getElementById('chartCultures'), {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{
+        data: sorted.map(s => s[1]),
+        backgroundColor: colors.map(c => c + '99'),
+        borderColor: colors,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: '#7A9A7A', font: { size: 11 }, boxWidth: 12, padding: 10 }
+        }
+      }
+    }
+  });
+}
+
+// ── TABLE FORMATIONS ──────────────────────────────────────────────────
+async function loadTableFormations() {
+  const pdfs     = await query('pdf_documents?select=id,title,price&is_deleted=eq.false');
+  const purchases= await query('user_purchases?select=document_id&is_deleted=eq.false');
+  const salesMap = {};
+  purchases.forEach(p => { salesMap[p.document_id] = (salesMap[p.document_id]||0)+1; });
+
+  const rows = pdfs
+    .map(p => ({ ...p, sales: salesMap[p.id]||0, revenue: (salesMap[p.id]||0)*p.price }))
+    .sort((a,b) => b.revenue - a.revenue)
+    .slice(0,5);
+
+  document.getElementById('tableFormations').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.title.length>28 ? r.title.slice(0,28)+'…' : r.title}</td>
+      <td>${r.sales}</td>
+      <td class="trend-up">${r.revenue.toLocaleString('fr-FR')}</td>
+    </tr>`).join('') || '<tr><td colspan="3" class="td-muted">Aucune vente</td></tr>';
+}
+
+// ── TABLE SCORES ──────────────────────────────────────────────────────
+async function loadTableScores() {
+  try {
+    const users = await query(
+      'users?select=first_name,last_name,score_agricole,statut_credit&order=score_agricole.desc&limit=5'
+    );
+    document.getElementById('tableScores').innerHTML = users.map(u => {
+      const pct = Math.min(100, (u.score_agricole || 0) / 10);
+      const badge = u.statut_credit === 'Éligible crédit'
+        ? 'badge-green' : u.statut_credit === 'À évaluer'
+        ? 'badge-amber' : 'badge-red';
+      return `<tr>
+        <td>${u.first_name} ${u.last_name}</td>
+        <td>
+          <div>${u.score_agricole || 0} pts</div>
+          <div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div>
+        </td>
+        <td><span class="badge ${badge}">${u.statut_credit || 'Insuffisant'}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" class="td-muted">Aucun utilisateur</td></tr>';
+  } catch {
+    document.getElementById('tableScores').innerHTML =
+      '<tr><td colspan="3" class="td-muted">Colonnes score non disponibles</td></tr>';
+  }
+}
+
+// ── TABLE BOUTIQUES ───────────────────────────────────────────────────
+async function loadTableBoutiques() {
+  const shops = await query('shops?select=name,city,rating,is_featured&is_deleted=eq.false&order=rating.desc&limit=5');
+  document.getElementById('tableBoutiques').innerHTML = shops.map(s => `
+    <tr>
+      <td>${s.name.length>22 ? s.name.slice(0,22)+'…' : s.name}</td>
+      <td class="td-muted">${s.city}</td>
+      <td>⭐ ${s.rating ? s.rating.toFixed(1) : '—'}</td>
+      <td>${s.is_featured ? '<span class="badge badge-amber">⭐ Vedette</span>' : '<span class="td-muted">—</span>'}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="td-muted">Aucune boutique</td></tr>';
+}
+
+// ── TABLE DIAGNOSTICS ─────────────────────────────────────────────────
+async function loadTableDiagnostics() {
+  try {
+    const diags = await query(
+      'diagnostic_logs?select=culture_name,rule_matched,urgency&order=created_at.desc&limit=6'
+    );
+    document.getElementById('tableDiagnostics').innerHTML = diags.map(d => {
+      const badge = d.urgency === 'Élevée' ? 'badge-red'
+        : d.urgency === 'Modérée' ? 'badge-amber' : 'badge-green';
+      const maladie = d.rule_matched || '—';
+      return `<tr>
+        <td>${d.culture_name}</td>
+        <td class="td-muted">${maladie.length>24 ? maladie.slice(0,24)+'…' : maladie}</td>
+        <td><span class="badge ${badge}">${d.urgency || '—'}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" class="td-muted">Aucun diagnostic</td></tr>';
+  } catch {
+    document.getElementById('tableDiagnostics').innerHTML =
+      '<tr><td colspan="3" class="td-muted">Table non disponible</td></tr>';
+  }
+}
+</script>
+</body>
+</html>
