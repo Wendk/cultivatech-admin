@@ -157,6 +157,235 @@ function exportBoutiquesCSV(){
   const csv=[h,...r].map(x=>x.join(';')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_boutiques_${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
+
+// ══ PDFs ══
+let allPdfs=[], filteredPdfs=[], editingPdfId=null;
+let chartPdfVentes=null, chartPdfCategories=null;
+
+async function loadPdfsPage() {
+  const icon=document.getElementById('pdfsRefreshIcon');
+  icon.classList.add('spinning');
+  try {
+    allPdfs=await query('pdf_documents?select=*&is_deleted=eq.false&order=title.asc');
+    const purchases=await query('user_purchases?select=document_id&is_deleted=eq.false');
+    const salesMap={};
+    purchases.forEach(p=>{salesMap[p.document_id]=(salesMap[p.document_id]||0)+1;});
+    allPdfs.forEach(p=>{p._sales=salesMap[p.id]||0;p._revenue=(salesMap[p.id]||0)*p.price;});
+    const totalRev=allPdfs.reduce((s,p)=>s+p._revenue,0);
+    const totalAchats=purchases.length;
+    const moyPrix=allPdfs.length>0?Math.round(allPdfs.reduce((s,p)=>s+p.price,0)/allPdfs.length):0;
+    setKPI('pKpiTotal',allPdfs.length,'pKpiTotalSub',`${allPdfs.length} formations`);
+    setKPI('pKpiRevenu',totalRev.toLocaleString('fr-FR'),'pKpiRevenuSub',`${totalAchats} achats`);
+    setKPI('pKpiAchats',totalAchats,'pKpiAchatsSub','total cumulé');
+    setKPI('pKpiMoyPrix',moyPrix.toLocaleString('fr-FR')+' F','pKpiMoyPrixSub','par formation');
+    const cats=[...new Set(allPdfs.map(p=>p.category))].filter(Boolean).sort();
+    const sel=document.getElementById('pdfCatFilter');
+    sel.innerHTML='<option value="">Toutes les catégories</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    loadPdfCharts();
+    filteredPdfs=[...allPdfs];
+    renderPdfsTable();
+  } catch(e){console.error(e);}
+  icon.classList.remove('spinning');
+}
+
+function loadPdfCharts() {
+  const sorted=[...allPdfs].sort((a,b)=>b._sales-a._sales).slice(0,6);
+  if(chartPdfVentes)chartPdfVentes.destroy();
+  chartPdfVentes=new Chart(document.getElementById('chartPdfVentes'),{type:'bar',data:{labels:sorted.map(p=>p.title.length>20?p.title.slice(0,20)+'…':p.title),datasets:[{data:sorted.map(p=>p._sales),backgroundColor:'rgba(200,168,75,0.3)',borderColor:'#C8A84B',borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:10}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+  const catRev={};
+  allPdfs.forEach(p=>{const c=p.category||'Autre';catRev[c]=(catRev[c]||0)+p._revenue;});
+  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22'];
+  if(chartPdfCategories)chartPdfCategories.destroy();
+  chartPdfCategories=new Chart(document.getElementById('chartPdfCategories'),{type:'doughnut',data:{labels:Object.keys(catRev),datasets:[{data:Object.values(catRev),backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+}
+
+function filterPdfs() {
+  const search=document.getElementById('pdfSearch').value.toLowerCase();
+  const cat=document.getElementById('pdfCatFilter').value;
+  filteredPdfs=allPdfs.filter(p=>{
+    const ms=!search||p.title.toLowerCase().includes(search)||(p.category||'').toLowerCase().includes(search);
+    const mc=!cat||p.category===cat;
+    return ms&&mc;
+  });
+  renderPdfsTable();
+}
+
+function renderPdfsTable() {
+  const total=filteredPdfs.length;
+  document.getElementById('pdfsCountBadge').textContent=total;
+  document.getElementById('pdfsCountText').textContent=`${total} formation${total>1?'s':''}`;
+  document.getElementById('pdfsTableBody').innerHTML=filteredPdfs.map(p=>`<tr>
+    <td><strong>${p.title}</strong></td>
+    <td><span class="badge badge-amber">${p.category||'—'}</span></td>
+    <td class="trend-up">${p.price.toLocaleString('fr-FR')} F</td>
+    <td>${p._sales} vente${p._sales>1?'s':''}</td>
+    <td class="trend-up">${p._revenue.toLocaleString('fr-FR')} F</td>
+    <td><div style="display:flex;gap:6px">
+      <button onclick="editPdf(${p.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
+      <button onclick="deletePdf(${p.id},'${p.title.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+    </div></td>
+  </tr>`).join('')||'<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucune formation</td></tr>';
+}
+
+function addPdfModal(){
+  editingPdfId=null;
+  document.getElementById('pModalTitle').textContent='Ajouter une formation';
+  document.getElementById('pModalSub').textContent='Nouveau PDF au catalogue';
+  ['pFieldTitle','pFieldPrice','pFieldCategory','pFieldUrl','pFieldDesc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pModalError').style.display='none';
+  document.getElementById('pSaveBtn').textContent='Ajouter';
+  document.getElementById('pdfModal').classList.add('open');
+}
+
+function editPdf(id){
+  const p=allPdfs.find(x=>x.id===id);if(!p)return;
+  editingPdfId=id;
+  document.getElementById('pModalTitle').textContent='Modifier la formation';
+  document.getElementById('pModalSub').textContent=p.title;
+  document.getElementById('pFieldTitle').value=p.title||'';
+  document.getElementById('pFieldPrice').value=p.price||0;
+  document.getElementById('pFieldCategory').value=p.category||'';
+  document.getElementById('pFieldUrl').value=p.file_url||'';
+  document.getElementById('pFieldDesc').value=p.description||'';
+  document.getElementById('pModalError').style.display='none';
+  document.getElementById('pSaveBtn').textContent='Enregistrer';
+  document.getElementById('pdfModal').classList.add('open');
+}
+
+async function savePdf(){
+  const title=document.getElementById('pFieldTitle').value.trim();
+  const price=parseFloat(document.getElementById('pFieldPrice').value)||0;
+  if(!title){document.getElementById('pModalError').textContent='Le titre est obligatoire';document.getElementById('pModalError').style.display='block';return;}
+  const body={title,price,category:document.getElementById('pFieldCategory').value.trim(),file_url:document.getElementById('pFieldUrl').value.trim(),description:document.getElementById('pFieldDesc').value.trim(),is_deleted:false};
+  document.getElementById('pSaveBtn').textContent='⏳...';document.getElementById('pSaveBtn').disabled=true;
+  try{
+    const method=editingPdfId?'PATCH':'POST';
+    const url=editingPdfId?`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${editingPdfId}`:`${SUPABASE_URL}/rest/v1/pdf_documents`;
+    const res=await fetch(url,{method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('Erreur '+res.status);
+    document.getElementById('pdfModal').classList.remove('open');
+    await loadPdfsPage();
+  }catch(e){document.getElementById('pModalError').textContent='Erreur : '+e.message;document.getElementById('pModalError').style.display='block';}
+  document.getElementById('pSaveBtn').textContent='Enregistrer';document.getElementById('pSaveBtn').disabled=false;
+}
+
+async function deletePdf(id,title){
+  if(!confirm(`Supprimer "${title}" ?`))return;
+  try{await fetch(`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});await loadPdfsPage();}catch(e){alert('Erreur : '+e.message);}
+}
+
+function closePdfModal(e){if(e.target.id==='pdfModal')document.getElementById('pdfModal').classList.remove('open');}
+
+function exportPdfsCSV(){
+  const h=['Titre','Catégorie','Prix FCFA','Ventes','Revenus FCFA','URL fichier'];
+  const r=filteredPdfs.map(p=>[p.title,p.category||'',p.price,p._sales,p._revenue,p.file_url||'']);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_pdfs_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+// ══ DIAGNOSTICS ══
+let allDiags=[], filteredDiags=[], diagCurrentPage=1;
+const DIAG_PER_PAGE=12;
+let chartDiagCultures=null, chartDiagUrgence=null, chartDiagMaladies=null, chartDiagMensuel=null;
+
+async function loadDiagnosticsPage() {
+  const icon=document.getElementById('diagRefreshIcon');
+  icon.classList.add('spinning');
+  try {
+    allDiags=await query('diagnostic_logs?select=*&order=created_at.desc');
+    const thisMonth=new Date();thisMonth.setDate(1);thisMonth.setHours(0,0,0,0);
+    const ceM=allDiags.filter(d=>new Date(d.created_at)>=thisMonth).length;
+    const elevee=allDiags.filter(d=>d.urgency==='Élevée').length;
+    const cultures=[...new Set(allDiags.map(d=>d.culture_name))].length;
+    setKPI('dKpiTotal',allDiags.length,'dKpiTotalSub','diagnostics au total');
+    setKPI('dKpiElevee',elevee,'dKpiEleveeSub',`${Math.round(elevee/Math.max(allDiags.length,1)*100)}% du total`);
+    setKPI('dKpiCultures',cultures,'dKpiCulturesSub','cultures concernées');
+    setKPI('dKpiRecent',ceM,'dKpiRecentSub','ce mois-ci');
+    const cultureSet=[...new Set(allDiags.map(d=>d.culture_name))].sort();
+    const sel=document.getElementById('diagCultureFilter');
+    sel.innerHTML='<option value="">Toutes les cultures</option>'+cultureSet.map(c=>`<option value="${c}">${c}</option>`).join('');
+    loadDiagCharts();
+    filteredDiags=[...allDiags];
+    diagCurrentPage=1;
+    renderDiagTable();
+  } catch(e){
+    document.getElementById('diagTableBody').innerHTML='<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_logs non disponible — effectuez des diagnostics dans l'app d'abord</td></tr>';
+    ['dKpiTotal','dKpiElevee','dKpiCultures','dKpiRecent'].forEach(id=>{const el=document.getElementById(id);el.textContent='0';el.classList.remove('kpi-loading');});
+  }
+  icon.classList.remove('spinning');
+}
+
+function loadDiagCharts() {
+  const parCulture={};
+  allDiags.forEach(d=>{parCulture[d.culture_name]=(parCulture[d.culture_name]||0)+1;});
+  const cs=Object.entries(parCulture).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C','#E91E63'];
+  if(chartDiagCultures)chartDiagCultures.destroy();
+  chartDiagCultures=new Chart(document.getElementById('chartDiagCultures'),{type:'bar',data:{labels:cs.map(c=>c[0]),datasets:[{data:cs.map(c=>c[1]),backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+  const urgCounts={'Élevée':allDiags.filter(d=>d.urgency==='Élevée').length,'Modérée':allDiags.filter(d=>d.urgency==='Modérée').length,'Faible':allDiags.filter(d=>d.urgency==='Faible'||!d.urgency).length};
+  if(chartDiagUrgence)chartDiagUrgence.destroy();
+  chartDiagUrgence=new Chart(document.getElementById('chartDiagUrgence'),{type:'doughnut',data:{labels:Object.keys(urgCounts),datasets:[{data:Object.values(urgCounts),backgroundColor:['#E0525299','#E0A83299','#36AF3B99'],borderColor:['#E05252','#E0A832','#36AF3B'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+  const parMaladie={};
+  allDiags.forEach(d=>{if(d.rule_matched)parMaladie[d.rule_matched]=(parMaladie[d.rule_matched]||0)+1;});
+  const ms=Object.entries(parMaladie).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(chartDiagMaladies)chartDiagMaladies.destroy();
+  chartDiagMaladies=new Chart(document.getElementById('chartDiagMaladies'),{type:'bar',data:{labels:ms.map(m=>m[0].length>30?m[0].slice(0,30)+'…':m[0]),datasets:[{data:ms.map(m=>m[1]),backgroundColor:'rgba(224,82,82,0.25)',borderColor:'#E05252',borderWidth:2,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:10}}}}}});
+  const monthly={};
+  allDiags.forEach(d=>{const dt=new Date(d.created_at);const k=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;monthly[k]=(monthly[k]||0)+1;});
+  const mLabels=Object.keys(monthly).sort().slice(-8);
+  const mDisplay=mLabels.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});});
+  if(chartDiagMensuel)chartDiagMensuel.destroy();
+  chartDiagMensuel=new Chart(document.getElementById('chartDiagMensuel'),{type:'line',data:{labels:mDisplay,datasets:[{data:mLabels.map(k=>monthly[k]||0),borderColor:'#E05252',backgroundColor:'rgba(224,82,82,0.1)',borderWidth:2,pointBackgroundColor:'#E05252',tension:0.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+}
+
+function filterDiagnostics() {
+  const search=document.getElementById('diagSearch').value.toLowerCase();
+  const culture=document.getElementById('diagCultureFilter').value;
+  const urgence=document.getElementById('diagUrgenceFilter').value;
+  filteredDiags=allDiags.filter(d=>{
+    const ms=!search||d.culture_name.toLowerCase().includes(search)||(d.rule_matched||'').toLowerCase().includes(search);
+    const mc=!culture||d.culture_name===culture;
+    const mu=!urgence||d.urgency===urgence;
+    return ms&&mc&&mu;
+  });
+  diagCurrentPage=1;
+  renderDiagTable();
+}
+
+function renderDiagTable() {
+  const total=filteredDiags.length;
+  const start=(diagCurrentPage-1)*DIAG_PER_PAGE;
+  const page=filteredDiags.slice(start,start+DIAG_PER_PAGE);
+  document.getElementById('diagCountBadge').textContent=total;
+  document.getElementById('diagCountText').textContent=`${start+1}–${Math.min(start+DIAG_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('diagTableBody').innerHTML=page.map(d=>{
+    const badge=d.urgency==='Élevée'?'badge-red':d.urgency==='Modérée'?'badge-amber':'badge-green';
+    const date=new Date(d.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    const symptom=(d.symptom_text||'—');
+    const symptomShort=symptom.length>40?symptom.slice(0,40)+'…':symptom;
+    return `<tr>
+      <td><strong>${d.culture_name}</strong>${d.variety_name?'<br><span class="td-muted" style="font-size:10px">'+d.variety_name+'</span>':''}</td>
+      <td>${(d.rule_matched||'—').length>35?(d.rule_matched||'—').slice(0,35)+'…':(d.rule_matched||'—')}</td>
+      <td class="td-muted" style="font-size:11px">${symptomShort}</td>
+      <td><span class="badge ${badge}">${d.urgency||'—'}</span></td>
+      <td class="td-muted">${date}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Aucun diagnostic trouvé</td></tr>';
+  const tp=Math.ceil(total/DIAG_PER_PAGE);
+  let pages=`<button class="page-btn" onclick="goDiagPage(${diagCurrentPage-1})" ${diagCurrentPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-diagCurrentPage)<=1)pages+=`<button class="page-btn ${i===diagCurrentPage?'active':''}" onclick="goDiagPage(${i})">${i}</button>`;else if(Math.abs(i-diagCurrentPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages+=`<button class="page-btn" onclick="goDiagPage(${diagCurrentPage+1})" ${diagCurrentPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('diagPagination').innerHTML=tp>1?pages:'';
+}
+
+function goDiagPage(n){const t=Math.ceil(filteredDiags.length/DIAG_PER_PAGE);if(n<1||n>t)return;diagCurrentPage=n;renderDiagTable();}
+
+function exportDiagCSV(){
+  const h=['Culture','Variété','Symptômes','Maladie détectée','Urgence','Date'];
+  const r=filteredDiags.map(d=>[d.culture_name,d.variety_name||'',d.symptom_text||'',d.rule_matched||'',d.urgency||'',new Date(d.created_at).toLocaleDateString('fr-FR')]);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_diagnostics_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
 </script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -288,7 +517,7 @@ function exportBoutiquesCSV(){
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo">CultivaTech</div>
-    <div class="login-sub">Panneau d'administration</div>
+    <div class="login-sub">Panneau d'administration TAPSOBA</div>
     <input class="login-input" type="text" id="loginUser" placeholder="Identifiant admin" autocomplete="off"/>
     <input class="login-input" type="password" id="loginPass" placeholder="Mot de passe" autocomplete="off"/>
     <button class="login-btn" onclick="doLogin()">Se connecter</button>
@@ -321,7 +550,7 @@ function exportBoutiquesCSV(){
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
         <div>
           <div class="page-title">Tableau de bord</div>
-          <div class="page-sub">Vue d'ensemble de CultivaTech — TAPSOBA</div>
+          <div class="page-sub">Vue d'ensemble de CultivaTech</div>
           <div class="last-update" id="lastUpdate">Chargement...</div>
         </div>
         <button class="refresh-btn" onclick="loadDashboard()"><span class="spin" id="refreshIcon">↻</span> Actualiser</button>
@@ -425,7 +654,44 @@ function exportBoutiquesCSV(){
     </div>
 
     <!-- PAGES FUTURES -->
-    <div class="page" id="page-pdfs"><div class="page-header"><div class="page-title">Formations PDF</div><div class="page-sub">Gestion du catalogue — à venir</div></div></div>
+    <!-- PAGE PDFs -->
+    <div class="page" id="page-pdfs">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Formations PDF</div>
+          <div class="page-sub">Gestion du catalogue de formations agricoles</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadPdfsPage()"><span class="spin" id="pdfsRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="addPdfModal()">+ Ajouter formation</button>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">📚</span><div class="kpi-value kpi-loading" id="pKpiTotal">—</div><div class="kpi-label">Formations disponibles</div><div class="kpi-trend trend-neutral" id="pKpiTotalSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">💰</span><div class="kpi-value kpi-loading" id="pKpiRevenu">—</div><div class="kpi-label">Revenus totaux FCFA</div><div class="kpi-trend trend-up" id="pKpiRevenuSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🛒</span><div class="kpi-value kpi-loading" id="pKpiAchats">—</div><div class="kpi-label">Achats effectués</div><div class="kpi-trend trend-neutral" id="pKpiAchatsSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">📈</span><div class="kpi-value kpi-loading" id="pKpiMoyPrix">—</div><div class="kpi-label">Prix moyen</div><div class="kpi-trend trend-neutral" id="pKpiMoyPrixSub"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><div class="chart-title">Ventes par formation</div><div class="chart-sub">Nombre d'achats par titre</div><div class="chart-wrap"><canvas id="chartPdfVentes"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Revenus par catégorie</div><div class="chart-sub">FCFA générés par type de formation</div><div class="chart-wrap"><canvas id="chartPdfCategories"></canvas></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="pdfSearch" placeholder="🔍  Rechercher par titre ou catégorie..." oninput="filterPdfs()"/>
+        <select class="filter-select" id="pdfCatFilter" onchange="filterPdfs()"><option value="">Toutes les catégories</option></select>
+        <button class="export-btn" onclick="exportPdfsCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Catalogue formations <span class="badge badge-amber" id="pdfsCountBadge">0</span></div>
+          <div class="users-count" id="pdfsCountText"></div>
+        </div>
+        <table>
+          <thead><tr><th>Titre</th><th>Catégorie</th><th>Prix FCFA</th><th>Ventes</th><th>Revenus</th><th>Actions</th></tr></thead>
+          <tbody id="pdfsTableBody"><tr><td colspan="6" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
     <!-- PAGE BOUTIQUES -->
     <div class="page" id="page-boutiques">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
@@ -470,7 +736,60 @@ function exportBoutiquesCSV(){
         <div class="pagination" id="boutiquesPagination"></div>
       </div>
     </div>
-    <div class="page" id="page-diagnostics"><div class="page-header"><div class="page-title">Diagnostics</div><div class="page-sub">Analyse phytosanitaire — à venir</div></div></div>
+    <!-- PAGE DIAGNOSTICS -->
+    <div class="page" id="page-diagnostics">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Diagnostics</div>
+          <div class="page-sub">Analyse phytosanitaire — maladies détectées dans l'app</div>
+        </div>
+        <button class="refresh-btn" onclick="loadDiagnosticsPage()"><span class="spin" id="diagRefreshIcon">↻</span> Actualiser</button>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card red"><span class="kpi-icon">🔍</span><div class="kpi-value kpi-loading" id="dKpiTotal">—</div><div class="kpi-label">Diagnostics effectués</div><div class="kpi-trend trend-neutral" id="dKpiTotalSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🚨</span><div class="kpi-value kpi-loading" id="dKpiElevee">—</div><div class="kpi-label">Urgence élevée</div><div class="kpi-trend trend-up" id="dKpiEleveeSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🌾</span><div class="kpi-value kpi-loading" id="dKpiCultures">—</div><div class="kpi-label">Cultures diagnostiquées</div><div class="kpi-trend trend-neutral" id="dKpiCulturesSub"></div></div>
+        <div class="kpi-card green"><span class="kpi-icon">📅</span><div class="kpi-value kpi-loading" id="dKpiRecent">—</div><div class="kpi-label">Ce mois-ci</div><div class="kpi-trend trend-neutral" id="dKpiRecentSub"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><div class="chart-title">Diagnostics par culture</div><div class="chart-sub">Nombre de diagnostics effectués par culture</div><div class="chart-wrap"><canvas id="chartDiagCultures"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Répartition par urgence</div><div class="chart-sub">Élevée / Modérée / Faible</div><div class="chart-wrap"><canvas id="chartDiagUrgence"></canvas></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="diagSearch" placeholder="🔍  Rechercher par culture ou maladie..." oninput="filterDiagnostics()"/>
+        <select class="filter-select" id="diagCultureFilter" onchange="filterDiagnostics()"><option value="">Toutes les cultures</option></select>
+        <select class="filter-select" id="diagUrgenceFilter" onchange="filterDiagnostics()">
+          <option value="">Toutes urgences</option>
+          <option value="Élevée">🚨 Élevée</option>
+          <option value="Modérée">⚠️ Modérée</option>
+          <option value="Faible">✅ Faible</option>
+        </select>
+        <button class="export-btn" onclick="exportDiagCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Historique diagnostics <span class="badge badge-red" id="diagCountBadge">0</span></div>
+          <div class="users-count" id="diagCountText"></div>
+        </div>
+        <table>
+          <thead><tr><th>Culture</th><th>Maladie détectée</th><th>Symptômes</th><th>Urgence</th><th>Date</th></tr></thead>
+          <tbody id="diagTableBody"><tr><td colspan="5" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+        <div class="pagination" id="diagPagination"></div>
+      </div>
+      <div class="charts-row" style="margin-top:24px">
+        <div class="chart-card">
+          <div class="chart-title">Top 10 maladies détectées</div>
+          <div class="chart-sub">Fréquence des diagnostics par maladie</div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chartDiagMaladies"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Évolution mensuelle</div>
+          <div class="chart-sub">Nombre de diagnostics par mois</div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chartDiagMensuel"></canvas></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -524,6 +843,9 @@ function showPage(name) {
   document.getElementById('page-'+name).classList.add('active');
   document.getElementById('nav-'+name).classList.add('active');
   if (name === 'users') loadUsersPage();
+  if (name === 'pdfs') loadPdfsPage();
+  if (name === 'boutiques') loadBoutiquesPage();
+  if (name === 'diagnostics') loadDiagnosticsPage();
 }
 
 async function query(endpoint) {
@@ -968,6 +1290,235 @@ function exportBoutiquesCSV(){
   const csv=[h,...r].map(x=>x.join(';')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_boutiques_${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
+
+// ══ PDFs ══
+let allPdfs=[], filteredPdfs=[], editingPdfId=null;
+let chartPdfVentes=null, chartPdfCategories=null;
+
+async function loadPdfsPage() {
+  const icon=document.getElementById('pdfsRefreshIcon');
+  icon.classList.add('spinning');
+  try {
+    allPdfs=await query('pdf_documents?select=*&is_deleted=eq.false&order=title.asc');
+    const purchases=await query('user_purchases?select=document_id&is_deleted=eq.false');
+    const salesMap={};
+    purchases.forEach(p=>{salesMap[p.document_id]=(salesMap[p.document_id]||0)+1;});
+    allPdfs.forEach(p=>{p._sales=salesMap[p.id]||0;p._revenue=(salesMap[p.id]||0)*p.price;});
+    const totalRev=allPdfs.reduce((s,p)=>s+p._revenue,0);
+    const totalAchats=purchases.length;
+    const moyPrix=allPdfs.length>0?Math.round(allPdfs.reduce((s,p)=>s+p.price,0)/allPdfs.length):0;
+    setKPI('pKpiTotal',allPdfs.length,'pKpiTotalSub',`${allPdfs.length} formations`);
+    setKPI('pKpiRevenu',totalRev.toLocaleString('fr-FR'),'pKpiRevenuSub',`${totalAchats} achats`);
+    setKPI('pKpiAchats',totalAchats,'pKpiAchatsSub','total cumulé');
+    setKPI('pKpiMoyPrix',moyPrix.toLocaleString('fr-FR')+' F','pKpiMoyPrixSub','par formation');
+    const cats=[...new Set(allPdfs.map(p=>p.category))].filter(Boolean).sort();
+    const sel=document.getElementById('pdfCatFilter');
+    sel.innerHTML='<option value="">Toutes les catégories</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    loadPdfCharts();
+    filteredPdfs=[...allPdfs];
+    renderPdfsTable();
+  } catch(e){console.error(e);}
+  icon.classList.remove('spinning');
+}
+
+function loadPdfCharts() {
+  const sorted=[...allPdfs].sort((a,b)=>b._sales-a._sales).slice(0,6);
+  if(chartPdfVentes)chartPdfVentes.destroy();
+  chartPdfVentes=new Chart(document.getElementById('chartPdfVentes'),{type:'bar',data:{labels:sorted.map(p=>p.title.length>20?p.title.slice(0,20)+'…':p.title),datasets:[{data:sorted.map(p=>p._sales),backgroundColor:'rgba(200,168,75,0.3)',borderColor:'#C8A84B',borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:10}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+  const catRev={};
+  allPdfs.forEach(p=>{const c=p.category||'Autre';catRev[c]=(catRev[c]||0)+p._revenue;});
+  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22'];
+  if(chartPdfCategories)chartPdfCategories.destroy();
+  chartPdfCategories=new Chart(document.getElementById('chartPdfCategories'),{type:'doughnut',data:{labels:Object.keys(catRev),datasets:[{data:Object.values(catRev),backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+}
+
+function filterPdfs() {
+  const search=document.getElementById('pdfSearch').value.toLowerCase();
+  const cat=document.getElementById('pdfCatFilter').value;
+  filteredPdfs=allPdfs.filter(p=>{
+    const ms=!search||p.title.toLowerCase().includes(search)||(p.category||'').toLowerCase().includes(search);
+    const mc=!cat||p.category===cat;
+    return ms&&mc;
+  });
+  renderPdfsTable();
+}
+
+function renderPdfsTable() {
+  const total=filteredPdfs.length;
+  document.getElementById('pdfsCountBadge').textContent=total;
+  document.getElementById('pdfsCountText').textContent=`${total} formation${total>1?'s':''}`;
+  document.getElementById('pdfsTableBody').innerHTML=filteredPdfs.map(p=>`<tr>
+    <td><strong>${p.title}</strong></td>
+    <td><span class="badge badge-amber">${p.category||'—'}</span></td>
+    <td class="trend-up">${p.price.toLocaleString('fr-FR')} F</td>
+    <td>${p._sales} vente${p._sales>1?'s':''}</td>
+    <td class="trend-up">${p._revenue.toLocaleString('fr-FR')} F</td>
+    <td><div style="display:flex;gap:6px">
+      <button onclick="editPdf(${p.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
+      <button onclick="deletePdf(${p.id},'${p.title.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+    </div></td>
+  </tr>`).join('')||'<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucune formation</td></tr>';
+}
+
+function addPdfModal(){
+  editingPdfId=null;
+  document.getElementById('pModalTitle').textContent='Ajouter une formation';
+  document.getElementById('pModalSub').textContent='Nouveau PDF au catalogue';
+  ['pFieldTitle','pFieldPrice','pFieldCategory','pFieldUrl','pFieldDesc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pModalError').style.display='none';
+  document.getElementById('pSaveBtn').textContent='Ajouter';
+  document.getElementById('pdfModal').classList.add('open');
+}
+
+function editPdf(id){
+  const p=allPdfs.find(x=>x.id===id);if(!p)return;
+  editingPdfId=id;
+  document.getElementById('pModalTitle').textContent='Modifier la formation';
+  document.getElementById('pModalSub').textContent=p.title;
+  document.getElementById('pFieldTitle').value=p.title||'';
+  document.getElementById('pFieldPrice').value=p.price||0;
+  document.getElementById('pFieldCategory').value=p.category||'';
+  document.getElementById('pFieldUrl').value=p.file_url||'';
+  document.getElementById('pFieldDesc').value=p.description||'';
+  document.getElementById('pModalError').style.display='none';
+  document.getElementById('pSaveBtn').textContent='Enregistrer';
+  document.getElementById('pdfModal').classList.add('open');
+}
+
+async function savePdf(){
+  const title=document.getElementById('pFieldTitle').value.trim();
+  const price=parseFloat(document.getElementById('pFieldPrice').value)||0;
+  if(!title){document.getElementById('pModalError').textContent='Le titre est obligatoire';document.getElementById('pModalError').style.display='block';return;}
+  const body={title,price,category:document.getElementById('pFieldCategory').value.trim(),file_url:document.getElementById('pFieldUrl').value.trim(),description:document.getElementById('pFieldDesc').value.trim(),is_deleted:false};
+  document.getElementById('pSaveBtn').textContent='⏳...';document.getElementById('pSaveBtn').disabled=true;
+  try{
+    const method=editingPdfId?'PATCH':'POST';
+    const url=editingPdfId?`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${editingPdfId}`:`${SUPABASE_URL}/rest/v1/pdf_documents`;
+    const res=await fetch(url,{method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('Erreur '+res.status);
+    document.getElementById('pdfModal').classList.remove('open');
+    await loadPdfsPage();
+  }catch(e){document.getElementById('pModalError').textContent='Erreur : '+e.message;document.getElementById('pModalError').style.display='block';}
+  document.getElementById('pSaveBtn').textContent='Enregistrer';document.getElementById('pSaveBtn').disabled=false;
+}
+
+async function deletePdf(id,title){
+  if(!confirm(`Supprimer "${title}" ?`))return;
+  try{await fetch(`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});await loadPdfsPage();}catch(e){alert('Erreur : '+e.message);}
+}
+
+function closePdfModal(e){if(e.target.id==='pdfModal')document.getElementById('pdfModal').classList.remove('open');}
+
+function exportPdfsCSV(){
+  const h=['Titre','Catégorie','Prix FCFA','Ventes','Revenus FCFA','URL fichier'];
+  const r=filteredPdfs.map(p=>[p.title,p.category||'',p.price,p._sales,p._revenue,p.file_url||'']);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_pdfs_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+// ══ DIAGNOSTICS ══
+let allDiags=[], filteredDiags=[], diagCurrentPage=1;
+const DIAG_PER_PAGE=12;
+let chartDiagCultures=null, chartDiagUrgence=null, chartDiagMaladies=null, chartDiagMensuel=null;
+
+async function loadDiagnosticsPage() {
+  const icon=document.getElementById('diagRefreshIcon');
+  icon.classList.add('spinning');
+  try {
+    allDiags=await query('diagnostic_logs?select=*&order=created_at.desc');
+    const thisMonth=new Date();thisMonth.setDate(1);thisMonth.setHours(0,0,0,0);
+    const ceM=allDiags.filter(d=>new Date(d.created_at)>=thisMonth).length;
+    const elevee=allDiags.filter(d=>d.urgency==='Élevée').length;
+    const cultures=[...new Set(allDiags.map(d=>d.culture_name))].length;
+    setKPI('dKpiTotal',allDiags.length,'dKpiTotalSub','diagnostics au total');
+    setKPI('dKpiElevee',elevee,'dKpiEleveeSub',`${Math.round(elevee/Math.max(allDiags.length,1)*100)}% du total`);
+    setKPI('dKpiCultures',cultures,'dKpiCulturesSub','cultures concernées');
+    setKPI('dKpiRecent',ceM,'dKpiRecentSub','ce mois-ci');
+    const cultureSet=[...new Set(allDiags.map(d=>d.culture_name))].sort();
+    const sel=document.getElementById('diagCultureFilter');
+    sel.innerHTML='<option value="">Toutes les cultures</option>'+cultureSet.map(c=>`<option value="${c}">${c}</option>`).join('');
+    loadDiagCharts();
+    filteredDiags=[...allDiags];
+    diagCurrentPage=1;
+    renderDiagTable();
+  } catch(e){
+    document.getElementById('diagTableBody').innerHTML='<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_logs non disponible — effectuez des diagnostics dans l'app d'abord</td></tr>';
+    ['dKpiTotal','dKpiElevee','dKpiCultures','dKpiRecent'].forEach(id=>{const el=document.getElementById(id);el.textContent='0';el.classList.remove('kpi-loading');});
+  }
+  icon.classList.remove('spinning');
+}
+
+function loadDiagCharts() {
+  const parCulture={};
+  allDiags.forEach(d=>{parCulture[d.culture_name]=(parCulture[d.culture_name]||0)+1;});
+  const cs=Object.entries(parCulture).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C','#E91E63'];
+  if(chartDiagCultures)chartDiagCultures.destroy();
+  chartDiagCultures=new Chart(document.getElementById('chartDiagCultures'),{type:'bar',data:{labels:cs.map(c=>c[0]),datasets:[{data:cs.map(c=>c[1]),backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+  const urgCounts={'Élevée':allDiags.filter(d=>d.urgency==='Élevée').length,'Modérée':allDiags.filter(d=>d.urgency==='Modérée').length,'Faible':allDiags.filter(d=>d.urgency==='Faible'||!d.urgency).length};
+  if(chartDiagUrgence)chartDiagUrgence.destroy();
+  chartDiagUrgence=new Chart(document.getElementById('chartDiagUrgence'),{type:'doughnut',data:{labels:Object.keys(urgCounts),datasets:[{data:Object.values(urgCounts),backgroundColor:['#E0525299','#E0A83299','#36AF3B99'],borderColor:['#E05252','#E0A832','#36AF3B'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+  const parMaladie={};
+  allDiags.forEach(d=>{if(d.rule_matched)parMaladie[d.rule_matched]=(parMaladie[d.rule_matched]||0)+1;});
+  const ms=Object.entries(parMaladie).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(chartDiagMaladies)chartDiagMaladies.destroy();
+  chartDiagMaladies=new Chart(document.getElementById('chartDiagMaladies'),{type:'bar',data:{labels:ms.map(m=>m[0].length>30?m[0].slice(0,30)+'…':m[0]),datasets:[{data:ms.map(m=>m[1]),backgroundColor:'rgba(224,82,82,0.25)',borderColor:'#E05252',borderWidth:2,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:10}}}}}});
+  const monthly={};
+  allDiags.forEach(d=>{const dt=new Date(d.created_at);const k=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;monthly[k]=(monthly[k]||0)+1;});
+  const mLabels=Object.keys(monthly).sort().slice(-8);
+  const mDisplay=mLabels.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});});
+  if(chartDiagMensuel)chartDiagMensuel.destroy();
+  chartDiagMensuel=new Chart(document.getElementById('chartDiagMensuel'),{type:'line',data:{labels:mDisplay,datasets:[{data:mLabels.map(k=>monthly[k]||0),borderColor:'#E05252',backgroundColor:'rgba(224,82,82,0.1)',borderWidth:2,pointBackgroundColor:'#E05252',tension:0.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
+}
+
+function filterDiagnostics() {
+  const search=document.getElementById('diagSearch').value.toLowerCase();
+  const culture=document.getElementById('diagCultureFilter').value;
+  const urgence=document.getElementById('diagUrgenceFilter').value;
+  filteredDiags=allDiags.filter(d=>{
+    const ms=!search||d.culture_name.toLowerCase().includes(search)||(d.rule_matched||'').toLowerCase().includes(search);
+    const mc=!culture||d.culture_name===culture;
+    const mu=!urgence||d.urgency===urgence;
+    return ms&&mc&&mu;
+  });
+  diagCurrentPage=1;
+  renderDiagTable();
+}
+
+function renderDiagTable() {
+  const total=filteredDiags.length;
+  const start=(diagCurrentPage-1)*DIAG_PER_PAGE;
+  const page=filteredDiags.slice(start,start+DIAG_PER_PAGE);
+  document.getElementById('diagCountBadge').textContent=total;
+  document.getElementById('diagCountText').textContent=`${start+1}–${Math.min(start+DIAG_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('diagTableBody').innerHTML=page.map(d=>{
+    const badge=d.urgency==='Élevée'?'badge-red':d.urgency==='Modérée'?'badge-amber':'badge-green';
+    const date=new Date(d.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    const symptom=(d.symptom_text||'—');
+    const symptomShort=symptom.length>40?symptom.slice(0,40)+'…':symptom;
+    return `<tr>
+      <td><strong>${d.culture_name}</strong>${d.variety_name?'<br><span class="td-muted" style="font-size:10px">'+d.variety_name+'</span>':''}</td>
+      <td>${(d.rule_matched||'—').length>35?(d.rule_matched||'—').slice(0,35)+'…':(d.rule_matched||'—')}</td>
+      <td class="td-muted" style="font-size:11px">${symptomShort}</td>
+      <td><span class="badge ${badge}">${d.urgency||'—'}</span></td>
+      <td class="td-muted">${date}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Aucun diagnostic trouvé</td></tr>';
+  const tp=Math.ceil(total/DIAG_PER_PAGE);
+  let pages=`<button class="page-btn" onclick="goDiagPage(${diagCurrentPage-1})" ${diagCurrentPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-diagCurrentPage)<=1)pages+=`<button class="page-btn ${i===diagCurrentPage?'active':''}" onclick="goDiagPage(${i})">${i}</button>`;else if(Math.abs(i-diagCurrentPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages+=`<button class="page-btn" onclick="goDiagPage(${diagCurrentPage+1})" ${diagCurrentPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('diagPagination').innerHTML=tp>1?pages:'';
+}
+
+function goDiagPage(n){const t=Math.ceil(filteredDiags.length/DIAG_PER_PAGE);if(n<1||n>t)return;diagCurrentPage=n;renderDiagTable();}
+
+function exportDiagCSV(){
+  const h=['Culture','Variété','Symptômes','Maladie détectée','Urgence','Date'];
+  const r=filteredDiags.map(d=>[d.culture_name,d.variety_name||'',d.symptom_text||'',d.rule_matched||'',d.urgency||'',new Date(d.created_at).toLocaleDateString('fr-FR')]);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_diagnostics_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
 </script>
 
 <!-- MODAL BOUTIQUE -->
@@ -1000,6 +1551,28 @@ function exportBoutiquesCSV(){
     <div style="display:flex;gap:8px;margin-top:8px">
       <button onclick="saveBoutique()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif" id="bSaveBtn">Enregistrer</button>
       <button class="modal-close" style="flex:0" onclick="document.getElementById('boutiqueModal').classList.remove('open')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PDF -->
+<div class="modal-overlay" id="pdfModal" onclick="closePdfModal(event)">
+  <div class="modal" style="width:520px;max-width:95vw">
+    <div class="modal-title" id="pModalTitle">Formation PDF</div>
+    <div class="modal-sub" id="pModalSub">Ajouter au catalogue</div>
+    <div class="modal-row">
+      <div class="modal-field" style="flex:2"><div class="modal-label">Titre</div><input class="login-input" id="pFieldTitle" placeholder="Ex: Maladies de l'Anacarde" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Prix (FCFA)</div><input class="login-input" id="pFieldPrice" type="number" min="0" placeholder="1500" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Catégorie</div><input class="login-input" id="pFieldCategory" placeholder="Ex: Protection des cultures" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">URL fichier (Storage)</div><input class="login-input" id="pFieldUrl" placeholder="nom_fichier.pdf" style="margin-bottom:0"/></div>
+    </div>
+    <div style="margin:12px 0"><div class="modal-label" style="margin-bottom:6px">Description</div><textarea class="login-input" id="pFieldDesc" placeholder="Description de la formation..." style="height:80px;resize:vertical;margin-bottom:0"></textarea></div>
+    <div id="pModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="savePdf()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif" id="pSaveBtn">Enregistrer</button>
+      <button class="modal-close" style="flex:0" onclick="document.getElementById('pdfModal').classList.remove('open')">Annuler</button>
     </div>
   </div>
 </div>
