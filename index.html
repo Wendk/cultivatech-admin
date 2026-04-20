@@ -1442,7 +1442,7 @@ async function loadDiagnosticsPage() {
     diagCurrentPage=1;
     renderDiagTable();
   } catch(e){
-    document.getElementById('diagTableBody').innerHTML='<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_logs non disponible — effectuez des diagnostics dans l'app d'abord</td></tr>';
+    document.getElementById('diagTableBody').innerHTML=`<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_logs non disponible. Effectuez des diagnostics dans l'app d'abord.</td></tr>`;
     ['dKpiTotal','dKpiElevee','dKpiCultures','dKpiRecent'].forEach(id=>{const el=document.getElementById(id);el.textContent='0';el.classList.remove('kpi-loading');});
   }
   icon.classList.remove('spinning');
