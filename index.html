@@ -75,9 +75,9 @@ function renderBoutiquesTable() {
       <td>${b.is_featured?'<span class="badge badge-amber">⭐ Vedette</span>':'<span class="td-muted">—</span>'}</td>
       <td class="td-muted" style="font-size:11px">${b.phone_number||'—'}</td>
       <td><div style="display:flex;gap:6px">
-        <button onclick="editBoutique(${b.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
-        <button onclick="toggleVedette(${b.id},${b.is_featured})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:${b.is_featured?'var(--amber)':'var(--muted)'};font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">${b.is_featured?'★':'☆'}</button>
-        <button onclick="deleteBoutique(${b.id},'${b.name.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+        <button onclick="editBoutique(${b.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">✏️</button>
+        <button onclick="toggleVedette(${b.id},${b.is_featured})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:${b.is_featured?'var(--amber)':'var(--muted)'};font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">${b.is_featured?'★':'☆'}</button>
+        <button onclick="deleteBoutique(${b.id},'${b.name.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">🗑</button>
       </div></td>
     </tr>`;
   }).join('')||'<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Aucune boutique trouvée</td></tr>';
@@ -221,8 +221,8 @@ function renderPdfsTable() {
     <td>${p._sales} vente${p._sales>1?'s':''}</td>
     <td class="trend-up">${p._revenue.toLocaleString('fr-FR')} F</td>
     <td><div style="display:flex;gap:6px">
-      <button onclick="editPdf(${p.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
-      <button onclick="deletePdf(${p.id},'${p.title.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+      <button onclick="editPdf(${p.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">✏️</button>
+      <button onclick="deletePdf(${p.id},'${p.title.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">🗑</button>
     </div></td>
   </tr>`).join('')||'<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucune formation</td></tr>';
 }
@@ -309,7 +309,7 @@ async function loadDiagnosticsPage() {
     diagCurrentPage=1;
     renderDiagTable();
   } catch(e){
-    document.getElementById('diagTableBody').innerHTML='<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_logs non disponible — effectuez des diagnostics dans l'app d'abord</td></tr>';
+    document.getElementById('diagTableBody').innerHTML=`<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_logs non disponible - effectuez des diagnostics dans l'app d'abord</td></tr>`;
     ['dKpiTotal','dKpiElevee','dKpiCultures','dKpiRecent'].forEach(id=>{const el=document.getElementById(id);el.textContent='0';el.classList.remove('kpi-loading');});
   }
   icon.classList.remove('spinning');
@@ -386,25 +386,227 @@ function exportDiagCSV(){
   const csv=[h,...r].map(x=>x.join(';')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_diagnostics_${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
+
+// ══ NOTIFICATIONS ══
+async function sendNotification(){
+  const title=document.getElementById('notifTitle').value.trim();
+  const message=document.getElementById('notifMessage').value.trim();
+  const type=document.getElementById('notifType').value;
+  const statusEl=document.getElementById('notifStatus');
+  if(!title||!message){statusEl.textContent='⚠️ Titre et message obligatoires';return;}
+  statusEl.textContent='⏳ Envoi...';statusEl.style.color='var(--muted)';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/notifications`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({title,message,type,created_at:new Date().toISOString(),is_read:false,target:'all'})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    statusEl.textContent=`✅ Envoyée à ${allUsers.length} utilisateurs`;
+    statusEl.style.color='var(--vert2)';
+    document.getElementById('notifTitle').value='';
+    document.getElementById('notifMessage').value='';
+  }catch(e){
+    statusEl.textContent=`⚠️ Créer table notifications: id, title, message, type, created_at, is_read, target`;
+    statusEl.style.color='var(--amber)';
+  }
+}
+
+// ══ DÉSACTIVATION UTILISATEUR ══
+let currentModalUserId=null,currentModalUserActive=true;
+function openUserModal(userId){
+  const u=allUsers.find(x=>x.id===userId);if(!u)return;
+  currentModalUserId=userId;currentModalUserActive=u.is_active!==false;
+  document.getElementById('modalName').textContent=`${u.first_name} ${u.last_name}`;
+  document.getElementById('modalPhone').textContent=`📱 ${u.phone_number||'Non renseigné'}`;
+  document.getElementById('modalScore').textContent=`${u.score_agricole||0} points`;
+  document.getElementById('modalCredit').textContent=u.statut_credit||'Insuffisant';
+  document.getElementById('modalDate').textContent=new Date(u.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('modalId').textContent=`#${u.id}`;
+  document.getElementById('modalStats').innerHTML=`
+    <div class="stat-mini"><span>Productions</span><span class="trend-up">${u._prods||0}</span></div>
+    <div class="stat-mini"><span>Formations achetées</span><span style="color:var(--amber)">${u._purchases||0}</span></div>
+    <div class="stat-mini"><span>Points productions (×10)</span><span class="td-muted">${(u._prods||0)*10} pts</span></div>
+    <div class="stat-mini"><span>Points formations (×15)</span><span class="td-muted">${(u._purchases||0)*15} pts</span></div>
+    <div class="stat-mini"><span><strong>Score total</strong></span><span class="trend-up"><strong>${u.score_agricole||0} pts</strong></span></div>`;
+  const btn=document.getElementById('modalDisableBtn');
+  if(currentModalUserActive){
+    btn.textContent='⛔ Désactiver le compte';btn.style.color='var(--red)';btn.style.borderColor='var(--red)';btn.style.background='#2A1010';
+  }else{
+    btn.textContent='✅ Réactiver le compte';btn.style.color='var(--vert2)';btn.style.borderColor='var(--vert2)';btn.style.background='#1A2E1A';
+  }
+  document.getElementById('modalDisableStatus').textContent='';
+  document.getElementById('userModal').classList.add('open');
+}
+async function toggleUserStatus(){
+  if(!currentModalUserId)return;
+  const newStatus=!currentModalUserActive;
+  const statusEl=document.getElementById('modalDisableStatus');
+  statusEl.textContent='⏳ Mise à jour...';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${currentModalUserId}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({is_active:newStatus})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    currentModalUserActive=newStatus;
+    const u=allUsers.find(x=>x.id===currentModalUserId);if(u)u.is_active=newStatus;
+    const btn=document.getElementById('modalDisableBtn');
+    if(newStatus){
+      btn.textContent='⛔ Désactiver le compte';btn.style.color='var(--red)';btn.style.borderColor='var(--red)';btn.style.background='#2A1010';
+      statusEl.textContent='✅ Compte réactivé';statusEl.style.color='var(--vert2)';
+    }else{
+      btn.textContent='✅ Réactiver le compte';btn.style.color='var(--vert2)';btn.style.borderColor='var(--vert2)';btn.style.background='#1A2E1A';
+      statusEl.textContent='⛔ Compte désactivé';statusEl.style.color='var(--red)';
+    }
+    renderUsersTable();
+  }catch(e){
+    statusEl.textContent='⚠️ Ajouter colonne is_active (boolean) dans la table users Supabase';
+    statusEl.style.color='var(--amber)';
+  }
+}
+
+// ══ OUVRIERS ══
+let allWorkers=[],filteredWorkers=[],workersPage=1,editingWorkerId=null;
+const WORKERS_PER_PAGE=10;
+async function loadWorkersPage(){
+  const icon=document.getElementById('workersRefreshIcon');icon.classList.add('spinning');
+  try{
+    allWorkers=await query('workers?select=*&is_deleted=eq.false&order=first_name.asc');
+    const avgS=allWorkers.length>0?Math.round(allWorkers.reduce((s,w)=>s+(w.daily_wage||0),0)/allWorkers.length):0;
+    const villes=[...new Set(allWorkers.map(w=>w.city).filter(Boolean))].length;
+    const specs=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].length;
+    setKPI('wKpiTotal',allWorkers.length,'wKpiTotalSub',`${allWorkers.length} ouvriers`);
+    setKPI('wKpiSalaire',avgS.toLocaleString('fr-FR')+' F','wKpiSalaireSub','FCFA/jour');
+    setKPI('wKpiVilles',villes,'wKpiVillesSub','régions');
+    setKPI('wKpiSpecialites',specs,'wKpiSpecialitesSub','métiers');
+    const specSet=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].sort();
+    document.getElementById('workerSpecFilter').innerHTML='<option value="">Toutes spécialités</option>'+specSet.map(s=>`<option value="${s}">${s}</option>`).join('');
+    filteredWorkers=[...allWorkers];workersPage=1;renderWorkersTable();
+  }catch(e){
+    document.getElementById('workersTableBody').innerHTML=`<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Table workers non trouvée. SQL dans Supabase:<br><code style="background:var(--bg2);padding:4px 8px;border-radius:4px;font-size:11px">CREATE TABLE workers (id serial PRIMARY KEY, first_name text, last_name text, phone_number text, city text, specialite text, daily_wage integer DEFAULT 0, notes text, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());</code></td></tr>`;
+    ['wKpiTotal','wKpiSalaire','wKpiVilles','wKpiSpecialites'].forEach(id=>{const el=document.getElementById(id);el.textContent='—';el.classList.remove('kpi-loading');});
+  }
+  icon.classList.remove('spinning');
+}
+function filterWorkers(){
+  const search=document.getElementById('workerSearch').value.toLowerCase();
+  const spec=document.getElementById('workerSpecFilter').value;
+  filteredWorkers=allWorkers.filter(w=>{
+    const name=`${w.first_name} ${w.last_name}`.toLowerCase();
+    return(!search||name.includes(search)||(w.city||'').toLowerCase().includes(search)||(w.specialite||'').toLowerCase().includes(search))&&(!spec||w.specialite===spec);
+  });
+  workersPage=1;renderWorkersTable();
+}
+function renderWorkersTable(){
+  const total=filteredWorkers.length;
+  const start=(workersPage-1)*WORKERS_PER_PAGE;
+  const page=filteredWorkers.slice(start,start+WORKERS_PER_PAGE);
+  document.getElementById('workersCountBadge').textContent=total;
+  document.getElementById('workersCountText').textContent=`${start+1}–${Math.min(start+WORKERS_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('workersTableBody').innerHTML=page.map(w=>{
+    const initials=`${(w.first_name||'?')[0]}${(w.last_name||'?')[0]}`.toUpperCase();
+    return `<tr>
+      <td><div class="user-name-cell"><div class="user-avatar" style="background:linear-gradient(135deg,var(--vert),var(--vert2))">${initials}</div><div>${w.first_name} ${w.last_name}</div></div></td>
+      <td class="td-phone">${w.phone_number||'—'}</td>
+      <td class="td-muted">${w.city||'—'}</td>
+      <td><span class="badge badge-blue">${w.specialite||'—'}</span></td>
+      <td class="trend-up">${w.daily_wage?w.daily_wage.toLocaleString('fr-FR')+' F':'—'}</td>
+      <td><div style="display:flex;gap:6px">
+        <button onclick="editWorker(${w.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit">✏️</button>
+        <button onclick="deleteWorker(${w.id},'${(w.first_name+' '+w.last_name).replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:inherit">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucun ouvrier trouvé</td></tr>`;
+  const tp=Math.ceil(total/WORKERS_PER_PAGE);
+  let pages=`<button class="page-btn" onclick="goWorkerPage(${workersPage-1})" ${workersPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-workersPage)<=1)pages+=`<button class="page-btn ${i===workersPage?'active':''}" onclick="goWorkerPage(${i})">${i}</button>`;else if(Math.abs(i-workersPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages+=`<button class="page-btn" onclick="goWorkerPage(${workersPage+1})" ${workersPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('workersPagination').innerHTML=tp>1?pages:'';
+}
+function goWorkerPage(n){const t=Math.ceil(filteredWorkers.length/WORKERS_PER_PAGE);if(n<1||n>t)return;workersPage=n;renderWorkersTable();}
+function addWorkerModal(){
+  editingWorkerId=null;
+  document.getElementById('wModalTitle').textContent='Ajouter un ouvrier';
+  document.getElementById('wModalSub').textContent='Nouveau travailleur journalier';
+  ['wFieldFirstName','wFieldLastName','wFieldPhone','wFieldCity','wFieldSpecialite','wFieldNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wFieldSalaire').value='';
+  document.getElementById('wModalError').style.display='none';
+  document.getElementById('wSaveBtn').textContent='Ajouter';
+  document.getElementById('workerModal').classList.add('open');
+}
+function editWorker(id){
+  const w=allWorkers.find(x=>x.id===id);if(!w)return;
+  editingWorkerId=id;
+  document.getElementById('wModalTitle').textContent="Modifier l\'ouvrier";
+  document.getElementById('wModalSub').textContent=`${w.first_name} ${w.last_name}`;
+  document.getElementById('wFieldFirstName').value=w.first_name||'';
+  document.getElementById('wFieldLastName').value=w.last_name||'';
+  document.getElementById('wFieldPhone').value=w.phone_number||'';
+  document.getElementById('wFieldCity').value=w.city||'';
+  document.getElementById('wFieldSpecialite').value=w.specialite||'';
+  document.getElementById('wFieldSalaire').value=w.daily_wage||'';
+  document.getElementById('wFieldNote').value=w.notes||'';
+  document.getElementById('wModalError').style.display='none';
+  document.getElementById('wSaveBtn').textContent='Enregistrer';
+  document.getElementById('workerModal').classList.add('open');
+}
+async function saveWorker(){
+  const first=document.getElementById('wFieldFirstName').value.trim();
+  const last=document.getElementById('wFieldLastName').value.trim();
+  if(!first||!last){document.getElementById('wModalError').textContent='Prénom et nom obligatoires';document.getElementById('wModalError').style.display='block';return;}
+  const body={first_name:first,last_name:last,phone_number:document.getElementById('wFieldPhone').value.trim(),city:document.getElementById('wFieldCity').value.trim(),specialite:document.getElementById('wFieldSpecialite').value.trim(),daily_wage:parseFloat(document.getElementById('wFieldSalaire').value)||0,notes:document.getElementById('wFieldNote').value.trim(),is_deleted:false};
+  document.getElementById('wSaveBtn').textContent='⏳...';document.getElementById('wSaveBtn').disabled=true;
+  try{
+    const method=editingWorkerId?'PATCH':'POST';
+    const url=editingWorkerId?`${SUPABASE_URL}/rest/v1/workers?id=eq.${editingWorkerId}`:`${SUPABASE_URL}/rest/v1/workers`;
+    const res=await fetch(url,{method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    document.getElementById('workerModal').classList.remove('open');await loadWorkersPage();
+  }catch(e){document.getElementById('wModalError').textContent='Erreur : '+e.message;document.getElementById('wModalError').style.display='block';}
+  document.getElementById('wSaveBtn').textContent='Enregistrer';document.getElementById('wSaveBtn').disabled=false;
+}
+async function deleteWorker(id,name){
+  if(!confirm(`Supprimer "${name}" ?`))return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/workers?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    await loadWorkersPage();
+  }catch(e){alert('Erreur : '+e.message);}
+}
+function exportWorkersCSV(){
+  const h=['Prénom','Nom','Téléphone','Ville','Spécialité','Salaire/jour FCFA','Notes'];
+  const r=filteredWorkers.map(w=>[w.first_name,w.last_name,w.phone_number||'',w.city||'',w.specialite||'',w.daily_wage||0,w.notes||'']);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`ouvriers_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+// Mettre à jour showPage pour workers
+const _origShowPage=showPage;
+showPage=function(name){
+  _origShowPage(name);
+  if(name==='workers')loadWorkersPage();
+};
 </script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+    /* Police système macOS/SF Pro */
   :root{--vert:#1A5319;--vert2:#36AF3B;--vert-pale:#D6EFD8;--or:#C8A84B;--bg:#0A0F0A;--bg2:#111811;--bg3:#162016;--card:#1A241A;--border:#2A3A2A;--text:#E8F0E8;--muted:#7A9A7A;--red:#E05252;--amber:#E0A832;--blue:#4A9EE0}
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
   #loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:24px}
   .login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:340px;text-align:center}
-  .login-logo{font-family:'Playfair Display',serif;font-size:28px;color:var(--vert2);margin-bottom:4px}
+  .login-logo{font-family:'New York',Georgia,'Times New Roman',serif;font-size:28px;color:var(--vert2);margin-bottom:4px}
   .login-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
-  .login-input{width:100%;background:#0D160D;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;margin-bottom:12px;transition:border .2s}
+  .login-input{width:100%;background:#0D160D;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:14px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;outline:none;margin-bottom:12px;transition:border .2s}
   .login-input:focus{border-color:var(--vert2)}
-  .login-btn{width:100%;background:var(--vert);border:none;border-radius:10px;padding:14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:background .2s}
+  .login-btn{width:100%;background:var(--vert);border:none;border-radius:10px;padding:14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;transition:background .2s}
   .login-btn:hover{background:var(--vert2)}
   .login-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
   #app{display:none;min-height:100vh}
   .sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;z-index:100;display:flex;flex-direction:column}
   .sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
-  .sidebar-logo-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--vert2)}
+  .sidebar-logo-title{font-family:'New York',Georgia,'Times New Roman',serif;font-size:20px;color:var(--vert2)}
   .sidebar-logo-sub{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
   .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .15s;border-left:2px solid transparent}
   .nav-item:hover{color:var(--text);background:#1A241A}
@@ -412,10 +614,10 @@ function exportDiagCSV(){
   .nav-icon{font-size:16px;width:20px;text-align:center}
   .sidebar-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
   .sidebar-user{font-size:12px;color:var(--muted)}
-  .logout-btn{font-size:12px;color:var(--red);cursor:pointer;background:none;border:none;font-family:'Space Grotesk',sans-serif;padding:4px 0;margin-top:4px;display:block}
+  .logout-btn{font-size:12px;color:var(--red);cursor:pointer;background:none;border:none;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;padding:4px 0;margin-top:4px;display:block}
   .main{margin-left:220px;padding:28px;min-height:100vh}
   .page-header{margin-bottom:28px}
-  .page-title{font-family:'Playfair Display',serif;font-size:26px;color:var(--text);margin-bottom:4px}
+  .page-title{font-family:'New York',Georgia,'Times New Roman',serif;font-size:26px;color:var(--text);margin-bottom:4px}
   .page-sub{font-size:13px;color:var(--muted)}
   .last-update{font-size:11px;color:var(--muted);margin-top:4px}
   .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
@@ -427,7 +629,7 @@ function exportDiagCSV(){
   .kpi-card.blue::before{background:linear-gradient(90deg,#1a5a8a,var(--blue))}
   .kpi-card.red::before{background:linear-gradient(90deg,#8a1a1a,var(--red))}
   .kpi-icon{font-size:24px;margin-bottom:12px;display:block}
-  .kpi-value{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;margin-bottom:4px}
+  .kpi-value{font-family:'New York',Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;margin-bottom:4px}
   .kpi-card.green .kpi-value{color:var(--vert2)}
   .kpi-card.amber .kpi-value{color:var(--amber)}
   .kpi-card.blue .kpi-value{color:var(--blue)}
@@ -464,7 +666,7 @@ function exportDiagCSV(){
   .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
   .dot-green{background:var(--vert2)}
   .dot-amber{background:var(--amber)}
-  .refresh-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 16px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
+  .refresh-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 16px;color:var(--muted);font-size:12px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
   .refresh-btn:hover{color:var(--vert2);border-color:var(--vert2)}
   .spin{display:inline-block}
   .spinning{animation:spin .6s linear infinite}
@@ -478,10 +680,10 @@ function exportDiagCSV(){
   /* ══ USERS PAGE STYLES ══ */
   .users-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
   .search-bar{display:flex;gap:12px;margin-bottom:20px;align-items:center}
-  .search-input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;transition:border .2s}
+  .search-input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text);font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;outline:none;transition:border .2s}
   .search-input:focus{border-color:var(--vert2)}
-  .filter-select{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:12px;font-family:'Space Grotesk',sans-serif;outline:none;cursor:pointer}
-  .export-btn{background:var(--vert);border:none;border-radius:10px;padding:10px 16px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;white-space:nowrap}
+  .filter-select{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:12px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;outline:none;cursor:pointer}
+  .export-btn{background:var(--vert);border:none;border-radius:10px;padding:10px 16px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;white-space:nowrap}
   .export-btn:hover{background:var(--vert2)}
   .users-table-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px}
   .users-table-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
@@ -492,20 +694,20 @@ function exportDiagCSV(){
   .score-cell{min-width:100px}
   .score-val{font-size:12px;font-weight:600;color:var(--vert2)}
   .pagination{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:16px}
-  .page-btn{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all .15s}
+  .page-btn{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:12px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;transition:all .15s}
   .page-btn:hover,.page-btn.active{background:var(--vert);color:#fff;border-color:var(--vert)}
   .page-btn:disabled{opacity:.3;cursor:default}
   .users-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center}
   .modal-overlay.open{display:flex}
   .modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;width:480px;max-height:80vh;overflow-y:auto}
-  .modal-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin-bottom:4px}
+  .modal-title{font-family:'New York',Georgia,'Times New Roman',serif;font-size:20px;color:var(--text);margin-bottom:4px}
   .modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
   .modal-row{display:flex;gap:16px;margin-bottom:12px}
   .modal-field{flex:1}
   .modal-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
   .modal-value{font-size:13px;color:var(--text);background:var(--bg2);border-radius:8px;padding:8px 12px}
-  .modal-close{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif;margin-top:16px}
+  .modal-close{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;color:var(--muted);font-size:12px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;margin-top:16px}
   .modal-close:hover{color:var(--text)}
   .stat-mini{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
   .stat-mini:last-child{border-bottom:none}
@@ -517,7 +719,7 @@ function exportDiagCSV(){
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo">CultivaTech</div>
-    <div class="login-sub">Panneau d'administration TAPSOBA</div>
+    <div class="login-sub">Panneau d'administration</div>
     <input class="login-input" type="text" id="loginUser" placeholder="Identifiant admin" autocomplete="off"/>
     <input class="login-input" type="password" id="loginPass" placeholder="Mot de passe" autocomplete="off"/>
     <button class="login-btn" onclick="doLogin()">Se connecter</button>
@@ -536,6 +738,7 @@ function exportDiagCSV(){
     <div class="nav-item" onclick="showPage('pdfs')" id="nav-pdfs"><span class="nav-icon">📚</span> Formations PDF</div>
     <div class="nav-item" onclick="showPage('boutiques')" id="nav-boutiques"><span class="nav-icon">🏪</span> Boutiques</div>
     <div class="nav-item" onclick="showPage('users')" id="nav-users"><span class="nav-icon">👥</span> Utilisateurs</div>
+    <div class="nav-item" onclick="showPage('workers')" id="nav-workers"><span class="nav-icon">👷</span> Ouvriers</div>
     <div class="nav-item" onclick="showPage('diagnostics')" id="nav-diagnostics"><span class="nav-icon">🔍</span> Diagnostics</div>
     <div class="sidebar-bottom">
       <div class="sidebar-user" id="sidebarUser">Admin TAPSOBA</div>
@@ -589,6 +792,28 @@ function exportDiagCSV(){
         <button class="refresh-btn" onclick="loadUsersPage()"><span class="spin" id="usersRefreshIcon">↻</span> Actualiser</button>
       </div>
 
+      <!-- Notifications push -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:14px;font-weight:600;color:var(--text)">📣 Envoyer une notification push</div>
+          <span class="badge badge-blue">Supabase</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Insère un message dans la table <code style="background:var(--bg);padding:2px 6px;border-radius:4px">notifications</code> — lu par l'app Android au prochain démarrage</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input class="search-input" id="notifTitle" placeholder="Titre (ex: Alerte mildiou sur tomates)" style="flex:2"/>
+          <select class="filter-select" id="notifType">
+            <option value="info">ℹ️ Information</option>
+            <option value="alerte">⚠️ Alerte phyto</option>
+            <option value="promo">🎁 Promotion PDF</option>
+            <option value="meteo">🌦️ Météo agricole</option>
+          </select>
+        </div>
+        <textarea id="notifMessage" placeholder="Contenu du message..." style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:13px;font-family:inherit;outline:none;resize:vertical;min-height:80px;transition:border .2s;margin-top:0"></textarea>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+          <button onclick="sendNotification()" style="background:var(--blue);border:none;border-radius:10px;padding:10px 20px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📤 Envoyer à tous</button>
+          <span id="notifStatus" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
       <!-- KPIs utilisateurs -->
       <div class="users-kpi-grid">
         <div class="kpi-card green"><span class="kpi-icon">👨‍🌾</span><div class="kpi-value kpi-loading" id="uKpiTotal">—</div><div class="kpi-label">Total inscrits</div><div class="kpi-trend trend-up" id="uKpiTotalSub"></div></div>
@@ -736,6 +961,39 @@ function exportDiagCSV(){
         <div class="pagination" id="boutiquesPagination"></div>
       </div>
     </div>
+
+    <!-- PAGE OUVRIERS -->
+    <div class="page" id="page-workers">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div><div class="page-title">Ouvriers agricoles</div><div class="page-sub">Annuaire des travailleurs journaliers</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadWorkersPage()"><span class="spin" id="workersRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="addWorkerModal()">+ Ajouter ouvrier</button>
+        </div>
+      </div>
+      <div class="users-kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">👷</span><div class="kpi-value kpi-loading" id="wKpiTotal">—</div><div class="kpi-label">Total ouvriers</div><div class="kpi-trend trend-neutral" id="wKpiTotalSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">💵</span><div class="kpi-value kpi-loading" id="wKpiSalaire">—</div><div class="kpi-label">Salaire moyen/jour</div><div class="kpi-trend trend-neutral" id="wKpiSalaireSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🏙️</span><div class="kpi-value kpi-loading" id="wKpiVilles">—</div><div class="kpi-label">Villes</div><div class="kpi-trend trend-neutral" id="wKpiVillesSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">🛠️</span><div class="kpi-value kpi-loading" id="wKpiSpecialites">—</div><div class="kpi-label">Spécialités</div><div class="kpi-trend trend-neutral" id="wKpiSpecialitesSub"></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="workerSearch" placeholder="🔍  Rechercher par nom, ville ou spécialité..." oninput="filterWorkers()"/>
+        <select class="filter-select" id="workerSpecFilter" onchange="filterWorkers()"><option value="">Toutes spécialités</option></select>
+        <button class="export-btn" onclick="exportWorkersCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Liste des ouvriers <span class="badge badge-green" id="workersCountBadge">0</span></div>
+          <div class="users-count" id="workersCountText"></div>
+        </div>
+        <table>
+          <thead><tr><th>Ouvrier</th><th>Téléphone</th><th>Ville</th><th>Spécialité</th><th>Salaire/jour</th><th>Actions</th></tr></thead>
+          <tbody id="workersTableBody"><tr><td colspan="6" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+        <div class="pagination" id="workersPagination"></div>
+      </div>
+    </div>
     <!-- PAGE DIAGNOSTICS -->
     <div class="page" id="page-diagnostics">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
@@ -810,7 +1068,11 @@ function exportDiagCSV(){
       <div class="modal-label" style="margin-bottom:8px">Activité détaillée</div>
       <div id="modalStats"></div>
     </div>
-    <button class="modal-close" onclick="document.getElementById('userModal').classList.remove('open')">✕ Fermer</button>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button id="modalDisableBtn" onclick="toggleUserStatus()" style="flex:1;background:#2A1010;border:1px solid var(--red);border-radius:8px;padding:10px;color:var(--red);font-size:12px;cursor:pointer;font-family:inherit;font-weight:600">⛔ Désactiver</button>
+      <button class="modal-close" style="flex:0" onclick="document.getElementById('userModal').classList.remove('open')">✕ Fermer</button>
+    </div>
+    <div id="modalDisableStatus" style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center"></div>
   </div>
 </div>
 
@@ -1076,7 +1338,7 @@ function renderUsersTable() {
       <td class="score-cell"><div class="score-val">${u.score_agricole||0} pts</div><div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div></td>
       <td><span class="badge ${badge}">${u.statut_credit||'Insuffisant'}</span></td>
       <td class="td-muted">${date}</td>
-      <td><button onclick="openUserModal(${u.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">👁 Voir</button></td>
+      <td><button onclick="openUserModal(${u.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--muted);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">👁 Voir</button></td>
     </tr>`;
   }).join('') || `<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucun utilisateur trouvé</td></tr>`;
 
@@ -1208,9 +1470,9 @@ function renderBoutiquesTable() {
       <td>${b.is_featured?'<span class="badge badge-amber">⭐ Vedette</span>':'<span class="td-muted">—</span>'}</td>
       <td class="td-muted" style="font-size:11px">${b.phone_number||'—'}</td>
       <td><div style="display:flex;gap:6px">
-        <button onclick="editBoutique(${b.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
-        <button onclick="toggleVedette(${b.id},${b.is_featured})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:${b.is_featured?'var(--amber)':'var(--muted)'};font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">${b.is_featured?'★':'☆'}</button>
-        <button onclick="deleteBoutique(${b.id},'${b.name.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+        <button onclick="editBoutique(${b.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">✏️</button>
+        <button onclick="toggleVedette(${b.id},${b.is_featured})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:${b.is_featured?'var(--amber)':'var(--muted)'};font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">${b.is_featured?'★':'☆'}</button>
+        <button onclick="deleteBoutique(${b.id},'${b.name.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">🗑</button>
       </div></td>
     </tr>`;
   }).join('')||'<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Aucune boutique trouvée</td></tr>';
@@ -1354,8 +1616,8 @@ function renderPdfsTable() {
     <td>${p._sales} vente${p._sales>1?'s':''}</td>
     <td class="trend-up">${p._revenue.toLocaleString('fr-FR')} F</td>
     <td><div style="display:flex;gap:6px">
-      <button onclick="editPdf(${p.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">✏️</button>
-      <button onclick="deletePdf(${p.id},'${p.title.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif">🗑</button>
+      <button onclick="editPdf(${p.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">✏️</button>
+      <button onclick="deletePdf(${p.id},'${p.title.replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif">🗑</button>
     </div></td>
   </tr>`).join('')||'<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucune formation</td></tr>';
 }
@@ -1519,6 +1781,208 @@ function exportDiagCSV(){
   const csv=[h,...r].map(x=>x.join(';')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`cultivatech_diagnostics_${new Date().toISOString().slice(0,10)}.csv`;a.click();
 }
+
+// ══ NOTIFICATIONS ══
+async function sendNotification(){
+  const title=document.getElementById('notifTitle').value.trim();
+  const message=document.getElementById('notifMessage').value.trim();
+  const type=document.getElementById('notifType').value;
+  const statusEl=document.getElementById('notifStatus');
+  if(!title||!message){statusEl.textContent='⚠️ Titre et message obligatoires';return;}
+  statusEl.textContent='⏳ Envoi...';statusEl.style.color='var(--muted)';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/notifications`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({title,message,type,created_at:new Date().toISOString(),is_read:false,target:'all'})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    statusEl.textContent=`✅ Envoyée à ${allUsers.length} utilisateurs`;
+    statusEl.style.color='var(--vert2)';
+    document.getElementById('notifTitle').value='';
+    document.getElementById('notifMessage').value='';
+  }catch(e){
+    statusEl.textContent=`⚠️ Créer table notifications: id, title, message, type, created_at, is_read, target`;
+    statusEl.style.color='var(--amber)';
+  }
+}
+
+// ══ DÉSACTIVATION UTILISATEUR ══
+let currentModalUserId=null,currentModalUserActive=true;
+function openUserModal(userId){
+  const u=allUsers.find(x=>x.id===userId);if(!u)return;
+  currentModalUserId=userId;currentModalUserActive=u.is_active!==false;
+  document.getElementById('modalName').textContent=`${u.first_name} ${u.last_name}`;
+  document.getElementById('modalPhone').textContent=`📱 ${u.phone_number||'Non renseigné'}`;
+  document.getElementById('modalScore').textContent=`${u.score_agricole||0} points`;
+  document.getElementById('modalCredit').textContent=u.statut_credit||'Insuffisant';
+  document.getElementById('modalDate').textContent=new Date(u.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('modalId').textContent=`#${u.id}`;
+  document.getElementById('modalStats').innerHTML=`
+    <div class="stat-mini"><span>Productions</span><span class="trend-up">${u._prods||0}</span></div>
+    <div class="stat-mini"><span>Formations achetées</span><span style="color:var(--amber)">${u._purchases||0}</span></div>
+    <div class="stat-mini"><span>Points productions (×10)</span><span class="td-muted">${(u._prods||0)*10} pts</span></div>
+    <div class="stat-mini"><span>Points formations (×15)</span><span class="td-muted">${(u._purchases||0)*15} pts</span></div>
+    <div class="stat-mini"><span><strong>Score total</strong></span><span class="trend-up"><strong>${u.score_agricole||0} pts</strong></span></div>`;
+  const btn=document.getElementById('modalDisableBtn');
+  if(currentModalUserActive){
+    btn.textContent='⛔ Désactiver le compte';btn.style.color='var(--red)';btn.style.borderColor='var(--red)';btn.style.background='#2A1010';
+  }else{
+    btn.textContent='✅ Réactiver le compte';btn.style.color='var(--vert2)';btn.style.borderColor='var(--vert2)';btn.style.background='#1A2E1A';
+  }
+  document.getElementById('modalDisableStatus').textContent='';
+  document.getElementById('userModal').classList.add('open');
+}
+async function toggleUserStatus(){
+  if(!currentModalUserId)return;
+  const newStatus=!currentModalUserActive;
+  const statusEl=document.getElementById('modalDisableStatus');
+  statusEl.textContent='⏳ Mise à jour...';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${currentModalUserId}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({is_active:newStatus})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    currentModalUserActive=newStatus;
+    const u=allUsers.find(x=>x.id===currentModalUserId);if(u)u.is_active=newStatus;
+    const btn=document.getElementById('modalDisableBtn');
+    if(newStatus){
+      btn.textContent='⛔ Désactiver le compte';btn.style.color='var(--red)';btn.style.borderColor='var(--red)';btn.style.background='#2A1010';
+      statusEl.textContent='✅ Compte réactivé';statusEl.style.color='var(--vert2)';
+    }else{
+      btn.textContent='✅ Réactiver le compte';btn.style.color='var(--vert2)';btn.style.borderColor='var(--vert2)';btn.style.background='#1A2E1A';
+      statusEl.textContent='⛔ Compte désactivé';statusEl.style.color='var(--red)';
+    }
+    renderUsersTable();
+  }catch(e){
+    statusEl.textContent='⚠️ Ajouter colonne is_active (boolean) dans la table users Supabase';
+    statusEl.style.color='var(--amber)';
+  }
+}
+
+// ══ OUVRIERS ══
+let allWorkers=[],filteredWorkers=[],workersPage=1,editingWorkerId=null;
+const WORKERS_PER_PAGE=10;
+async function loadWorkersPage(){
+  const icon=document.getElementById('workersRefreshIcon');icon.classList.add('spinning');
+  try{
+    allWorkers=await query('workers?select=*&is_deleted=eq.false&order=first_name.asc');
+    const avgS=allWorkers.length>0?Math.round(allWorkers.reduce((s,w)=>s+(w.daily_wage||0),0)/allWorkers.length):0;
+    const villes=[...new Set(allWorkers.map(w=>w.city).filter(Boolean))].length;
+    const specs=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].length;
+    setKPI('wKpiTotal',allWorkers.length,'wKpiTotalSub',`${allWorkers.length} ouvriers`);
+    setKPI('wKpiSalaire',avgS.toLocaleString('fr-FR')+' F','wKpiSalaireSub','FCFA/jour');
+    setKPI('wKpiVilles',villes,'wKpiVillesSub','régions');
+    setKPI('wKpiSpecialites',specs,'wKpiSpecialitesSub','métiers');
+    const specSet=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].sort();
+    document.getElementById('workerSpecFilter').innerHTML='<option value="">Toutes spécialités</option>'+specSet.map(s=>`<option value="${s}">${s}</option>`).join('');
+    filteredWorkers=[...allWorkers];workersPage=1;renderWorkersTable();
+  }catch(e){
+    document.getElementById('workersTableBody').innerHTML=`<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Table workers non trouvée. SQL dans Supabase:<br><code style="background:var(--bg2);padding:4px 8px;border-radius:4px;font-size:11px">CREATE TABLE workers (id serial PRIMARY KEY, first_name text, last_name text, phone_number text, city text, specialite text, daily_wage integer DEFAULT 0, notes text, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());</code></td></tr>`;
+    ['wKpiTotal','wKpiSalaire','wKpiVilles','wKpiSpecialites'].forEach(id=>{const el=document.getElementById(id);el.textContent='—';el.classList.remove('kpi-loading');});
+  }
+  icon.classList.remove('spinning');
+}
+function filterWorkers(){
+  const search=document.getElementById('workerSearch').value.toLowerCase();
+  const spec=document.getElementById('workerSpecFilter').value;
+  filteredWorkers=allWorkers.filter(w=>{
+    const name=`${w.first_name} ${w.last_name}`.toLowerCase();
+    return(!search||name.includes(search)||(w.city||'').toLowerCase().includes(search)||(w.specialite||'').toLowerCase().includes(search))&&(!spec||w.specialite===spec);
+  });
+  workersPage=1;renderWorkersTable();
+}
+function renderWorkersTable(){
+  const total=filteredWorkers.length;
+  const start=(workersPage-1)*WORKERS_PER_PAGE;
+  const page=filteredWorkers.slice(start,start+WORKERS_PER_PAGE);
+  document.getElementById('workersCountBadge').textContent=total;
+  document.getElementById('workersCountText').textContent=`${start+1}–${Math.min(start+WORKERS_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('workersTableBody').innerHTML=page.map(w=>{
+    const initials=`${(w.first_name||'?')[0]}${(w.last_name||'?')[0]}`.toUpperCase();
+    return `<tr>
+      <td><div class="user-name-cell"><div class="user-avatar" style="background:linear-gradient(135deg,var(--vert),var(--vert2))">${initials}</div><div>${w.first_name} ${w.last_name}</div></div></td>
+      <td class="td-phone">${w.phone_number||'—'}</td>
+      <td class="td-muted">${w.city||'—'}</td>
+      <td><span class="badge badge-blue">${w.specialite||'—'}</span></td>
+      <td class="trend-up">${w.daily_wage?w.daily_wage.toLocaleString('fr-FR')+' F':'—'}</td>
+      <td><div style="display:flex;gap:6px">
+        <button onclick="editWorker(${w.id})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit">✏️</button>
+        <button onclick="deleteWorker(${w.id},'${(w.first_name+' '+w.last_name).replace(/'/g,"\'")}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;font-family:inherit">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucun ouvrier trouvé</td></tr>`;
+  const tp=Math.ceil(total/WORKERS_PER_PAGE);
+  let pages=`<button class="page-btn" onclick="goWorkerPage(${workersPage-1})" ${workersPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-workersPage)<=1)pages+=`<button class="page-btn ${i===workersPage?'active':''}" onclick="goWorkerPage(${i})">${i}</button>`;else if(Math.abs(i-workersPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages+=`<button class="page-btn" onclick="goWorkerPage(${workersPage+1})" ${workersPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('workersPagination').innerHTML=tp>1?pages:'';
+}
+function goWorkerPage(n){const t=Math.ceil(filteredWorkers.length/WORKERS_PER_PAGE);if(n<1||n>t)return;workersPage=n;renderWorkersTable();}
+function addWorkerModal(){
+  editingWorkerId=null;
+  document.getElementById('wModalTitle').textContent='Ajouter un ouvrier';
+  document.getElementById('wModalSub').textContent='Nouveau travailleur journalier';
+  ['wFieldFirstName','wFieldLastName','wFieldPhone','wFieldCity','wFieldSpecialite','wFieldNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wFieldSalaire').value='';
+  document.getElementById('wModalError').style.display='none';
+  document.getElementById('wSaveBtn').textContent='Ajouter';
+  document.getElementById('workerModal').classList.add('open');
+}
+function editWorker(id){
+  const w=allWorkers.find(x=>x.id===id);if(!w)return;
+  editingWorkerId=id;
+  document.getElementById('wModalTitle').textContent="Modifier l\'ouvrier";
+  document.getElementById('wModalSub').textContent=`${w.first_name} ${w.last_name}`;
+  document.getElementById('wFieldFirstName').value=w.first_name||'';
+  document.getElementById('wFieldLastName').value=w.last_name||'';
+  document.getElementById('wFieldPhone').value=w.phone_number||'';
+  document.getElementById('wFieldCity').value=w.city||'';
+  document.getElementById('wFieldSpecialite').value=w.specialite||'';
+  document.getElementById('wFieldSalaire').value=w.daily_wage||'';
+  document.getElementById('wFieldNote').value=w.notes||'';
+  document.getElementById('wModalError').style.display='none';
+  document.getElementById('wSaveBtn').textContent='Enregistrer';
+  document.getElementById('workerModal').classList.add('open');
+}
+async function saveWorker(){
+  const first=document.getElementById('wFieldFirstName').value.trim();
+  const last=document.getElementById('wFieldLastName').value.trim();
+  if(!first||!last){document.getElementById('wModalError').textContent='Prénom et nom obligatoires';document.getElementById('wModalError').style.display='block';return;}
+  const body={first_name:first,last_name:last,phone_number:document.getElementById('wFieldPhone').value.trim(),city:document.getElementById('wFieldCity').value.trim(),specialite:document.getElementById('wFieldSpecialite').value.trim(),daily_wage:parseFloat(document.getElementById('wFieldSalaire').value)||0,notes:document.getElementById('wFieldNote').value.trim(),is_deleted:false};
+  document.getElementById('wSaveBtn').textContent='⏳...';document.getElementById('wSaveBtn').disabled=true;
+  try{
+    const method=editingWorkerId?'PATCH':'POST';
+    const url=editingWorkerId?`${SUPABASE_URL}/rest/v1/workers?id=eq.${editingWorkerId}`:`${SUPABASE_URL}/rest/v1/workers`;
+    const res=await fetch(url,{method,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    document.getElementById('workerModal').classList.remove('open');await loadWorkersPage();
+  }catch(e){document.getElementById('wModalError').textContent='Erreur : '+e.message;document.getElementById('wModalError').style.display='block';}
+  document.getElementById('wSaveBtn').textContent='Enregistrer';document.getElementById('wSaveBtn').disabled=false;
+}
+async function deleteWorker(id,name){
+  if(!confirm(`Supprimer "${name}" ?`))return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/workers?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    await loadWorkersPage();
+  }catch(e){alert('Erreur : '+e.message);}
+}
+function exportWorkersCSV(){
+  const h=['Prénom','Nom','Téléphone','Ville','Spécialité','Salaire/jour FCFA','Notes'];
+  const r=filteredWorkers.map(w=>[w.first_name,w.last_name,w.phone_number||'',w.city||'',w.specialite||'',w.daily_wage||0,w.notes||'']);
+  const csv=[h,...r].map(x=>x.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));a.download=`ouvriers_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+// Mettre à jour showPage pour workers
+const _origShowPage=showPage;
+showPage=function(name){
+  _origShowPage(name);
+  if(name==='workers')loadWorkersPage();
+};
 </script>
 
 <!-- MODAL BOUTIQUE -->
@@ -1545,11 +2009,11 @@ function exportDiagCSV(){
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:10px;background:var(--bg2);border-radius:8px">
       <input type="checkbox" id="bFieldVedette" style="width:16px;height:16px;accent-color:var(--amber)"/>
-      <label for="bFieldVedette" style="font-size:13px;color:var(--text);cursor:pointer">⭐ Boutique Vedette (apparaît en premier dans l'app)</label>
+      <label for="bFieldVedette" style="font-size:13px;color:var(--text);cursor:pointer">⭐ Boutique Vedette (apparait en premier dans l\'app)</label>
     </div>
     <div id="bModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="saveBoutique()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif" id="bSaveBtn">Enregistrer</button>
+      <button onclick="saveBoutique()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif" id="bSaveBtn">Enregistrer</button>
       <button class="modal-close" style="flex:0" onclick="document.getElementById('boutiqueModal').classList.remove('open')">Annuler</button>
     </div>
   </div>
@@ -1571,8 +2035,34 @@ function exportDiagCSV(){
     <div style="margin:12px 0"><div class="modal-label" style="margin-bottom:6px">Description</div><textarea class="login-input" id="pFieldDesc" placeholder="Description de la formation..." style="height:80px;resize:vertical;margin-bottom:0"></textarea></div>
     <div id="pModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="savePdf()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif" id="pSaveBtn">Enregistrer</button>
+      <button onclick="savePdf()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif" id="pSaveBtn">Enregistrer</button>
       <button class="modal-close" style="flex:0" onclick="document.getElementById('pdfModal').classList.remove('open')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OUVRIER -->
+<div class="modal-overlay" id="workerModal" onclick="if(event.target.id==='workerModal')document.getElementById('workerModal').classList.remove('open')">
+  <div class="modal" style="width:520px;max-width:95vw">
+    <div class="modal-title" id="wModalTitle">Ouvrier</div>
+    <div class="modal-sub" id="wModalSub">Informations du travailleur</div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Prénom</div><input class="login-input" id="wFieldFirstName" placeholder="Prénom" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Nom</div><input class="login-input" id="wFieldLastName" placeholder="Nom de famille" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Téléphone</div><input class="login-input" id="wFieldPhone" placeholder="+226 XX XX XX XX" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Ville</div><input class="login-input" id="wFieldCity" placeholder="Ex: Ouagadougou" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Spécialité</div><input class="login-input" id="wFieldSpecialite" placeholder="Ex: Irrigation, Récolte, Sarclage" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Salaire/jour (FCFA)</div><input class="login-input" id="wFieldSalaire" type="number" placeholder="2500" style="margin-bottom:0"/></div>
+    </div>
+    <div style="margin:12px 0"><div class="modal-label" style="margin-bottom:6px">Notes / Description</div><textarea class="login-input" id="wFieldNote" placeholder="Ex: Expérimenté en irrigation goutte à goutte..." style="height:60px;resize:vertical;margin-bottom:0"></textarea></div>
+    <div id="wModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="saveWorker()" style="flex:1;background:var(--vert);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" id="wSaveBtn">Enregistrer</button>
+      <button class="modal-close" style="flex:0" onclick="document.getElementById('workerModal').classList.remove('open')">Annuler</button>
     </div>
   </div>
 </div>
