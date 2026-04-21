@@ -641,6 +641,7 @@ async function markCodeUsed(resetId){
     await loadResetCodes();
   }catch(e){alert('Erreur : '+e.message);}
 }
+  
   // ══ FORMATIONS EXTERNES ══
 let allFormations=[], filteredFormations=[], formationsPage=1, editingFormationId=null;
 const FORMATIONS_PER_PAGE=8;
