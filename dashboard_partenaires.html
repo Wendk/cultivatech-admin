@@ -374,7 +374,7 @@
     <!-- ══ PAGE VUE D'ENSEMBLE ══ -->
     <div class="page active" id="page-overview">
       <div class="page-header">
-        <div class="page-title">Vue d'ensemble</div>
+        <div class="page-title">Vue generale</div>
         <div class="page-sub" id="overviewSub">Données agricoles CultivaTech — Burkina Faso</div>
       </div>
 
@@ -421,7 +421,7 @@
     <!-- ══ PAGE DONNÉES TERRAIN (ONG + ÉTAT) ══ -->
     <div class="page" id="page-terrain">
       <div class="page-header">
-        <div class="page-title">Données terrain</div>
+        <div class="page-title">Donnees terrain</div>
         <div class="page-sub">Cultures, maladies et pratiques agricoles observées</div>
       </div>
 
@@ -615,9 +615,9 @@ const ACCOUNTS = {
 };
 
 const TAB_CONFIG = {
-  overview:    { label: '📊 Vue d'ensemble',     page: 'page-overview',    load: loadOverview },
-  terrain:     { label: '🌱 Données terrain',     page: 'page-terrain',     load: loadTerrain },
-  credit:      { label: '💳 Crédit agricole',     page: 'page-credit',      load: loadCredit },
+  overview:    { label: '📊 Vue generale',     page: 'page-overview',    load: loadOverview },
+  terrain:     { label: '🌱 Donnees terrain',     page: 'page-terrain',     load: loadTerrain },
+  credit:      { label: '💳 Credit agricole',     page: 'page-credit',      load: loadCredit },
   productions: { label: '🌾 Productions',         page: 'page-productions', load: loadProductions },
   formations:  { label: '📚 Formations',          page: 'page-formations',  load: loadFormations },
 };
@@ -729,7 +729,7 @@ function updateLastUpdate() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// VUE D'ENSEMBLE
+// VUE GENERALE
 // ════════════════════════════════════════════════════════════════════
 async function loadOverview() {
   try {
@@ -806,7 +806,8 @@ function exportOverviewCSV() {
   const rows = Array.from(document.getElementById('overviewTable').querySelectorAll('tr'));
   const csv = [['Culture','Total','En cours','Terminées','Part'],
     ...rows.map(r => Array.from(r.querySelectorAll('td')).slice(0,4).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('\n');
+  ].map(r=>r.join(';')).join('
+');
   dlCSV(csv, 'cultivatech_overview');
 }
 
@@ -834,7 +835,7 @@ async function loadTerrain() {
     });
 
     // Urgence
-    const urg = { 'Élevée':0, 'Modérée':0, 'Faible':0 };
+    const urg = { 'Elevee':0, 'Moderee':0, 'Faible':0 };
     diags.forEach(d => { if(urg[d.urgency]!==undefined) urg[d.urgency]++; else urg['Faible']++; });
     if (chartUrgence) chartUrgence.destroy();
     chartUrgence = new Chart(document.getElementById('chartUrgence'), {
@@ -857,7 +858,7 @@ async function loadTerrain() {
     const topM = Object.entries(maladies).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
     document.getElementById('terrainDiagTable').innerHTML = topM.map(([name,data]) => {
       const urgDom = Object.entries(data.urgences).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
-      const badge = urgDom==='Élevée'?'badge-red':urgDom==='Modérée'?'badge-amber':'badge-green';
+      const badge = urgDom==='Elevee'?'badge-red':urgDom==='Moderee'?'badge-amber':'badge-green';
       return `<tr><td><strong>${name.length>40?name.slice(0,40)+'…':name}</strong></td>
         <td>${data.count}</td>
         <td><span class="badge ${badge}">${urgDom}</span></td>
@@ -891,7 +892,8 @@ function exportDiagCSV() {
   const rows = Array.from(document.getElementById('terrainDiagTable').querySelectorAll('tr'));
   const csv = [['Maladie','Diagnostics','Urgence dominante','Cultures'],
     ...rows.map(r=>Array.from(r.querySelectorAll('td')).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('\n');
+  ].map(r=>r.join(';')).join('
+');
   dlCSV(csv, 'cultivatech_diagnostics');
 }
 
@@ -901,8 +903,8 @@ function exportDiagCSV() {
 async function loadCredit() {
   try {
     const users = await query('users?select=id,score_agricole,statut_credit&order=score_agricole.desc');
-    const eligible = users.filter(u=>u.statut_credit==='Éligible crédit').length;
-    const evaluer  = users.filter(u=>u.statut_credit==='À évaluer').length;
+    const eligible = users.filter(u=>u.statut_credit==='Eligible credit').length;
+    const evaluer  = users.filter(u=>u.statut_credit==='A evaluer').length;
     const insuff   = users.filter(u=>!u.statut_credit||u.statut_credit==='Insuffisant').length;
     const avgScore = users.length > 0 ? Math.round(users.reduce((s,u)=>s+(u.score_agricole||0),0)/users.length) : 0;
     const total    = users.length;
@@ -918,7 +920,7 @@ async function loadCredit() {
 
     if (chartCredit) chartCredit.destroy();
     chartCredit = new Chart(document.getElementById('chartCredit'), {
-      type:'doughnut', data:{labels:['Éligible crédit','À évaluer','Insuffisant'],
+      type:'doughnut', data:{labels:['Eligible credit','A evaluer','Insuffisant'],
         datasets:[{data:[eligible,evaluer,insuff],
           backgroundColor:['#36AF3B99','#D6891099','#E0525299'],
           borderColor:['#36AF3B','#D68910','#E05252'], borderWidth:2}]},
@@ -950,14 +952,14 @@ async function loadCredit() {
     const tranchesData = [
       { range:'0–10 pts',   statut:'Insuffisant',   filter: u=>(u.score_agricole||0)<=10 },
       { range:'11–30 pts',  statut:'Insuffisant',   filter: u=>(u.score_agricole||0)>10&&(u.score_agricole||0)<=30 },
-      { range:'31–60 pts',  statut:'À évaluer',     filter: u=>(u.score_agricole||0)>30&&(u.score_agricole||0)<=60 },
-      { range:'61–100 pts', statut:'Éligible crédit',filter: u=>(u.score_agricole||0)>60&&(u.score_agricole||0)<=100 },
-      { range:'100+ pts',   statut:'Éligible crédit',filter: u=>(u.score_agricole||0)>100 },
+      { range:'31–60 pts',  statut:'A evaluer',     filter: u=>(u.score_agricole||0)>30&&(u.score_agricole||0)<=60 },
+      { range:'61–100 pts', statut:'Eligible credit',filter: u=>(u.score_agricole||0)>60&&(u.score_agricole||0)<=100 },
+      { range:'100+ pts',   statut:'Eligible credit',filter: u=>(u.score_agricole||0)>100 },
     ];
     document.getElementById('creditTable').innerHTML = tranchesData.map(t => {
       const grp = users.filter(t.filter);
       if (!grp.length) return '';
-      const badge = t.statut==='Éligible crédit'?'badge-green':t.statut==='À évaluer'?'badge-amber':'badge-red';
+      const badge = t.statut==='Eligible credit'?'badge-green':t.statut==='A evaluer'?'badge-amber':'badge-red';
       const avgS  = Math.round(grp.reduce((s,u)=>s+(u.score_agricole||0),0)/grp.length);
       return `<tr><td><strong>${t.range}</strong></td><td>${grp.length}</td>
         <td><span class="badge ${badge}">${t.statut}</span></td>
@@ -972,7 +974,8 @@ function exportCreditCSV() {
   const rows = Array.from(document.getElementById('creditTable').querySelectorAll('tr'));
   const csv = [['Tranche score','Agriculteurs','Statut crédit'],
     ...rows.map(r=>Array.from(r.querySelectorAll('td')).slice(0,3).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('\n');
+  ].map(r=>r.join(';')).join('
+');
   dlCSV(csv, 'cultivatech_credit');
 }
 
@@ -1061,7 +1064,8 @@ function goProdPage(n){const t=Math.ceil(filteredProds.length/PROD_PER_PAGE);if(
 function exportProductionsCSV() {
   const csv = [['Culture','Variété','Date début','Statut'],
     ...filteredProds.map(p=>[p.culture_name,p.variety_name||'',new Date(p.start_date).toLocaleDateString('fr-FR'),p.is_completed?'Terminée':'En cours'])
-  ].map(r=>r.join(';')).join('\n');
+  ].map(r=>r.join(';')).join('
+');
   dlCSV(csv, 'cultivatech_productions');
 }
 
@@ -1130,7 +1134,8 @@ function exportFormationsCSV() {
   const rows = Array.from(document.getElementById('formExtTable').querySelectorAll('tr'));
   const csv = [['Formation','Organisme','Ville','Catégorie','Prix','Certifiante'],
     ...rows.map(r=>Array.from(r.querySelectorAll('td')).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('\n');
+  ].map(r=>r.join(';')).join('
+');
   dlCSV(csv, 'cultivatech_formations_ext');
 }
 
