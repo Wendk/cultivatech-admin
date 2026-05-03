@@ -2389,6 +2389,43 @@ async function deleteFormation(id,title){
   if(!confirm(`Supprimer "${title}" ?`))return;
   try{await fetch(`${SUPABASE_URL}/rest/v1/external_trainings?id=eq.${id}`,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({is_deleted:true})});await loadFormationsPage();}catch(e){alert('Erreur');}
 }
+  // ══ AUTO-REFRESH 5 MINUTES ══
+
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  autoRefreshInterval = setInterval(() => {
+    const activePage = document.querySelector('.page.active')?.id;
+    if (activePage === 'page-dashboard')    loadDashboard();
+    else if (activePage === 'page-users')       loadUsersPage();
+    else if (activePage === 'page-pdfs')        loadPdfsPage();
+    else if (activePage === 'page-boutiques')   loadBoutiquesPage();
+    else if (activePage === 'page-diagnostics') loadDiagnosticsPage();
+    else if (activePage === 'page-formations')  loadFormationsPage();
+    else if (activePage === 'page-workers')     loadWorkersPage();
+    console.log('[AutoRefresh] Actualisation automatique', new Date().toLocaleTimeString('fr-FR'));
+  }, 300000); // 5 minutes
+  console.log('[AutoRefresh] Démarré — toutes les 5 minutes');
+}
+
+// Remplace doLogin pour démarrer l'auto-refresh après connexion
+const _origDoLogin = doLogin;
+doLogin = function() {
+  _origDoLogin();
+  const loggedIn = document.getElementById('app').style.display !== 'none';
+  if (loggedIn) startAutoRefresh();
+};
+
+// Arrêter au logout
+const _origDoLogout = doLogout;
+doLogout = function() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+  _origDoLogout();
+};
 </script>
 
 <!-- MODAL BOUTIQUE -->
