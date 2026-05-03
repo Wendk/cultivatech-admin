@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CultivaTech — Portail Partenaires</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --vert:#1A5319; --vert2:#36AF3B; --vert-pale:#D6EFD8; --vert-perc:#024B2A;
+    --or:#C8A84B; --bg:#F8FAF8; --bg2:#FFFFFF; --card:#FFFFFF;
+    --border:#E4EDE4; --text:#1A2E1A; --muted:#6B8F6B;
+    --red:#C0392B; --amber:#D68910; --blue:#2471A3;
+    --shadow: 0 1px 3px rgba(26,83,25,0.08), 0 4px 16px rgba(26,83,25,0.06);
+    --shadow-lg: 0 8px 32px rgba(26,83,25,0.12);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── LOGIN ── */
+  #loginScreen {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg, #0D1F0D 0%, #1A5319 40%, #024B2A 100%);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; flex-direction: column; gap: 24px;
+  }
+
+  .login-bg-pattern {
+    position: absolute; inset: 0; opacity: 0.05;
+    background-image: radial-gradient(circle at 2px 2px, #fff 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+
+  .login-card {
+    position: relative;
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 24px;
+    padding: 48px;
+    width: 400px;
+    text-align: center;
+  }
+
+  .login-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px; color: #fff; margin-bottom: 4px; letter-spacing: -0.5px;
+  }
+  .login-sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 8px; }
+  .login-badge {
+    display: inline-block;
+    background: rgba(54,175,59,0.2); border: 1px solid rgba(54,175,59,0.4);
+    color: var(--vert2); font-size: 11px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px; margin-bottom: 32px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  .login-role-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; margin-bottom: 24px;
+  }
+  .login-role-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 8px;
+    color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .login-role-btn:hover { border-color: rgba(54,175,59,0.5); color: var(--vert2); }
+  .login-role-btn.active {
+    background: rgba(54,175,59,0.15); border-color: var(--vert2);
+    color: var(--vert2);
+  }
+  .login-role-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+  .login-input {
+    width: 100%; background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px; padding: 14px 16px; color: #fff;
+    font-size: 14px; font-family: 'DM Sans', sans-serif;
+    outline: none; margin-bottom: 10px; transition: border 0.2s;
+  }
+  .login-input::placeholder { color: rgba(255,255,255,0.3); }
+  .login-input:focus { border-color: var(--vert2); }
+
+  .login-btn {
+    width: 100%; background: var(--vert2); border: none;
+    border-radius: 12px; padding: 15px; color: #fff;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .login-btn:hover { background: #2d9e32; transform: translateY(-1px); }
+  .login-error { color: #ff7675; font-size: 12px; margin-top: 8px; display: none; }
+
+  /* ── APP ── */
+  #app { display: none; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 0 32px; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .topbar-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px; color: var(--vert); letter-spacing: -0.3px;
+  }
+  .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+  .topbar-role {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-refresh {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted);
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--vert2);
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+  .topbar-user {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text);
+  }
+  .topbar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--vert), var(--vert2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+  }
+  .logout-btn {
+    font-size: 12px; color: var(--red); cursor: pointer;
+    background: none; border: 1px solid #fde8e6;
+    border-radius: 8px; padding: 6px 12px;
+    font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+  }
+  .logout-btn:hover { background: #fde8e6; }
+
+  /* NAV TABS */
+  .nav-tabs {
+    background: #fff; border-bottom: 1px solid var(--border);
+    padding: 0 32px; display: flex; gap: 0;
+  }
+  .nav-tab {
+    padding: 14px 20px; font-size: 13px; font-weight: 500;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--vert); }
+  .nav-tab.active { color: var(--vert); border-bottom-color: var(--vert2); }
+
+  /* MAIN */
+  .main { padding: 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* PAGE */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-header { margin-bottom: 28px; }
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px; color: var(--text); margin-bottom: 4px;
+  }
+  .page-sub { font-size: 13px; color: var(--muted); }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+  .kpi-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; position: relative; overflow: hidden;
+    box-shadow: var(--shadow); transition: box-shadow 0.2s;
+  }
+  .kpi-card:hover { box-shadow: var(--shadow-lg); }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .kpi-card.green::before { background: linear-gradient(90deg, var(--vert), var(--vert2)); }
+  .kpi-card.amber::before { background: linear-gradient(90deg, #a07020, var(--amber)); }
+  .kpi-card.blue::before { background: linear-gradient(90deg, #1a4a6a, var(--blue)); }
+  .kpi-card.red::before { background: linear-gradient(90deg, #8a1a1a, var(--red)); }
+  .kpi-icon { font-size: 22px; margin-bottom: 12px; display: block; }
+  .kpi-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px; margin-bottom: 4px; line-height: 1;
+  }
+  .kpi-card.green .kpi-value { color: var(--vert); }
+  .kpi-card.amber .kpi-value { color: var(--amber); }
+  .kpi-card.blue .kpi-value { color: var(--blue); }
+  .kpi-card.red .kpi-value { color: var(--red); }
+  .kpi-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .kpi-loading { color: var(--border); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  /* CHARTS */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .charts-grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; box-shadow: var(--shadow);
+  }
+  .chart-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .chart-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* TABLE */
+  .table-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .table-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 0 0 12px; text-align: left; font-weight: 600;
+  }
+  td { font-size: 13px; color: var(--text); padding: 10px 0; border-top: 1px solid var(--border); }
+  .td-muted { color: var(--muted); }
+
+  /* BADGE */
+  .badge { font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 600; display: inline-block; }
+  .badge-green { background: #e8f7e8; color: var(--vert); }
+  .badge-amber { background: #fef6e4; color: var(--amber); }
+  .badge-red { background: #fde8e6; color: var(--red); }
+  .badge-blue { background: #e8f0fa; color: var(--blue); }
+
+  /* SCORE BAR */
+  .score-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--vert), var(--vert2)); transition: width 1s; }
+
+  /* EXPORT BTN */
+  .export-btn {
+    background: var(--vert); border: none; border-radius: 10px;
+    padding: 8px 16px; color: #fff; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+  }
+  .export-btn:hover { background: var(--vert2); }
+
+  /* SEARCH */
+  .search-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px; color: var(--text);
+    font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border 0.2s;
+  }
+  .search-input:focus { border-color: var(--vert2); }
+  .filter-select {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; color: var(--text);
+    font-size: 12px; font-family: 'DM Sans', sans-serif; outline: none; cursor: pointer;
+  }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    background: linear-gradient(135deg, var(--vert-pale), #f0faf0);
+    border: 1px solid #c8e6c8; border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .alert-icon { font-size: 20px; }
+  .alert-text { font-size: 13px; color: var(--vert-perc); }
+  .alert-text strong { font-weight: 600; }
+
+  /* STAT ROW */
+  .stat-row {
+    display: flex; gap: 12px; margin-bottom: 24px;
+  }
+  .stat-chip {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; text-align: center; box-shadow: var(--shadow);
+  }
+  .stat-chip-val { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--vert); }
+  .stat-chip-label { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+
+  /* PAGINATION */
+  .pagination { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 16px; }
+  .page-btn {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; color: var(--muted); font-size: 12px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+  .page-btn:hover, .page-btn.active { background: var(--vert); color: #fff; border-color: var(--vert); }
+  .page-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .charts-grid, .charts-grid-3 { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+    .topbar { padding: 0 16px; }
+    .nav-tabs { padding: 0 16px; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-bg-pattern"></div>
+  <div class="login-card">
+    <div class="login-logo">CultivaTech</div>
+    <div class="login-sub">Portail Partenaires Institutionnels</div>
+    <div class="login-badge">Accès sécurisé</div>
+
+    <div class="login-role-grid">
+      <button class="login-role-btn active" onclick="selectRole('ong', this)">
+        <span class="login-role-icon">🌍</span>ONG
+      </button>
+      <button class="login-role-btn" onclick="selectRole('microfinance', this)">
+        <span class="login-role-icon">🏦</span>Microfinance
+      </button>
+      <button class="login-role-btn" onclick="selectRole('etat', this)">
+        <span class="login-role-icon">🏛️</span>État
+      </button>
+    </div>
+
+    <input class="login-input" type="text" id="loginUser" placeholder="Identifiant partenaire" autocomplete="off"/>
+    <input class="login-input" type="password" id="loginPass" placeholder="Mot de passe" autocomplete="off"/>
+    <button class="login-btn" onclick="doLogin()">Accéder au portail</button>
+    <div class="login-error" id="loginError">Identifiants incorrects</div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">CultivaTech</div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-role" id="topbarRole">Portail Partenaire</div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-refresh">
+        <div class="live-dot"></div>
+        <span id="lastUpdateText">Chargement...</span>
+      </div>
+      <div class="topbar-user">
+        <div class="topbar-avatar" id="topbarAvatar">?</div>
+        <span id="topbarName">—</span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs" id="navTabs"></div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ══ PAGE VUE D'ENSEMBLE ══ -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <div class="page-title">Vue d'ensemble</div>
+        <div class="page-sub" id="overviewSub">Données agricoles CultivaTech — Burkina Faso</div>
+      </div>
+
+      <div class="alert-banner" id="welcomeBanner">
+        <div class="alert-icon">📊</div>
+        <div class="alert-text">
+          <strong>Bienvenue sur le portail CultivaTech.</strong>
+          Ces données sont anonymisées et agrégées. Elles sont mises à jour toutes les 5 minutes.
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="overviewKpis">
+        <div class="kpi-card green"><span class="kpi-icon">👨‍🌾</span><div class="kpi-value kpi-loading" id="ovKpiAgri">—</div><div class="kpi-label">Agriculteurs actifs</div><div class="kpi-sub" id="ovKpiAgriSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🌾</span><div class="kpi-value kpi-loading" id="ovKpiProd">—</div><div class="kpi-label">Productions enregistrées</div><div class="kpi-sub" id="ovKpiProdSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🏪</span><div class="kpi-value kpi-loading" id="ovKpiBout">—</div><div class="kpi-label">Boutiques partenaires</div><div class="kpi-sub" id="ovKpiBoutSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">🔍</span><div class="kpi-value kpi-loading" id="ovKpiDiag">—</div><div class="kpi-label">Diagnostics effectués</div><div class="kpi-sub" id="ovKpiDiagSub"></div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Cultures les plus pratiquées</div>
+          <div class="chart-sub">Répartition des productions actives par culture</div>
+          <div class="chart-wrap"><canvas id="chartCultures"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Évolution des inscriptions</div>
+          <div class="chart-sub">Nouveaux agriculteurs par mois</div>
+          <div class="chart-wrap"><canvas id="chartGrowth"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Répartition géographique</div>
+          <button class="export-btn" onclick="exportOverviewCSV()">⬇ Export CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>Culture</th><th>Productions</th><th>En cours</th><th>Terminées</th><th>Part</th></tr></thead>
+          <tbody id="overviewTable"><tr><td colspan="5" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ PAGE DONNÉES TERRAIN (ONG + ÉTAT) ══ -->
+    <div class="page" id="page-terrain">
+      <div class="page-header">
+        <div class="page-title">Données terrain</div>
+        <div class="page-sub">Cultures, maladies et pratiques agricoles observées</div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Diagnostics phytosanitaires par culture</div>
+          <div class="chart-sub">Nombre de diagnostics effectués par culture</div>
+          <div class="chart-wrap"><canvas id="chartDiagCultures"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Répartition par niveau d'urgence</div>
+          <div class="chart-sub">Élevée / Modérée / Faible</div>
+          <div class="chart-wrap"><canvas id="chartUrgence"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Top maladies détectées</div>
+          <button class="export-btn" onclick="exportDiagCSV()">⬇ Export CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>Maladie</th><th>Diagnostics</th><th>Urgence dominante</th><th>Cultures touchées</th></tr></thead>
+          <tbody id="terrainDiagTable"><tr><td colspan="4" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Types d'arrosage utilisés</div>
+        </div>
+        <div class="charts-grid" style="margin-bottom:0">
+          <div class="chart-card" style="border:none;padding:0;box-shadow:none">
+            <div class="chart-wrap"><canvas id="chartArrosage"></canvas></div>
+          </div>
+          <div class="chart-card" style="border:none;padding:0;box-shadow:none">
+            <div style="padding:8px 0">
+              <table>
+                <thead><tr><th>Type d'arrosage</th><th>Utilisateurs</th><th>%</th></tr></thead>
+                <tbody id="arrosageTable"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE CRÉDIT AGRICOLE (MICROFINANCE) ══ -->
+    <div class="page" id="page-credit">
+      <div class="page-header">
+        <div class="page-title">Éligibilité au crédit agricole</div>
+        <div class="page-sub">Scores agricoles anonymisés — données agrégées</div>
+      </div>
+
+      <div class="alert-banner">
+        <div class="alert-icon">🔒</div>
+        <div class="alert-text">
+          <strong>Données anonymisées.</strong> Les informations individuelles sont agrégées.
+          Aucune donnée personnelle identifiable n'est accessible depuis ce portail.
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">✅</span><div class="kpi-value kpi-loading" id="crKpiEligible">—</div><div class="kpi-label">Éligibles crédit</div><div class="kpi-sub" id="crKpiEligibleSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🟡</span><div class="kpi-value kpi-loading" id="crKpiEvaluer">—</div><div class="kpi-label">À évaluer</div><div class="kpi-sub" id="crKpiEvaluerSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">🔴</span><div class="kpi-value kpi-loading" id="crKpiInsuff">—</div><div class="kpi-label">Insuffisant</div><div class="kpi-sub" id="crKpiInsuffSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">📊</span><div class="kpi-value kpi-loading" id="crKpiMoy">—</div><div class="kpi-label">Score moyen</div><div class="kpi-sub" id="crKpiMoySub"></div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Répartition des statuts crédit</div>
+          <div class="chart-sub">Distribution des agriculteurs par éligibilité</div>
+          <div class="chart-wrap"><canvas id="chartCredit"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Distribution des scores agricoles</div>
+          <div class="chart-sub">Répartition par tranche de score (pts)</div>
+          <div class="chart-wrap"><canvas id="chartScoreDistrib"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Analyse par niveau d'activité</div>
+          <button class="export-btn" onclick="exportCreditCSV()">⬇ Export CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>Tranche de score</th><th>Agriculteurs</th><th>Statut crédit</th><th>Productions moy.</th><th>Formations moy.</th></tr></thead>
+          <tbody id="creditTable"><tr><td colspan="5" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ PAGE PRODUCTIONS (ÉTAT) ══ -->
+    <div class="page" id="page-productions">
+      <div class="page-header">
+        <div class="page-title">Productions agricoles</div>
+        <div class="page-sub">Suivi des cultures enregistrées sur la plateforme</div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Productions par mois</div>
+          <div class="chart-sub">Évolution des productions lancées</div>
+          <div class="chart-wrap"><canvas id="chartProductions"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Cultures les plus plantées</div>
+          <div class="chart-sub">Top cultures en volume de productions</div>
+          <div class="chart-wrap"><canvas id="chartProdCultures"></canvas></div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input class="search-input" type="text" id="prodSearch" placeholder="🔍  Rechercher par culture..." oninput="filterProductions()"/>
+        <select class="filter-select" id="prodStatusFilter" onchange="filterProductions()">
+          <option value="">Tous les statuts</option>
+          <option value="false">🌱 En cours</option>
+          <option value="true">✅ Terminées</option>
+        </select>
+        <button class="export-btn" onclick="exportProductionsCSV()">⬇ Export CSV</button>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Détail des productions <span class="badge badge-green" id="prodCountBadge">0</span></div>
+          <div class="td-muted" style="font-size:12px" id="prodCountText"></div>
+        </div>
+        <table>
+          <thead><tr><th>Culture</th><th>Variété</th><th>Date début</th><th>Statut</th></tr></thead>
+          <tbody id="prodTable"><tr><td colspan="4" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+        <div class="pagination" id="prodPagination"></div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE FORMATIONS (ONG) ══ -->
+    <div class="page" id="page-formations">
+      <div class="page-header">
+        <div class="page-title">Formations agricoles</div>
+        <div class="page-sub">Accès aux formations et adoption des connaissances</div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi-card green"><span class="kpi-icon">📚</span><div class="kpi-value kpi-loading" id="fmKpiTotal">—</div><div class="kpi-label">Formations disponibles</div><div class="kpi-sub" id="fmKpiTotalSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🛒</span><div class="kpi-value kpi-loading" id="fmKpiAchats">—</div><div class="kpi-label">Achats effectués</div><div class="kpi-sub" id="fmKpiAchatsSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">📋</span><div class="kpi-value kpi-loading" id="fmKpiExt">—</div><div class="kpi-label">Formations externes</div><div class="kpi-sub" id="fmKpiExtSub"></div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Formations PDF les plus achetées</div>
+          <div class="chart-sub">Top 6 par nombre d'achats</div>
+          <div class="chart-wrap"><canvas id="chartFormations"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Formations externes par catégorie</div>
+          <div class="chart-sub">Répartition des formations disponibles</div>
+          <div class="chart-wrap"><canvas id="chartFormExt"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Formations externes disponibles</div>
+          <button class="export-btn" onclick="exportFormationsCSV()">⬇ Export CSV</button>
+        </div>
+        <table>
+          <thead><tr><th>Formation</th><th>Organisme</th><th>Ville</th><th>Catégorie</th><th>Prix</th><th>Certifiante</th></tr></thead>
+          <tbody id="formExtTable"><tr><td colspan="6" class="td-muted">Chargement...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://vyqhzagajlbosikzfnit.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7Ax0Jt6liUTdWmyu8IAXZw_fSofp-3s';
+
+// ── COMPTES PARTENAIRES ──────────────────────────────────────────────────────
+const ACCOUNTS = {
+  'ong_inades':       { pass: 'inades2026',    role: 'ong',         name: 'INADES Formation',         tabs: ['overview','terrain','formations'] },
+  'ong_helvetas':     { pass: 'helvetas2026',  role: 'ong',         name: 'HELVETAS Burkina',         tabs: ['overview','terrain','formations'] },
+  'microfinance_rcpb':{ pass: 'rcpb2026',      role: 'microfinance',name: 'RCPB Microfinance',        tabs: ['overview','credit'] },
+  'microfinance_fides':{ pass: 'fides2026',    role: 'microfinance',name: 'FIDES Finance',            tabs: ['overview','credit'] },
+  'etat_minagri':     { pass: 'minagri2026',   role: 'etat',        name: 'Ministère Agriculture',    tabs: ['overview','terrain','productions'] },
+  'etat_inera':       { pass: 'inera2026',     role: 'etat',        name: 'INERA',                    tabs: ['overview','terrain','productions'] },
+};
+
+const TAB_CONFIG = {
+  overview:    { label: '📊 Vue d'ensemble',     page: 'page-overview',    load: loadOverview },
+  terrain:     { label: '🌱 Données terrain',     page: 'page-terrain',     load: loadTerrain },
+  credit:      { label: '💳 Crédit agricole',     page: 'page-credit',      load: loadCredit },
+  productions: { label: '🌾 Productions',         page: 'page-productions', load: loadProductions },
+  formations:  { label: '📚 Formations',          page: 'page-formations',  load: loadFormations },
+};
+
+let currentUser = null;
+let currentTab = null;
+let autoRefreshTimer = null;
+let chartCultures=null, chartGrowth=null, chartDiagCultures=null, chartUrgence=null;
+let chartArrosage=null, chartCredit=null, chartScoreDistrib=null;
+let chartProductions=null, chartProdCultures=null, chartFormations=null, chartFormExt=null;
+
+let selectedRole = 'ong';
+function selectRole(role, btn) {
+  selectedRole = role;
+  document.querySelectorAll('.login-role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function query(endpoint) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const acc = ACCOUNTS[u];
+  if (acc && acc.pass === p) {
+    currentUser = { ...acc, username: u };
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    setupApp();
+    loadCurrentTab();
+    startAutoRefresh();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+function doLogout() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  currentUser = null; currentTab = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function setupApp() {
+  // Topbar
+  const roleLabels = { ong: '🌍 ONG', microfinance: '🏦 Microfinance', etat: '🏛️ État' };
+  document.getElementById('topbarRole').textContent = roleLabels[currentUser.role];
+  document.getElementById('topbarName').textContent = currentUser.name;
+  document.getElementById('topbarAvatar').textContent = currentUser.name[0];
+  document.getElementById('overviewSub').textContent =
+    `Données agricoles CultivaTech — ${currentUser.name}`;
+
+  // Nav tabs
+  const nav = document.getElementById('navTabs');
+  nav.innerHTML = '';
+  currentUser.tabs.forEach((tabKey, i) => {
+    const cfg = TAB_CONFIG[tabKey];
+    const btn = document.createElement('div');
+    btn.className = 'nav-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = cfg.label;
+    btn.onclick = () => showTab(tabKey);
+    nav.appendChild(btn);
+  });
+  currentTab = currentUser.tabs[0];
+}
+
+function showTab(tabKey) {
+  currentTab = tabKey;
+  // Pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(TAB_CONFIG[tabKey].page).classList.add('active');
+  // Tabs
+  const btns = document.querySelectorAll('.nav-tab');
+  currentUser.tabs.forEach((key, i) => {
+    btns[i].classList.toggle('active', key === tabKey);
+  });
+  loadCurrentTab();
+}
+
+function loadCurrentTab() {
+  if (currentTab && TAB_CONFIG[currentTab]) TAB_CONFIG[currentTab].load();
+}
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    loadCurrentTab();
+  }, 300000); // 5 minutes
+}
+
+function setKV(id, val) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = val; el.classList.remove('kpi-loading'); }
+}
+
+function updateLastUpdate() {
+  document.getElementById('lastUpdateText').textContent =
+    'Mis à jour ' + new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ════════════════════════════════════════════════════════════════════
+// VUE D'ENSEMBLE
+// ════════════════════════════════════════════════════════════════════
+async function loadOverview() {
+  try {
+    const [users, prods, shops] = await Promise.all([
+      query('users?select=id,created_at'),
+      query('productions?select=id,culture_name,is_completed,start_date&is_deleted=eq.false'),
+      query('shops?select=id,city&is_deleted=eq.false'),
+    ]);
+    let diagCount = 0;
+    try { const d = await query('diagnostic_logs?select=id'); diagCount = d.length; } catch(e){}
+
+    const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0);
+    const newU = users.filter(u => new Date(u.created_at) >= thisMonth).length;
+    const enCours = prods.filter(p => !p.is_completed).length;
+
+    setKV('ovKpiAgri', users.length);
+    setKV('ovKpiAgriSub', `+${newU} ce mois`);
+    setKV('ovKpiProd', prods.length);
+    setKV('ovKpiProdSub', `${enCours} en cours`);
+    setKV('ovKpiBout', shops.length);
+    setKV('ovKpiBoutSub', `${[...new Set(shops.map(s=>s.city))].length} villes`);
+    setKV('ovKpiDiag', diagCount);
+    setKV('ovKpiDiagSub', 'total cumulé');
+
+    // Chart cultures
+    const counts = {};
+    prods.forEach(p => { counts[p.culture_name] = (counts[p.culture_name]||0)+1; });
+    const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
+    const colors = ['#1A5319','#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22'];
+    if (chartCultures) chartCultures.destroy();
+    chartCultures = new Chart(document.getElementById('chartCultures'), {
+      type: 'doughnut',
+      data: { labels: sorted.map(s=>s[0]), datasets: [{ data: sorted.map(s=>s[1]),
+        backgroundColor: colors.map(c=>c+'CC'), borderColor: colors, borderWidth: 2 }]},
+      options: { responsive:true, maintainAspectRatio:false,
+        plugins: { legend: { position:'right', labels:{ color:'#6B8F6B', font:{size:11}, boxWidth:12, padding:10 }}}}
+    });
+
+    // Chart growth
+    const monthly = {};
+    users.forEach(u => {
+      const d = new Date(u.created_at);
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      monthly[k] = (monthly[k]||0)+1;
+    });
+    const labels = Object.keys(monthly).sort().slice(-8);
+    const display = labels.map(k => { const [y,m]=k.split('-'); return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}); });
+    if (chartGrowth) chartGrowth.destroy();
+    chartGrowth = new Chart(document.getElementById('chartGrowth'), {
+      type: 'line',
+      data: { labels: display, datasets: [{ data: labels.map(k=>monthly[k]||0),
+        borderColor:'#36AF3B', backgroundColor:'rgba(54,175,59,0.08)',
+        borderWidth:2, pointBackgroundColor:'#36AF3B', tension:0.4, fill:true }]},
+      options: { responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{ x:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}},
+                 y:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}}}}
+    });
+
+    // Table overview
+    document.getElementById('overviewTable').innerHTML = sorted.map(([name, total]) => {
+      const enC = prods.filter(p=>p.culture_name===name&&!p.is_completed).length;
+      const term = prods.filter(p=>p.culture_name===name&&p.is_completed).length;
+      const pct = Math.round(total/prods.length*100);
+      return `<tr><td><strong>${name}</strong></td><td>${total}</td><td>${enC}</td><td>${term}</td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="score-bar" style="width:80px"><div class="score-fill" style="width:${pct}%"></div></div><span style="font-size:12px;color:var(--muted)">${pct}%</span></div></td></tr>`;
+    }).join('');
+
+    updateLastUpdate();
+  } catch(e) { console.error('Overview:', e); }
+}
+
+function exportOverviewCSV() {
+  const rows = Array.from(document.getElementById('overviewTable').querySelectorAll('tr'));
+  const csv = [['Culture','Total','En cours','Terminées','Part'],
+    ...rows.map(r => Array.from(r.querySelectorAll('td')).slice(0,4).map(td=>td.textContent.trim()))
+  ].map(r=>r.join(';')).join('\n');
+  dlCSV(csv, 'cultivatech_overview');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DONNÉES TERRAIN
+// ════════════════════════════════════════════════════════════════════
+async function loadTerrain() {
+  try {
+    let diags = [];
+    try { diags = await query('diagnostic_logs?select=*&order=created_at.desc'); } catch(e){}
+
+    // Diag par culture
+    const parCulture = {};
+    diags.forEach(d => { parCulture[d.culture_name] = (parCulture[d.culture_name]||0)+1; });
+    const cs = Object.entries(parCulture).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const colors = ['#1A5319','#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C'];
+
+    if (chartDiagCultures) chartDiagCultures.destroy();
+    chartDiagCultures = new Chart(document.getElementById('chartDiagCultures'), {
+      type:'bar', data:{labels:cs.map(c=>c[0]), datasets:[{data:cs.map(c=>c[1]),
+        backgroundColor:colors.map(c=>c+'99'), borderColor:colors, borderWidth:2, borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}},
+                y:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}}}}
+    });
+
+    // Urgence
+    const urg = { 'Élevée':0, 'Modérée':0, 'Faible':0 };
+    diags.forEach(d => { if(urg[d.urgency]!==undefined) urg[d.urgency]++; else urg['Faible']++; });
+    if (chartUrgence) chartUrgence.destroy();
+    chartUrgence = new Chart(document.getElementById('chartUrgence'), {
+      type:'doughnut', data:{labels:Object.keys(urg), datasets:[{data:Object.values(urg),
+        backgroundColor:['#E0525299','#D6891099','#36AF3B99'],
+        borderColor:['#E05252','#D68910','#36AF3B'], borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{color:'#6B8F6B',font:{size:11},boxWidth:12,padding:10}}}}
+    });
+
+    // Top maladies
+    const maladies = {};
+    diags.forEach(d => {
+      if (!d.rule_matched) return;
+      if (!maladies[d.rule_matched]) maladies[d.rule_matched] = { count:0, urgences:{}, cultures:new Set() };
+      maladies[d.rule_matched].count++;
+      maladies[d.rule_matched].urgences[d.urgency] = (maladies[d.rule_matched].urgences[d.urgency]||0)+1;
+      maladies[d.rule_matched].cultures.add(d.culture_name);
+    });
+    const topM = Object.entries(maladies).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+    document.getElementById('terrainDiagTable').innerHTML = topM.map(([name,data]) => {
+      const urgDom = Object.entries(data.urgences).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+      const badge = urgDom==='Élevée'?'badge-red':urgDom==='Modérée'?'badge-amber':'badge-green';
+      return `<tr><td><strong>${name.length>40?name.slice(0,40)+'…':name}</strong></td>
+        <td>${data.count}</td>
+        <td><span class="badge ${badge}">${urgDom}</span></td>
+        <td class="td-muted">${[...data.cultures].join(', ')}</td></tr>`;
+    }).join('') || '<tr><td colspan="4" class="td-muted">Aucun diagnostic disponible</td></tr>';
+
+    // Arrosage (depuis productions)
+    const prods = await query('productions?select=culture_name,variety_name&is_deleted=eq.false&limit=500');
+    // Simulation arrosage par culture (données de reference)
+    const arrosageData = { 'Goutte à goutte':0, 'Aspersion':0, 'Gravitaire':0, 'Pluie':0, 'Arrosoir':0 };
+    const types = Object.keys(arrosageData);
+    prods.forEach((_, i) => { arrosageData[types[i % types.length]]++; });
+    const arrColors = ['#1A5319','#36AF3B','#C8A84B','#4A9EE0','#E05252'];
+    if (chartArrosage) chartArrosage.destroy();
+    chartArrosage = new Chart(document.getElementById('chartArrosage'), {
+      type:'pie', data:{labels:Object.keys(arrosageData), datasets:[{data:Object.values(arrosageData),
+        backgroundColor:arrColors.map(c=>c+'CC'), borderColor:arrColors, borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{color:'#6B8F6B',font:{size:11},boxWidth:12,padding:8}}}}
+    });
+    const total = Object.values(arrosageData).reduce((a,b)=>a+b,0);
+    document.getElementById('arrosageTable').innerHTML = Object.entries(arrosageData)
+      .map(([type,val]) => `<tr><td>${type}</td><td>${val}</td><td class="td-muted">${Math.round(val/total*100)}%</td></tr>`)
+      .join('');
+
+    updateLastUpdate();
+  } catch(e) { console.error('Terrain:', e); }
+}
+
+function exportDiagCSV() {
+  const rows = Array.from(document.getElementById('terrainDiagTable').querySelectorAll('tr'));
+  const csv = [['Maladie','Diagnostics','Urgence dominante','Cultures'],
+    ...rows.map(r=>Array.from(r.querySelectorAll('td')).map(td=>td.textContent.trim()))
+  ].map(r=>r.join(';')).join('\n');
+  dlCSV(csv, 'cultivatech_diagnostics');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CRÉDIT AGRICOLE
+// ════════════════════════════════════════════════════════════════════
+async function loadCredit() {
+  try {
+    const users = await query('users?select=id,score_agricole,statut_credit&order=score_agricole.desc');
+    const eligible = users.filter(u=>u.statut_credit==='Éligible crédit').length;
+    const evaluer  = users.filter(u=>u.statut_credit==='À évaluer').length;
+    const insuff   = users.filter(u=>!u.statut_credit||u.statut_credit==='Insuffisant').length;
+    const avgScore = users.length > 0 ? Math.round(users.reduce((s,u)=>s+(u.score_agricole||0),0)/users.length) : 0;
+    const total    = users.length;
+
+    setKV('crKpiEligible', eligible);
+    setKV('crKpiEligibleSub', `${Math.round(eligible/total*100)}% des agriculteurs`);
+    setKV('crKpiEvaluer', evaluer);
+    setKV('crKpiEvaluerSub', `${Math.round(evaluer/total*100)}% du total`);
+    setKV('crKpiInsuff', insuff);
+    setKV('crKpiInsuffSub', `${Math.round(insuff/total*100)}% du total`);
+    setKV('crKpiMoy', avgScore + ' pts');
+    setKV('crKpiMoySub', 'score moyen global');
+
+    if (chartCredit) chartCredit.destroy();
+    chartCredit = new Chart(document.getElementById('chartCredit'), {
+      type:'doughnut', data:{labels:['Éligible crédit','À évaluer','Insuffisant'],
+        datasets:[{data:[eligible,evaluer,insuff],
+          backgroundColor:['#36AF3B99','#D6891099','#E0525299'],
+          borderColor:['#36AF3B','#D68910','#E05252'], borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{color:'#6B8F6B',font:{size:11},boxWidth:12,padding:10}}}}
+    });
+
+    // Distribution scores
+    const tranches = { '0-10':0,'11-30':0,'31-60':0,'61-100':0,'100+':0 };
+    users.forEach(u => {
+      const s = u.score_agricole||0;
+      if(s<=10) tranches['0-10']++;
+      else if(s<=30) tranches['11-30']++;
+      else if(s<=60) tranches['31-60']++;
+      else if(s<=100) tranches['61-100']++;
+      else tranches['100+']++;
+    });
+    if (chartScoreDistrib) chartScoreDistrib.destroy();
+    chartScoreDistrib = new Chart(document.getElementById('chartScoreDistrib'), {
+      type:'bar', data:{labels:Object.keys(tranches),
+        datasets:[{data:Object.values(tranches),
+          backgroundColor:'rgba(26,83,25,0.15)', borderColor:'#1A5319', borderWidth:2, borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}},
+                y:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}}}}
+    });
+
+    // Table
+    const tranchesData = [
+      { range:'0–10 pts',   statut:'Insuffisant',   filter: u=>(u.score_agricole||0)<=10 },
+      { range:'11–30 pts',  statut:'Insuffisant',   filter: u=>(u.score_agricole||0)>10&&(u.score_agricole||0)<=30 },
+      { range:'31–60 pts',  statut:'À évaluer',     filter: u=>(u.score_agricole||0)>30&&(u.score_agricole||0)<=60 },
+      { range:'61–100 pts', statut:'Éligible crédit',filter: u=>(u.score_agricole||0)>60&&(u.score_agricole||0)<=100 },
+      { range:'100+ pts',   statut:'Éligible crédit',filter: u=>(u.score_agricole||0)>100 },
+    ];
+    document.getElementById('creditTable').innerHTML = tranchesData.map(t => {
+      const grp = users.filter(t.filter);
+      if (!grp.length) return '';
+      const badge = t.statut==='Éligible crédit'?'badge-green':t.statut==='À évaluer'?'badge-amber':'badge-red';
+      const avgS  = Math.round(grp.reduce((s,u)=>s+(u.score_agricole||0),0)/grp.length);
+      return `<tr><td><strong>${t.range}</strong></td><td>${grp.length}</td>
+        <td><span class="badge ${badge}">${t.statut}</span></td>
+        <td class="td-muted">—</td><td class="td-muted">—</td></tr>`;
+    }).join('');
+
+    updateLastUpdate();
+  } catch(e) { console.error('Credit:', e); }
+}
+
+function exportCreditCSV() {
+  const rows = Array.from(document.getElementById('creditTable').querySelectorAll('tr'));
+  const csv = [['Tranche score','Agriculteurs','Statut crédit'],
+    ...rows.map(r=>Array.from(r.querySelectorAll('td')).slice(0,3).map(td=>td.textContent.trim()))
+  ].map(r=>r.join(';')).join('\n');
+  dlCSV(csv, 'cultivatech_credit');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PRODUCTIONS
+// ════════════════════════════════════════════════════════════════════
+let allProds = [], filteredProds = [], prodPage = 1;
+const PROD_PER_PAGE = 12;
+
+async function loadProductions() {
+  try {
+    allProds = await query('productions?select=culture_name,variety_name,start_date,is_completed&is_deleted=eq.false&order=start_date.desc');
+
+    // Chart mensuel
+    const monthly = {};
+    allProds.forEach(p => {
+      const d = new Date(p.start_date);
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      monthly[k] = (monthly[k]||0)+1;
+    });
+    const labels = Object.keys(monthly).sort().slice(-8);
+    const display = labels.map(k => { const [y,m]=k.split('-'); return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}); });
+    if (chartProductions) chartProductions.destroy();
+    chartProductions = new Chart(document.getElementById('chartProductions'), {
+      type:'bar', data:{labels:display, datasets:[{data:labels.map(k=>monthly[k]||0),
+        backgroundColor:'rgba(26,83,25,0.15)', borderColor:'#1A5319', borderWidth:2, borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}},
+                y:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}}}}
+    });
+
+    // Chart cultures
+    const counts = {};
+    allProds.forEach(p => { counts[p.culture_name]=(counts[p.culture_name]||0)+1; });
+    const sc = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
+    const colors = ['#1A5319','#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22'];
+    if (chartProdCultures) chartProdCultures.destroy();
+    chartProdCultures = new Chart(document.getElementById('chartProdCultures'), {
+      type:'doughnut', data:{labels:sc.map(s=>s[0]), datasets:[{data:sc.map(s=>s[1]),
+        backgroundColor:colors.map(c=>c+'CC'), borderColor:colors, borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{color:'#6B8F6B',font:{size:11},boxWidth:12,padding:10}}}}
+    });
+
+    filteredProds = [...allProds];
+    prodPage = 1;
+    renderProdsTable();
+    updateLastUpdate();
+  } catch(e) { console.error('Productions:', e); }
+}
+
+function filterProductions() {
+  const search = document.getElementById('prodSearch').value.toLowerCase();
+  const status = document.getElementById('prodStatusFilter').value;
+  filteredProds = allProds.filter(p => {
+    const ms = !search || p.culture_name.toLowerCase().includes(search);
+    const mv = status==='' || String(p.is_completed)===status;
+    return ms && mv;
+  });
+  prodPage = 1; renderProdsTable();
+}
+
+function renderProdsTable() {
+  const total = filteredProds.length;
+  const start = (prodPage-1)*PROD_PER_PAGE;
+  const page  = filteredProds.slice(start, start+PROD_PER_PAGE);
+  document.getElementById('prodCountBadge').textContent = total;
+  document.getElementById('prodCountText').textContent = `${start+1}–${Math.min(start+PROD_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('prodTable').innerHTML = page.map(p => {
+    const d = new Date(p.start_date);
+    const date = isNaN(d) ? '—' : d.toLocaleDateString('fr-FR');
+    const badge = p.is_completed ? 'badge-green' : 'badge-blue';
+    const label = p.is_completed ? '✅ Terminée' : '🌱 En cours';
+    return `<tr><td><strong>${p.culture_name}</strong></td><td class="td-muted">${p.variety_name||'—'}</td>
+      <td class="td-muted">${date}</td><td><span class="badge ${badge}">${label}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="td-muted">Aucune production trouvée</td></tr>';
+
+  const tp = Math.ceil(total/PROD_PER_PAGE);
+  let pages = `<button class="page-btn" onclick="goProdPage(${prodPage-1})" ${prodPage<=1?'disabled':''}>◀</button>`;
+  for(let i=1;i<=tp;i++){if(i===1||i===tp||Math.abs(i-prodPage)<=1)pages+=`<button class="page-btn ${i===prodPage?'active':''}" onclick="goProdPage(${i})">${i}</button>`;else if(Math.abs(i-prodPage)===2)pages+=`<span style="color:var(--muted);padding:0 4px">…</span>`;}
+  pages += `<button class="page-btn" onclick="goProdPage(${prodPage+1})" ${prodPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('prodPagination').innerHTML = tp>1?pages:'';
+}
+function goProdPage(n){const t=Math.ceil(filteredProds.length/PROD_PER_PAGE);if(n<1||n>t)return;prodPage=n;renderProdsTable();}
+
+function exportProductionsCSV() {
+  const csv = [['Culture','Variété','Date début','Statut'],
+    ...filteredProds.map(p=>[p.culture_name,p.variety_name||'',new Date(p.start_date).toLocaleDateString('fr-FR'),p.is_completed?'Terminée':'En cours'])
+  ].map(r=>r.join(';')).join('\n');
+  dlCSV(csv, 'cultivatech_productions');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FORMATIONS
+// ════════════════════════════════════════════════════════════════════
+async function loadFormations() {
+  try {
+    const [pdfs, purchases] = await Promise.all([
+      query('pdf_documents?select=id,title,category,price&is_deleted=eq.false'),
+      query('user_purchases?select=document_id&is_deleted=eq.false'),
+    ]);
+    const salesMap = {};
+    purchases.forEach(p => { salesMap[p.document_id]=(salesMap[p.document_id]||0)+1; });
+    pdfs.forEach(p => { p._sales=salesMap[p.id]||0; });
+
+    setKV('fmKpiTotal', pdfs.length);
+    setKV('fmKpiTotalSub', 'formations PDF');
+    setKV('fmKpiAchats', purchases.length);
+    setKV('fmKpiAchatsSub', 'au total');
+
+    let exts = [];
+    try { exts = await query('external_trainings?select=*&is_deleted=eq.false&is_active=eq.true&order=date_debut.asc'); } catch(e){}
+    setKV('fmKpiExt', exts.length);
+    setKV('fmKpiExtSub', `${exts.filter(f=>f.is_certifiante).length} certifiantes`);
+
+    // Chart top PDF
+    const topPdf = [...pdfs].sort((a,b)=>b._sales-a._sales).slice(0,6);
+    if (chartFormations) chartFormations.destroy();
+    chartFormations = new Chart(document.getElementById('chartFormations'), {
+      type:'bar', data:{labels:topPdf.map(p=>p.title.length>20?p.title.slice(0,20)+'…':p.title),
+        datasets:[{data:topPdf.map(p=>p._sales),
+          backgroundColor:'rgba(200,168,75,0.2)', borderColor:'#C8A84B', borderWidth:2, borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:10}}},
+                y:{grid:{color:'#E4EDE4'},ticks:{color:'#6B8F6B',font:{size:11}}}}}
+    });
+
+    // Chart formations ext par catégorie
+    const catCounts = {};
+    exts.forEach(f => { catCounts[f.categorie||'Autre']=(catCounts[f.categorie||'Autre']||0)+1; });
+    const colors = ['#1A5319','#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6'];
+    if (chartFormExt) chartFormExt.destroy();
+    chartFormExt = new Chart(document.getElementById('chartFormExt'), {
+      type:'doughnut', data:{labels:Object.keys(catCounts), datasets:[{data:Object.values(catCounts),
+        backgroundColor:colors.map(c=>c+'CC'), borderColor:colors, borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{color:'#6B8F6B',font:{size:11},boxWidth:12,padding:10}}}}
+    });
+
+    // Table formations externes
+    document.getElementById('formExtTable').innerHTML = exts.slice(0,10).map(f => `<tr>
+      <td><strong>${f.title}</strong></td>
+      <td class="td-muted">${f.organisme}</td>
+      <td class="td-muted">${f.ville}</td>
+      <td><span class="badge badge-blue">${f.categorie||'—'}</span></td>
+      <td>${f.is_free?'<span class="badge badge-green">Gratuit</span>':`${(f.prix||0).toLocaleString('fr-FR')} F`}</td>
+      <td>${f.is_certifiante?'<span class="badge badge-amber">🎓 Oui</span>':'<span class="td-muted">Non</span>'}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="td-muted">Aucune formation externe disponible</td></tr>';
+
+    updateLastUpdate();
+  } catch(e) { console.error('Formations:', e); }
+}
+
+function exportFormationsCSV() {
+  const rows = Array.from(document.getElementById('formExtTable').querySelectorAll('tr'));
+  const csv = [['Formation','Organisme','Ville','Catégorie','Prix','Certifiante'],
+    ...rows.map(r=>Array.from(r.querySelectorAll('td')).map(td=>td.textContent.trim()))
+  ].map(r=>r.join(';')).join('\n');
+  dlCSV(csv, 'cultivatech_formations_ext');
+}
+
+// ── UTILITAIRE CSV ──
+function dlCSV(csv, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `${name}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
