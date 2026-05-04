@@ -901,9 +901,11 @@ function exportDiagCSV() {
 async function loadCredit() {
   try {
     const users = await query('users?select=id,score_agricole,statut_credit&order=score_agricole.desc');
-    const eligible = users.filter(u=>u.statut_credit==='Eligible credit').length;
-    const evaluer  = users.filter(u=>u.statut_credit==='A evaluer').length;
-    const insuff   = users.filter(u=>!u.statut_credit||u.statut_credit==='Insuffisant').length;
+    const normalize = s => (s||'').toLowerCase()
+     .replace(/é/g,'e').replace(/è/g,'e').replace(/à/g,'a').replace(/î/g,'i').replace(/ê/g,'e');
+    const eligible = users.filter(u => normalize(u.statut_credit).includes('ligible')).length;
+    const evaluer  = users.filter(u => normalize(u.statut_credit).includes('valuer')).length;
+    const insuff   = users.filter(u => !u.statut_credit || normalize(u.statut_credit).includes('insuff')).length;
     const avgScore = users.length > 0 ? Math.round(users.reduce((s,u)=>s+(u.score_agricole||0),0)/users.length) : 0;
     const total    = users.length;
 
