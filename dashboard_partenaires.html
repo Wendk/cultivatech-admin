@@ -806,8 +806,7 @@ function exportOverviewCSV() {
   const rows = Array.from(document.getElementById('overviewTable').querySelectorAll('tr'));
   const csv = [['Culture','Total','En cours','Terminées','Part'],
     ...rows.map(r => Array.from(r.querySelectorAll('td')).slice(0,4).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('
-');
+  ].map(r=>r.join(';')).join('\n');
   dlCSV(csv, 'cultivatech_overview');
 }
 
@@ -892,8 +891,7 @@ function exportDiagCSV() {
   const rows = Array.from(document.getElementById('terrainDiagTable').querySelectorAll('tr'));
   const csv = [['Maladie','Diagnostics','Urgence dominante','Cultures'],
     ...rows.map(r=>Array.from(r.querySelectorAll('td')).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('
-');
+  ].map(r=>r.join(';')).join('\n');
   dlCSV(csv, 'cultivatech_diagnostics');
 }
 
@@ -974,8 +972,7 @@ function exportCreditCSV() {
   const rows = Array.from(document.getElementById('creditTable').querySelectorAll('tr'));
   const csv = [['Tranche score','Agriculteurs','Statut crédit'],
     ...rows.map(r=>Array.from(r.querySelectorAll('td')).slice(0,3).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('
-');
+  ].map(r=>r.join(';')).join('\n');
   dlCSV(csv, 'cultivatech_credit');
 }
 
@@ -1064,8 +1061,7 @@ function goProdPage(n){const t=Math.ceil(filteredProds.length/PROD_PER_PAGE);if(
 function exportProductionsCSV() {
   const csv = [['Culture','Variété','Date début','Statut'],
     ...filteredProds.map(p=>[p.culture_name,p.variety_name||'',new Date(p.start_date).toLocaleDateString('fr-FR'),p.is_completed?'Terminée':'En cours'])
-  ].map(r=>r.join(';')).join('
-');
+  ].map(r=>r.join(';')).join('\n');
   dlCSV(csv, 'cultivatech_productions');
 }
 
@@ -1134,8 +1130,7 @@ function exportFormationsCSV() {
   const rows = Array.from(document.getElementById('formExtTable').querySelectorAll('tr'));
   const csv = [['Formation','Organisme','Ville','Catégorie','Prix','Certifiante'],
     ...rows.map(r=>Array.from(r.querySelectorAll('td')).map(td=>td.textContent.trim()))
-  ].map(r=>r.join(';')).join('
-');
+  ].map(r=>r.join(';')).join('\n');
   dlCSV(csv, 'cultivatech_formations_ext');
 }
 
