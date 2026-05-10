@@ -1071,21 +1071,17 @@ async function saveUser() {
 function exportData(type) {
   var csv = "";
   if (type === "alertes") {
-    csv = "Niveau,Maladie,Culture,Province,Cas,Mise a jour
-";
+    csv = "Niveau,Maladie,Culture,Province,Cas,Mise a jour\n";
     alertData.forEach(function(a) {
       csv += [a.alert_level, a.disease_name, a.culture_name, a.province, a.case_count,
-        a.last_updated ? new Date(a.last_updated).toLocaleDateString("fr-FR") : ""].join(",") + "
-";
+        a.last_updated ? new Date(a.last_updated).toLocaleDateString("fr-FR") : ""].join(",") + "\n";
     });
   } else {
-    csv = "Date,Culture,Variete,Maladie,Urgence,Province,Region,Latitude,Longitude
-";
+    csv = "Date,Culture,Variete,Maladie,Urgence,Province,Region,Latitude,Longitude\n";
     diagData.forEach(function(d) {
       csv += [d.created_at ? new Date(d.created_at).toLocaleString("fr-FR") : "",
         d.culture_name, d.variety_name, d.rule_matched, d.urgency,
-        d.province, d.region, d.latitude||"", d.longitude||""].join(",") + "
-";
+        d.province, d.region, d.latitude||"", d.longitude||""].join(",") + "\n";
     });
   }
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
