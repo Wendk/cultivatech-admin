@@ -1371,21 +1371,65 @@ let allPdfs=[],filteredPdfs=[],editingPdfId=null;
 let chartPdfVentes=null,chartPdfCategories=null;
 
 async function loadPdfsPage() {
-  const icon=document.getElementById('pdfsRefreshIcon');icon.classList.add('spinning');
+
   try {
-    allPdfs=await adminFetch('get-pdfs');
-    const totalRev=allPdfs.reduce((s,p)=>s+p._revenue,0);
-    const totalAchats=purchases.length;
-    const moyPrix=allPdfs.length>0?Math.round(allPdfs.reduce((s,p)=>s+p.price,0)/allPdfs.length):0;
-    setKPI('pKpiTotal',allPdfs.length,'pKpiTotalSub',`${allPdfs.length} formations`);
-    setKPI('pKpiRevenu',totalRev.toLocaleString('fr-FR'),'pKpiRevenuSub',`${totalAchats} achats`);
-    setKPI('pKpiAchats',totalAchats,'pKpiAchatsSub','total cumulé');
-    setKPI('pKpiMoyPrix',moyPrix.toLocaleString('fr-FR')+' F','pKpiMoyPrixSub','par formation');
-    const cats=[...new Set(allPdfs.map(p=>p.category))].filter(Boolean).sort();
-    document.getElementById('pdfCatFilter').innerHTML='<option value="">Toutes les catégories</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
-    loadPdfCharts();filteredPdfs=[...allPdfs];renderPdfsTable();
-  } catch(e){console.error(e);}
-  icon.classList.remove('spinning');
+
+    allPdfs = await adminFetch('get-pdfs')
+
+    const purchasesData =
+      await adminFetch('get-purchases')
+
+    const purchases =
+      purchasesData.purchases || []
+
+    const totalRev =
+      allPdfs.reduce(
+        (s, p) => s + (p._revenue || 0),
+        0
+      )
+
+    const totalSales =
+      allPdfs.reduce(
+        (s, p) => s + (p._sales || 0),
+        0
+      )
+
+    const avgPrice =
+      allPdfs.length
+        ? Math.round(
+            allPdfs.reduce(
+              (s, p) => s + p.price,
+              0
+            ) / allPdfs.length
+          )
+        : 0
+
+    setKPI('pKpiTotal', allPdfs.length)
+
+    setKPI(
+      'pKpiRevenu',
+      totalRev.toLocaleString('fr-FR')
+    )
+
+    setKPI(
+      'pKpiAchats',
+      totalSales
+    )
+
+    setKPI(
+      'pKpiMoyPrix',
+      avgPrice + ' F'
+    )
+
+    filteredPdfs = [...allPdfs]
+
+    renderPdfsTable()
+
+  } catch (e) {
+
+    console.error(e)
+
+  }
 }
 
 function loadPdfCharts() {
