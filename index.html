@@ -686,12 +686,12 @@
 
 <script>
 // ════════════════════════════════════════════════════════════════════
-// CONFIG — clé anon uniquement (publique, pas de secret)
+// CONFIG — aucune clé sensible, tout passe par les Edge Functions
 // ════════════════════════════════════════════════════════════════════
 const SUPABASE_URL    = 'https://vyqhzagajlbosikzfnit.supabase.co';
-const SUPABASE_KEY    = 'sb_publishable_7Ax0Jt6liUTdWmyu8IAXZw_fSofp-3s';
-const ADMIN_LOGIN_URL = 'https://vyqhzagajlbosikzfnit.supabase.co/functions/v1/admin-login';
-// ⚠️  AUCUN mot de passe ici — l'authentification passe par l'Edge Function
+const FUNCTIONS_URL   = 'https://vyqhzagajlbosikzfnit.supabase.co/functions/v1';
+const ADMIN_LOGIN_URL = FUNCTIONS_URL + '/admin-login';
+// ✅ Aucune clé API ici — le frontend n'accède JAMAIS directement à la DB
 
 // ════════════════════════════════════════════════════════════════════
 // SESSION — stockée en mémoire uniquement (jamais dans localStorage)
@@ -797,7 +797,7 @@ async function doLogin() {
     }
 
     adminToken   = data.token;
-currentAdmin = data.user;
+    currentAdmin = data.user;
     
     // Stocker les infos utilisateur et permissions
     currentUser = {
@@ -848,8 +848,6 @@ document.getElementById('loginPass').addEventListener('keydown', e => { if (e.ke
 // ════════════════════════════════════════════════════════════════════
 function doLogout() {
   adminToken  = null;
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
   currentAdmin = null;
   if (sessionTimer) clearInterval(sessionTimer);
   if (autoRefreshInterval) clearInterval(autoRefreshInterval);
@@ -891,40 +889,26 @@ function startAutoRefresh() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// QUERY — lecture avec JWT admin
+// ADMIN FETCH — toutes les requêtes passent par les Edge Functions
+// Jamais d'accès direct à /rest/v1/
 // ════════════════════════════════════════════════════════════════════
-async function query(endpoint) {
+async function adminFetch(functionName, options = {}) {
   if (!adminToken) { doLogout(); throw new Error('Session expirée'); }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+  const res = await fetch(`${FUNCTIONS_URL}/${functionName}`, {
+    method: options.method || 'GET',
     headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${bearerToken}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  if (res.status === 401) { doLogout(); throw new Error('Session expirée'); }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-// ════════════════════════════════════════════════════════════════════
-// MUTATE — écriture (POST/PATCH) avec JWT admin
-// ════════════════════════════════════════════════════════════════════
-async function mutate(url, method, body) {
-  if (!adminToken) { doLogout(); throw new Error('Session expirée'); }
-  const res = await fetch(url, {
-    method,
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${bearerToken}`,
       'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
+      'Authorization': `Bearer ${adminToken}`,
+      ...(options.headers || {})
     },
-    body: JSON.stringify(body)
+    body: options.body ? JSON.stringify(options.body) : undefined
   });
   if (res.status === 401) { doLogout(); throw new Error('Session expirée'); }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -981,36 +965,30 @@ async function loadDashboard() {
 }
 
 async function loadKPIs() {
-  const users = await query('users?select=id,created_at');
-  const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0,0,0,0);
-  const newUsers = users.filter(u => new Date(u.created_at) >= thisMonth).length;
-  setKPI('kpiUsers', users.length, 'kpiUsersNew', `+${newUsers} ce mois`);
-  const purchases = await query('user_purchases?select=document_id,purchased_at&is_deleted=eq.false');
-  const pdfs      = await query('pdf_documents?select=id,price&is_deleted=eq.false');
-  const priceMap  = Object.fromEntries(pdfs.map(p=>[p.id,p.price]));
-  const total     = purchases.reduce((s,p)=>s+(priceMap[p.document_id]||0),0);
-  setKPI('kpiRevenue', total.toLocaleString('fr-FR'), 'kpiRevenueSub', `${purchases.length} achats`);
-  const prods = await query('productions?select=id,is_completed&is_deleted=eq.false');
-  setKPI('kpiProductions', prods.length, 'kpiProductionsSub', `${prods.filter(p=>!p.is_completed).length} en cours`);
-  try { const d=await query('diagnostic_logs?select=id'); setKPI('kpiDiagnostics',d.length,'kpiDiagnosticsSub','depuis installation'); }
-  catch { setKPI('kpiDiagnostics','—','kpiDiagnosticsSub','non disponible'); }
+  const stats = await adminFetch('get-dashboard-stats');
+  setKPI('kpiUsers', stats.users_total, 'kpiUsersNew', `+${stats.users_new_this_month} ce mois`);
+  setKPI('kpiRevenue', (stats.revenue_total||0).toLocaleString('fr-FR'), 'kpiRevenueSub', `${stats.purchases_count} achats`);
+  setKPI('kpiProductions', stats.productions_total, 'kpiProductionsSub', `${stats.productions_active} en cours`);
+  setKPI('kpiDiagnostics', stats.diagnostics_total, 'kpiDiagnosticsSub', 'depuis installation');
 }
 
 async function loadRevenueChart() {
-  const purchases=await query('user_purchases?select=purchased_at,document_id&is_deleted=eq.false&order=purchased_at.asc');
-  const pdfs=await query('pdf_documents?select=id,price&is_deleted=eq.false');
-  const priceMap=Object.fromEntries(pdfs.map(p=>[p.id,p.price]));
+  const pdfs = await adminFetch('get-pdfs');
   const monthly={};
-  purchases.forEach(p=>{const d=new Date(p.purchased_at);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;monthly[k]=(monthly[k]||0)+(priceMap[p.document_id]||0);});
+  pdfs.forEach(p=>{
+    // Reconstruit une courbe approximative depuis les ventes
+    if(p._sales>0){const k=new Date().toISOString().slice(0,7);monthly[k]=(monthly[k]||0)+p._revenue;}
+  });
   const labels=Object.keys(monthly).sort().slice(-6);
   const display=labels.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});});
   if(chartRevenue)chartRevenue.destroy();
-  chartRevenue=new Chart(document.getElementById('chartRevenue'),{type:'bar',data:{labels:display,datasets:[{data:labels.map(k=>monthly[k]||0),backgroundColor:'rgba(54,175,59,0.2)',borderColor:'#36AF3B',borderWidth:2,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}}}}});
+  chartRevenue=new Chart(document.getElementById('chartRevenue'),{type:'bar',data:{labels:display.length?display:['Ce mois'],datasets:[{data:labels.length?labels.map(k=>monthly[k]||0):[pdfs.reduce((s,p)=>s+p._revenue,0)],backgroundColor:'rgba(54,175,59,0.2)',borderColor:'#36AF3B',borderWidth:2,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11}}}}}});
 }
 
 async function loadCulturesChart() {
-  const prods=await query('productions?select=culture_name&is_deleted=eq.false');
-  const counts={};prods.forEach(p=>{counts[p.culture_name]=(counts[p.culture_name]||0)+1;});
+  const diags=await adminFetch('get-diagnostics');
+  const prods=diags; // Utilise les diagnostics comme proxy
+  const counts={};prods.forEach(p=>{const k=p.culture_name||'Autre';counts[k]=(counts[k]||0)+1;});
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
   const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C'];
   if(chartCultures)chartCultures.destroy();
@@ -1018,16 +996,14 @@ async function loadCulturesChart() {
 }
 
 async function loadTableFormations() {
-  const pdfs=await query('pdf_documents?select=id,title,price&is_deleted=eq.false');
-  const purchases=await query('user_purchases?select=document_id&is_deleted=eq.false');
-  const salesMap={};purchases.forEach(p=>{salesMap[p.document_id]=(salesMap[p.document_id]||0)+1;});
-  const rows=pdfs.map(p=>({...p,sales:salesMap[p.id]||0,revenue:(salesMap[p.id]||0)*p.price})).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
-  document.getElementById('tableFormations').innerHTML=rows.map(r=>`<tr><td>${esc(r.title.length>28?r.title.slice(0,28)+'…':r.title)}</td><td>${r.sales}</td><td class="trend-up">${r.revenue.toLocaleString('fr-FR')}</td></tr>`).join('')||'<tr><td colspan="3" class="td-muted">Aucune vente</td></tr>';
+  const pdfs=await adminFetch('get-pdfs');
+  const rows=[...pdfs].sort((a,b)=>b._revenue-a._revenue).slice(0,5);
+  document.getElementById('tableFormations').innerHTML=rows.map(r=>`<tr><td>${esc(r.title.length>28?r.title.slice(0,28)+'…':r.title)}</td><td>${r._sales}</td><td class="trend-up">${r._revenue.toLocaleString('fr-FR')}</td></tr>`).join('')||'<tr><td colspan="3" class="td-muted">Aucune vente</td></tr>';
 }
 
 async function loadTableScores() {
   try {
-    const users=await query('users?select=first_name,last_name,score_agricole,statut_credit&order=score_agricole.desc&limit=5');
+    const users=(await adminFetch('get-users')).sort((a,b)=>(b.score_agricole||0)-(a.score_agricole||0)).slice(0,5);
     document.getElementById('tableScores').innerHTML=users.map(u=>{
       const pct=Math.min(100,(u.score_agricole||0)/10);
       const badge=u.statut_credit==='Éligible crédit'?'badge-green':u.statut_credit==='À évaluer'?'badge-amber':'badge-red';
@@ -1037,13 +1013,13 @@ async function loadTableScores() {
 }
 
 async function loadTableBoutiques() {
-  const shops=await query('shops?select=name,city,rating,is_featured&is_deleted=eq.false&order=rating.desc&limit=5');
+  const shops=(await adminFetch('get-shops')).sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,5);
   document.getElementById('tableBoutiques').innerHTML=shops.map(s=>`<tr><td>${esc(s.name.length>22?s.name.slice(0,22)+'…':s.name)}</td><td class="td-muted">${esc(s.city)}</td><td>⭐ ${s.rating?s.rating.toFixed(1):'—'}</td><td>${s.is_featured?'<span class="badge badge-amber">⭐ Vedette</span>':'<span class="td-muted">—</span>'}</td></tr>`).join('')||'<tr><td colspan="4" class="td-muted">Aucune</td></tr>';
 }
 
 async function loadTableDiagnostics() {
   try {
-    const diags=await query('diagnostic_logs?select=culture_name,rule_matched,urgency&order=created_at.desc&limit=6');
+    const diags=(await adminFetch('get-diagnostics')).slice(0,6);
     document.getElementById('tableDiagnostics').innerHTML=diags.map(d=>{
       const badge=d.urgency==='Élevée'?'badge-red':d.urgency==='Modérée'?'badge-amber':'badge-green';
       const m=d.rule_matched||'—';
@@ -1061,7 +1037,7 @@ async function deletePdf(id, title) {
   
   if (!confirm(`Supprimer "${title}" ?`)) return;
   try {
-    await mutate(`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${id}`,'PATCH',{is_deleted:true});
+    await adminFetch('delete-pdf',{method:'POST',body:{id}});
     await loadPdfsPage();
     toast('Formation supprimée');
   } catch(e) {
@@ -1080,15 +1056,7 @@ async function loadUsersPage() {
   const icon=document.getElementById('usersRefreshIcon');
   icon.classList.add('spinning');
   try {
-    allUsers=await query('users?select=id,first_name,last_name,phone_number,created_at,score_agricole,statut_credit,is_active&order=score_agricole.desc');
-    const [prods,purchases]=await Promise.all([
-      query('productions?select=user_id&is_deleted=eq.false'),
-      query('user_purchases?select=user_id&is_deleted=eq.false')
-    ]);
-    const prodCount={},purchaseCount={};
-    prods.forEach(p=>{prodCount[p.user_id]=(prodCount[p.user_id]||0)+1;});
-    purchases.forEach(p=>{purchaseCount[p.user_id]=(purchaseCount[p.user_id]||0)+1;});
-    allUsers.forEach(u=>{u._prods=prodCount[u.id]||0;u._purchases=purchaseCount[u.id]||0;});
+    allUsers=await adminFetch('get-users');
     const thisMonth=new Date();thisMonth.setDate(1);thisMonth.setHours(0,0,0,0);
     const newThisMonth=allUsers.filter(u=>new Date(u.created_at)>=thisMonth).length;
     const eligible=allUsers.filter(u=>u.statut_credit==='Éligible crédit').length;
@@ -1204,7 +1172,7 @@ async function toggleUserStatus() {
   const statusEl=document.getElementById('modalDisableStatus');
   statusEl.textContent='⏳ Mise à jour...';
   try {
-    await mutate(`${SUPABASE_URL}/rest/v1/users?id=eq.${currentModalUserId}`,'PATCH',{is_active:newStatus});
+    await adminFetch('update-user', { method:'POST', body:{ id:currentModalUserId, is_active:newStatus } });
     currentModalUserActive=newStatus;
     const u=allUsers.find(x=>x.id===currentModalUserId);if(u)u.is_active=newStatus;
     const btn=document.getElementById('modalDisableBtn');
@@ -1226,8 +1194,8 @@ async function sendNotification() {
   if(!title||!message){statusEl.textContent='⚠️ Titre et message obligatoires';return;}
   statusEl.textContent='⏳ Envoi...';statusEl.style.color='var(--muted)';
   try {
-    await mutate(`${SUPABASE_URL}/rest/v1/notifications`,'POST',{title,message,type,created_at:new Date().toISOString(),is_read:false,target:'all'});
-    statusEl.textContent=`✅ Envoyée à ${allUsers.length} utilisateurs`;statusEl.style.color='var(--vert2)';
+    const notifResult = await adminFetch('send-notification', { method:'POST', body:{title,message,type} });
+    statusEl.textContent=`✅ Envoyée à ${notifResult.sent_to||allUsers.length} utilisateurs`;statusEl.style.color='var(--vert2)';
     document.getElementById('notifTitle').value='';document.getElementById('notifMessage').value='';
     toast('Notification envoyée avec succès');
   } catch(e){statusEl.textContent='⚠️ Erreur : '+e.message;statusEl.style.color='var(--red)';}
@@ -1241,14 +1209,11 @@ async function loadResetCodes() {
   icon.classList.add('spinning');
   try {
     const now=new Date().toISOString();
-    const resets=await query(`password_resets?is_used=eq.false&expires_at=gt.${now}&order=created_at.desc&select=*`);
+    const resets=await adminFetch('get-reset-codes');
     document.getElementById('resetCountBadge').textContent=resets.length;
     if(resets.length===0){document.getElementById('resetCodesBody').innerHTML='<tr><td colspan="5" class="td-muted" style="text-align:center;padding:12px">✅ Aucune demande en attente</td></tr>';icon.classList.remove('spinning');return;}
-    const userIds=[...new Set(resets.map(r=>r.user_id))].join(',');
-    let userMap={};
-    try{const users=await query(`users?id=in.(${userIds})&select=id,first_name,last_name`);users.forEach(u=>{userMap[u.id]=`${u.first_name} ${u.last_name}`;});}catch(e){}
     document.getElementById('resetCodesBody').innerHTML=resets.map(r=>{
-      const name=esc(userMap[r.user_id]||'—');
+      const name=esc(r.user_name||'—');
       const exp=new Date(r.expires_at);
       const diff=Math.max(0,Math.floor((exp-new Date())/60000));
       const expText=diff>0?`⏱ ${diff} min`:'❌ Expiré';
@@ -1266,7 +1231,7 @@ async function loadResetCodes() {
 }
 
 async function markCodeUsed(resetId) {
-  try{await mutate(`${SUPABASE_URL}/rest/v1/password_resets?id=eq.${resetId}`,'PATCH',{is_used:true});await loadResetCodes();toast('Code marqué utilisé');}
+  try{await adminFetch('mark-reset-used',{method:'POST',body:{id:resetId}});await loadResetCodes();toast('Code marqué utilisé');}
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
@@ -1280,7 +1245,7 @@ let chartBoutiquesVilles=null,chartBoutiquesCategories=null,editingBoutiqueId=nu
 async function loadBoutiquesPage() {
   const icon=document.getElementById('boutiquesRefreshIcon');icon.classList.add('spinning');
   try {
-    allBoutiques=await query('shops?select=*&is_deleted=eq.false&order=name.asc');
+    allBoutiques=await adminFetch('get-shops');
     const vedettes=allBoutiques.filter(b=>b.is_featured).length;
     const villes=[...new Set(allBoutiques.map(b=>b.city))].length;
     const avgNote=allBoutiques.length>0?(allBoutiques.reduce((s,b)=>s+(b.rating||0),0)/allBoutiques.length).toFixed(1):0;
@@ -1374,9 +1339,8 @@ async function saveBoutique(){
   const body={name,city:ville,phone_number:document.getElementById('bFieldPhone').value.trim(),rating:parseFloat(document.getElementById('bFieldNote').value)||4.0,latitude:parseFloat(document.getElementById('bFieldLat').value)||12.3714,longitude:parseFloat(document.getElementById('bFieldLon').value)||-1.5197,engrais:document.getElementById('bFieldEngrais').value.trim(),semences:document.getElementById('bFieldSemences').value.trim(),phytosanitaires:document.getElementById('bFieldPhyto').value.trim(),materiel:document.getElementById('bFieldMateriel').value.trim(),is_featured:document.getElementById('bFieldVedette').checked,is_deleted:false,address:ville,facebook_page:'',last_updated:Date.now()};
   document.getElementById('bSaveBtn').textContent='⏳...';document.getElementById('bSaveBtn').disabled=true;
   try{
-    const method=editingBoutiqueId?'PATCH':'POST';
-    const url=editingBoutiqueId?`${SUPABASE_URL}/rest/v1/shops?id=eq.${editingBoutiqueId}`:`${SUPABASE_URL}/rest/v1/shops`;
-    await mutate(url,method,body);
+    if(editingBoutiqueId) body.id = editingBoutiqueId;
+    await adminFetch('save-shop',{method:'POST',body});
     document.getElementById('boutiqueModal').classList.remove('open');
     await loadBoutiquesPage();toast(editingBoutiqueId?'Boutique modifiée':'Boutique ajoutée');
   }catch(e){document.getElementById('bModalError').textContent='Erreur : '+e.message;document.getElementById('bModalError').style.display='block';}
@@ -1384,13 +1348,13 @@ async function saveBoutique(){
 }
 
 async function toggleVedette(id,cur){
-  try{await mutate(`${SUPABASE_URL}/rest/v1/shops?id=eq.${id}`,'PATCH',{is_featured:!cur});await loadBoutiquesPage();}
+  try{await adminFetch('save-shop',{method:'POST',body:{id,is_featured:!cur}});await loadBoutiquesPage();}
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
 async function deleteBoutique(id,name){
   if(!confirm(`Supprimer "${name}" ?`))return;
-  try{await mutate(`${SUPABASE_URL}/rest/v1/shops?id=eq.${id}`,'PATCH',{is_deleted:true});await loadBoutiquesPage();toast('Boutique supprimée');}
+  try{await adminFetch('delete-shop',{method:'POST',body:{id}});await loadBoutiquesPage();toast('Boutique supprimée');}
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
@@ -1409,10 +1373,7 @@ let chartPdfVentes=null,chartPdfCategories=null;
 async function loadPdfsPage() {
   const icon=document.getElementById('pdfsRefreshIcon');icon.classList.add('spinning');
   try {
-    allPdfs=await query('pdf_documents?select=*&is_deleted=eq.false&order=title.asc');
-    const purchases=await query('user_purchases?select=document_id&is_deleted=eq.false');
-    const salesMap={};purchases.forEach(p=>{salesMap[p.document_id]=(salesMap[p.document_id]||0)+1;});
-    allPdfs.forEach(p=>{p._sales=salesMap[p.id]||0;p._revenue=(salesMap[p.id]||0)*p.price;});
+    allPdfs=await adminFetch('get-pdfs');
     const totalRev=allPdfs.reduce((s,p)=>s+p._revenue,0);
     const totalAchats=purchases.length;
     const moyPrix=allPdfs.length>0?Math.round(allPdfs.reduce((s,p)=>s+p.price,0)/allPdfs.length):0;
@@ -1487,9 +1448,8 @@ async function savePdf(){
   const body={title,price:parseFloat(document.getElementById('pFieldPrice').value)||0,category:document.getElementById('pFieldCategory').value.trim(),file_url:document.getElementById('pFieldUrl').value.trim(),description:document.getElementById('pFieldDesc').value.trim(),is_deleted:false};
   document.getElementById('pSaveBtn').textContent='⏳...';document.getElementById('pSaveBtn').disabled=true;
   try{
-    const method=editingPdfId?'PATCH':'POST';
-    const url=editingPdfId?`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${editingPdfId}`:`${SUPABASE_URL}/rest/v1/pdf_documents`;
-    await mutate(url,method,body);
+    if(editingPdfId) body.id = editingPdfId;
+    await adminFetch('save-pdf',{method:'POST',body});
     document.getElementById('pdfModal').classList.remove('open');await loadPdfsPage();toast(editingPdfId?'Formation modifiée':'Formation ajoutée');
   }catch(e){document.getElementById('pModalError').textContent='Erreur : '+e.message;document.getElementById('pModalError').style.display='block';}
   document.getElementById('pSaveBtn').textContent='Enregistrer';document.getElementById('pSaveBtn').disabled=false;
@@ -1497,7 +1457,7 @@ async function savePdf(){
 
 async function deletePdf(id,title){
   if(!confirm(`Supprimer "${title}" ?`))return;
-  try{await mutate(`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${id}`,'PATCH',{is_deleted:true});await loadPdfsPage();toast('Formation supprimée');}
+  try{await adminFetch('delete-pdf',{method:'POST',body:{id}});await loadPdfsPage();toast('Formation supprimée');}
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
@@ -1517,7 +1477,7 @@ let chartDiagCultures=null,chartDiagUrgence=null,chartDiagMaladies=null,chartDia
 async function loadDiagnosticsPage() {
   const icon=document.getElementById('diagRefreshIcon');icon.classList.add('spinning');
   try {
-    allDiags=await query('diagnostic_logs?select=*&order=created_at.desc');
+    allDiags=await adminFetch('get-diagnostics');
     const thisMonth=new Date();thisMonth.setDate(1);thisMonth.setHours(0,0,0,0);
     const ceM=allDiags.filter(d=>new Date(d.created_at)>=thisMonth).length;
     const elevee=allDiags.filter(d=>d.urgency==='Élevée').length;
@@ -1601,7 +1561,7 @@ const WORKERS_PER_PAGE=10;
 async function loadWorkersPage(){
   const icon=document.getElementById('workersRefreshIcon');icon.classList.add('spinning');
   try{
-    allWorkers=await query('workers?select=*&is_deleted=eq.false&order=first_name.asc');
+    allWorkers=await adminFetch('get-workers');
     const avgS=allWorkers.length>0?Math.round(allWorkers.reduce((s,w)=>s+(w.daily_wage||0),0)/allWorkers.length):0;
     const villes=[...new Set(allWorkers.map(w=>w.city).filter(Boolean))].length;
     const specs=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].length;
@@ -1678,9 +1638,8 @@ async function saveWorker(){
   const body={first_name:first,last_name:last,phone_number:document.getElementById('wFieldPhone').value.trim(),city:document.getElementById('wFieldCity').value.trim(),specialite:document.getElementById('wFieldSpecialite').value.trim(),daily_wage:parseFloat(document.getElementById('wFieldSalaire').value)||0,notes:document.getElementById('wFieldNote').value.trim(),is_deleted:false};
   document.getElementById('wSaveBtn').textContent='⏳...';document.getElementById('wSaveBtn').disabled=true;
   try{
-    const method=editingWorkerId?'PATCH':'POST';
-    const url=editingWorkerId?`${SUPABASE_URL}/rest/v1/workers?id=eq.${editingWorkerId}`:`${SUPABASE_URL}/rest/v1/workers`;
-    await mutate(url,method,body);
+    if(editingWorkerId) body.id = editingWorkerId;
+    await adminFetch('save-worker',{method:'POST',body});
     document.getElementById('workerModal').classList.remove('open');await loadWorkersPage();toast(editingWorkerId?'Ouvrier modifié':'Ouvrier ajouté');
   }catch(e){document.getElementById('wModalError').textContent='Erreur : '+e.message;document.getElementById('wModalError').style.display='block';}
   document.getElementById('wSaveBtn').textContent='Enregistrer';document.getElementById('wSaveBtn').disabled=false;
@@ -1688,7 +1647,7 @@ async function saveWorker(){
 
 async function deleteWorker(id,name){
   if(!confirm(`Supprimer "${name}" ?`))return;
-  try{await mutate(`${SUPABASE_URL}/rest/v1/workers?id=eq.${id}`,'PATCH',{is_deleted:true});await loadWorkersPage();toast('Ouvrier supprimé');}
+  try{await adminFetch('delete-worker',{method:'POST',body:{id}});await loadWorkersPage();toast('Ouvrier supprimé');}
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
@@ -1707,7 +1666,7 @@ const FORMATIONS_PER_PAGE=8;
 async function loadFormationsPage(){
   const icon=document.getElementById('formationsRefreshIcon');icon.classList.add('spinning');
   try{
-    allFormations=await query('external_trainings?is_deleted=eq.false&order=date_debut.asc&select=*');
+    allFormations=await adminFetch('get-formations');
     const total=allFormations.length;
     const gratuites=allFormations.filter(f=>f.is_free).length;
     const certifiantes=allFormations.filter(f=>f.is_certifiante).length;
@@ -1786,22 +1745,21 @@ async function saveFormation(){
   const body={title,organisme,ville,lieu_detail:document.getElementById('fFieldLieu').value.trim(),prix:parseInt(document.getElementById('fFieldPrix').value)||0,is_free:document.getElementById('fFieldGratuit').checked,duree:document.getElementById('fFieldDuree').value.trim(),horaires:document.getElementById('fFieldHoraires').value.trim(),date_debut:document.getElementById('fFieldDateDebut').value||null,date_fin:document.getElementById('fFieldDateFin').value||null,contact_phone:document.getElementById('fFieldContact').value.trim(),contact_email:document.getElementById('fFieldEmail').value.trim(),categorie:document.getElementById('fFieldCategorie').value.trim()||'Agriculture',description:document.getElementById('fFieldDesc').value.trim(),is_certifiante:document.getElementById('fFieldCertifiant').checked,is_active:true,is_deleted:false};
   document.getElementById('fSaveBtn').textContent='⏳...';document.getElementById('fSaveBtn').disabled=true;
   try{
-    const method=editingFormationId?'PATCH':'POST';
-    const url=editingFormationId?`${SUPABASE_URL}/rest/v1/external_trainings?id=eq.${editingFormationId}`:`${SUPABASE_URL}/rest/v1/external_trainings`;
-    await mutate(url,method,body);
+    if(editingFormationId) body.id = editingFormationId;
+    await adminFetch('save-formation',{method:'POST',body});
     document.getElementById('formationModal').classList.remove('open');await loadFormationsPage();toast(editingFormationId?'Formation modifiée':'Formation ajoutée');
   }catch(e){document.getElementById('fModalError').textContent='Erreur : '+e.message;document.getElementById('fModalError').style.display='block';}
   document.getElementById('fSaveBtn').textContent='Enregistrer';document.getElementById('fSaveBtn').disabled=false;
 }
 
 async function toggleFormationActive(id,cur){
-  try{await mutate(`${SUPABASE_URL}/rest/v1/external_trainings?id=eq.${id}`,'PATCH',{is_active:!cur});await loadFormationsPage();}
+  try{await adminFetch('delete-formation',{method:'POST',body:{id,toggle_active:true,is_active:!cur}});await loadFormationsPage();}
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
 async function deleteFormation(id,title){
   if(!confirm(`Supprimer "${title}" ?`))return;
-  try{await mutate(`${SUPABASE_URL}/rest/v1/external_trainings?id=eq.${id}`,'PATCH',{is_deleted:true});await loadFormationsPage();toast('Formation supprimée');}
+  try{await adminFetch('delete-formation',{method:'POST',body:{id}});await loadFormationsPage();toast('Formation supprimée');}
   catch(e){toast('Erreur','error');}
 }
 
