@@ -848,8 +848,8 @@ document.getElementById('loginPass').addEventListener('keydown', e => { if (e.ke
 // ════════════════════════════════════════════════════════════════════
 function doLogout() {
   adminToken  = null;
-  apikey': SUPABASE_KEY,
-  Authorization': `Bearer ${SUPABASE_KEY}`,
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
   currentAdmin = null;
   if (sessionTimer) clearInterval(sessionTimer);
   if (autoRefreshInterval) clearInterval(autoRefreshInterval);
