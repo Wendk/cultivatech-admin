@@ -1367,150 +1367,629 @@ function exportBoutiquesCSV(){
 // ════════════════════════════════════════════════════════════════════
 // PDFs
 // ════════════════════════════════════════════════════════════════════
-let allPdfs=[],filteredPdfs=[],editingPdfId=null;
-let chartPdfVentes=null,chartPdfCategories=null;
+
+let allPdfs = [],
+    filteredPdfs = [],
+    editingPdfId = null;
+
+let chartPdfVentes = null,
+    chartPdfCategories = null;
+
+
+// ════════════════════════════════════════════════════════════════════
+// LOAD PAGE
+// ════════════════════════════════════════════════════════════════════
 
 async function loadPdfsPage() {
 
   try {
 
-    allPdfs = await adminFetch('get-pdfs')
+    // Chargement PDFs
+    allPdfs = await adminFetch('get-pdfs');
 
-    const purchasesData =
-      await adminFetch('get-purchases')
-
-    const purchases =
-      purchasesData.purchases || []
-
+    // KPIs
     const totalRev =
       allPdfs.reduce(
         (s, p) => s + (p._revenue || 0),
         0
-      )
+      );
 
     const totalSales =
       allPdfs.reduce(
         (s, p) => s + (p._sales || 0),
         0
-      )
+      );
 
     const avgPrice =
       allPdfs.length
         ? Math.round(
             allPdfs.reduce(
-              (s, p) => s + p.price,
+              (s, p) => s + (p.price || 0),
               0
             ) / allPdfs.length
           )
-        : 0
+        : 0;
 
-    setKPI('pKpiTotal', allPdfs.length)
+    // Affichage KPIs
+    setKPI('pKpiTotal', allPdfs.length);
 
     setKPI(
       'pKpiRevenu',
       totalRev.toLocaleString('fr-FR')
-    )
+    );
 
     setKPI(
       'pKpiAchats',
       totalSales
-    )
+    );
 
     setKPI(
       'pKpiMoyPrix',
       avgPrice + ' F'
-    )
+    );
 
-    filteredPdfs = [...allPdfs]
+    // Filtres
+    filteredPdfs = [...allPdfs];
 
-    renderPdfsTable()
+    // Catégories
+    const categories = [
+      ...new Set(
+        allPdfs
+          .map(p => p.category)
+          .filter(Boolean)
+      )
+    ];
+
+    const catSelect =
+      document.getElementById('pdfCatFilter');
+
+    if (catSelect) {
+
+      catSelect.innerHTML =
+        '<option value="">Toutes catégories</option>' +
+        categories.map(
+          c => `<option value="${esc(c)}">${esc(c)}</option>`
+        ).join('');
+    }
+
+    // Render
+    renderPdfsTable();
+
+    // Charts
+    loadPdfCharts();
 
   } catch (e) {
 
-    console.error(e)
+    console.error(e);
 
+    toast(
+      'Erreur chargement formations',
+      'error'
+    );
   }
 }
 
+
+// ════════════════════════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════════════════════════
+
 function loadPdfCharts() {
-  const sorted=[...allPdfs].sort((a,b)=>b._sales-a._sales).slice(0,6);
-  if(chartPdfVentes)chartPdfVentes.destroy();
-  chartPdfVentes=new Chart(document.getElementById('chartPdfVentes'),{type:'bar',data:{labels:sorted.map(p=>p.title.length>20?p.title.slice(0,20)+'…':p.title),datasets:[{data:sorted.map(p=>p._sales),backgroundColor:'rgba(200,168,75,0.25)',borderColor:'#C8A84B',borderWidth:2,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:10}}},y:{grid:{color:'#2A3A2A'},ticks:{color:'#7A9A7A',font:{size:11},stepSize:1}}}}});
-  const catRev={};allPdfs.forEach(p=>{const c=p.category||'Autre';catRev[c]=(catRev[c]||0)+p._revenue;});
-  const colors=['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22'];
-  if(chartPdfCategories)chartPdfCategories.destroy();
-  chartPdfCategories=new Chart(document.getElementById('chartPdfCategories'),{type:'doughnut',data:{labels:Object.keys(catRev),datasets:[{data:Object.values(catRev),backgroundColor:colors.map(c=>c+'80'),borderColor:colors,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#7A9A7A',font:{size:11},boxWidth:12,padding:10}}}}});
+
+  // TOP VENTES
+  const sorted =
+    [...allPdfs]
+      .sort((a, b) => b._sales - a._sales)
+      .slice(0, 6);
+
+  if (chartPdfVentes)
+    chartPdfVentes.destroy();
+
+  chartPdfVentes = new Chart(
+    document.getElementById('chartPdfVentes'),
+    {
+      type: 'bar',
+
+      data: {
+        labels: sorted.map(
+          p =>
+            p.title.length > 20
+              ? p.title.slice(0, 20) + '…'
+              : p.title
+        ),
+
+        datasets: [{
+          data: sorted.map(p => p._sales || 0),
+
+          backgroundColor:
+            'rgba(200,168,75,0.25)',
+
+          borderColor:
+            '#C8A84B',
+
+          borderWidth: 2,
+
+          borderRadius: 6
+        }]
+      },
+
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+
+        scales: {
+
+          x: {
+            grid: {
+              color: '#2A3A2A'
+            },
+
+            ticks: {
+              color: '#7A9A7A',
+              font: { size: 10 }
+            }
+          },
+
+          y: {
+            grid: {
+              color: '#2A3A2A'
+            },
+
+            ticks: {
+              color: '#7A9A7A',
+              font: { size: 11 },
+              stepSize: 1
+            }
+          }
+        }
+      }
+    }
+  );
+
+  // REVENUS PAR CATEGORIE
+  const catRev = {};
+
+  allPdfs.forEach(p => {
+
+    const c = p.category || 'Autre';
+
+    catRev[c] =
+      (catRev[c] || 0)
+      + (p._revenue || 0);
+  });
+
+  const colors = [
+    '#36AF3B',
+    '#C8A84B',
+    '#4A9EE0',
+    '#E05252',
+    '#9B59B6',
+    '#E67E22'
+  ];
+
+  if (chartPdfCategories)
+    chartPdfCategories.destroy();
+
+  chartPdfCategories = new Chart(
+    document.getElementById('chartPdfCategories'),
+    {
+      type: 'doughnut',
+
+      data: {
+        labels: Object.keys(catRev),
+
+        datasets: [{
+          data: Object.values(catRev),
+
+          backgroundColor:
+            colors.map(c => c + '80'),
+
+          borderColor: colors,
+
+          borderWidth: 2
+        }]
+      },
+
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            position: 'right',
+
+            labels: {
+              color: '#7A9A7A',
+              font: { size: 11 },
+              boxWidth: 12,
+              padding: 10
+            }
+          }
+        }
+      }
+    }
+  );
 }
 
-function filterPdfs(){
-  const search=document.getElementById('pdfSearch').value.toLowerCase();
-  const cat=document.getElementById('pdfCatFilter').value;
-  filteredPdfs=allPdfs.filter(p=>(!search||p.title.toLowerCase().includes(search)||(p.category||'').toLowerCase().includes(search))&&(!cat||p.category===cat));
+
+// ════════════════════════════════════════════════════════════════════
+// FILTER
+// ════════════════════════════════════════════════════════════════════
+
+function filterPdfs() {
+
+  const search =
+    document
+      .getElementById('pdfSearch')
+      .value
+      .toLowerCase();
+
+  const cat =
+    document
+      .getElementById('pdfCatFilter')
+      .value;
+
+  filteredPdfs = allPdfs.filter(p =>
+
+    (
+      !search ||
+
+      p.title.toLowerCase().includes(search) ||
+
+      (p.category || '')
+        .toLowerCase()
+        .includes(search)
+    )
+
+    &&
+
+    (
+      !cat ||
+      p.category === cat
+    )
+  );
+
   renderPdfsTable();
 }
 
-function renderPdfsTable(){
-  const total=filteredPdfs.length;
-  document.getElementById('pdfsCountBadge').textContent=total;
-  document.getElementById('pdfsCountText').textContent=`${total} formation${total>1?'s':''}`;
-  document.getElementById('pdfsTableBody').innerHTML=filteredPdfs.map(p=>`<tr>
-    <td><strong>${esc(p.title)}</strong></td>
-    <td><span class="badge badge-amber">${esc(p.category||'—')}</span></td>
-    <td class="trend-up">${p.price.toLocaleString('fr-FR')} F</td>
-    <td>${p._sales} vente${p._sales>1?'s':''}</td>
-    <td class="trend-up">${p._revenue.toLocaleString('fr-FR')} F</td>
-    <td><div style="display:flex;gap:5px">
-      <button onclick="editPdf(${p.id})" class="btn-action">✏️</button>
-      <button onclick="deletePdf(${p.id},'${esc(p.title).replace(/'/g,"&#39;")}')" class="btn-action btn-danger">🗑</button>
-    </div></td>
-  </tr>`).join('')||'<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucune formation</td></tr>';
+
+// ════════════════════════════════════════════════════════════════════
+// TABLE
+// ════════════════════════════════════════════════════════════════════
+
+function renderPdfsTable() {
+
+  const total = filteredPdfs.length;
+
+  const badge =
+    document.getElementById('pdfsCountBadge');
+
+  if (badge)
+    badge.textContent = total;
+
+  const txt =
+    document.getElementById('pdfsCountText');
+
+  if (txt)
+    txt.textContent =
+      `${total} formation${total > 1 ? 's' : ''}`;
+
+  document.getElementById('pdfsTableBody').innerHTML =
+
+    filteredPdfs.map(p => `
+
+      <tr>
+
+        <td>
+          <strong>${esc(p.title)}</strong>
+        </td>
+
+        <td>
+          <span class="badge badge-amber">
+            ${esc(p.category || '—')}
+          </span>
+        </td>
+
+        <td class="trend-up">
+          ${(p.price || 0).toLocaleString('fr-FR')} F
+        </td>
+
+        <td>
+          ${p._sales || 0}
+          vente${(p._sales || 0) > 1 ? 's' : ''}
+        </td>
+
+        <td class="trend-up">
+          ${(p._revenue || 0).toLocaleString('fr-FR')} F
+        </td>
+
+        <td>
+
+          <div style="display:flex;gap:5px">
+
+            <button
+              onclick="editPdf(${p.id})"
+              class="btn-action"
+            >
+              ✏️
+            </button>
+
+            <button
+              onclick="deletePdf(${p.id},'${esc(p.title).replace(/'/g, "&#39;")}')"
+              class="btn-action btn-danger"
+            >
+              🗑
+            </button>
+
+          </div>
+
+        </td>
+
+      </tr>
+
+    `).join('')
+
+    ||
+
+    `
+      <tr>
+        <td colspan="6"
+            class="td-muted"
+            style="text-align:center;padding:20px">
+          Aucune formation
+        </td>
+      </tr>
+    `;
 }
 
-function addPdfModal(){
-  editingPdfId=null;
-  document.getElementById('pModalTitle').textContent='Ajouter une formation';
-  document.getElementById('pModalSub').textContent='Nouveau PDF au catalogue';
-  ['pFieldTitle','pFieldPrice','pFieldCategory','pFieldUrl','pFieldDesc'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('pModalError').style.display='none';document.getElementById('pSaveBtn').textContent='Ajouter';
-  document.getElementById('pdfModal').classList.add('open');
+
+// ════════════════════════════════════════════════════════════════════
+// MODAL AJOUT
+// ════════════════════════════════════════════════════════════════════
+
+function addPdfModal() {
+
+  editingPdfId = null;
+
+  document.getElementById('pModalTitle').textContent =
+    'Ajouter une formation';
+
+  document.getElementById('pModalSub').textContent =
+    'Nouveau PDF au catalogue';
+
+  [
+    'pFieldTitle',
+    'pFieldPrice',
+    'pFieldCategory',
+    'pFieldUrl',
+    'pFieldDesc'
+  ].forEach(
+    id => document.getElementById(id).value = ''
+  );
+
+  document.getElementById('pModalError').style.display =
+    'none';
+
+  document.getElementById('pSaveBtn').textContent =
+    'Ajouter';
+
+  document.getElementById('pdfModal')
+    .classList.add('open');
 }
 
-function editPdf(id){
-  const p=allPdfs.find(x=>x.id===id);if(!p)return;
-  editingPdfId=id;
-  document.getElementById('pModalTitle').textContent='Modifier la formation';document.getElementById('pModalSub').textContent=p.title;
-  document.getElementById('pFieldTitle').value=p.title||'';document.getElementById('pFieldPrice').value=p.price||0;
-  document.getElementById('pFieldCategory').value=p.category||'';document.getElementById('pFieldUrl').value=p.file_url||'';
-  document.getElementById('pFieldDesc').value=p.description||'';
-  document.getElementById('pModalError').style.display='none';document.getElementById('pSaveBtn').textContent='Enregistrer';
-  document.getElementById('pdfModal').classList.add('open');
+
+// ════════════════════════════════════════════════════════════════════
+// EDIT
+// ════════════════════════════════════════════════════════════════════
+
+function editPdf(id) {
+
+  const p =
+    allPdfs.find(x => x.id === id);
+
+  if (!p) return;
+
+  editingPdfId = id;
+
+  document.getElementById('pModalTitle').textContent =
+    'Modifier la formation';
+
+  document.getElementById('pModalSub').textContent =
+    p.title;
+
+  document.getElementById('pFieldTitle').value =
+    p.title || '';
+
+  document.getElementById('pFieldPrice').value =
+    p.price || 0;
+
+  document.getElementById('pFieldCategory').value =
+    p.category || '';
+
+  document.getElementById('pFieldUrl').value =
+    p.file_url || '';
+
+  document.getElementById('pFieldDesc').value =
+    p.description || '';
+
+  document.getElementById('pModalError').style.display =
+    'none';
+
+  document.getElementById('pSaveBtn').textContent =
+    'Enregistrer';
+
+  document.getElementById('pdfModal')
+    .classList.add('open');
 }
 
-async function savePdf(){
-  const title=document.getElementById('pFieldTitle').value.trim();
-  if(!title){document.getElementById('pModalError').textContent='Le titre est obligatoire';document.getElementById('pModalError').style.display='block';return;}
-  const body={title,price:parseFloat(document.getElementById('pFieldPrice').value)||0,category:document.getElementById('pFieldCategory').value.trim(),file_url:document.getElementById('pFieldUrl').value.trim(),description:document.getElementById('pFieldDesc').value.trim(),is_deleted:false};
-  document.getElementById('pSaveBtn').textContent='⏳...';document.getElementById('pSaveBtn').disabled=true;
-  try{
-    if(editingPdfId) body.id = editingPdfId;
-    await adminFetch('save-pdf',{method:'POST',body});
-    document.getElementById('pdfModal').classList.remove('open');await loadPdfsPage();toast(editingPdfId?'Formation modifiée':'Formation ajoutée');
-  }catch(e){document.getElementById('pModalError').textContent='Erreur : '+e.message;document.getElementById('pModalError').style.display='block';}
-  document.getElementById('pSaveBtn').textContent='Enregistrer';document.getElementById('pSaveBtn').disabled=false;
+
+// ════════════════════════════════════════════════════════════════════
+// SAVE
+// ════════════════════════════════════════════════════════════════════
+
+async function savePdf() {
+
+  const title =
+    document
+      .getElementById('pFieldTitle')
+      .value
+      .trim();
+
+  if (!title) {
+
+    document.getElementById('pModalError').textContent =
+      'Le titre est obligatoire';
+
+    document.getElementById('pModalError').style.display =
+      'block';
+
+    return;
+  }
+
+  const body = {
+
+    title,
+
+    price:
+      parseFloat(
+        document.getElementById('pFieldPrice').value
+      ) || 0,
+
+    category:
+      document.getElementById('pFieldCategory')
+        .value
+        .trim(),
+
+    file_url:
+      document.getElementById('pFieldUrl')
+        .value
+        .trim(),
+
+    description:
+      document.getElementById('pFieldDesc')
+        .value
+        .trim(),
+
+    is_deleted: false
+  };
+
+  document.getElementById('pSaveBtn').textContent =
+    '⏳...';
+
+  document.getElementById('pSaveBtn').disabled =
+    true;
+
+  try {
+
+    if (editingPdfId)
+      body.id = editingPdfId;
+
+    await adminFetch(
+      'save-pdf',
+      {
+        method: 'POST',
+        body
+      }
+    );
+
+    document.getElementById('pdfModal')
+      .classList.remove('open');
+
+    await loadPdfsPage();
+
+    toast(
+      editingPdfId
+        ? 'Formation modifiée'
+        : 'Formation ajoutée'
+    );
+
+  } catch (e) {
+
+    document.getElementById('pModalError').textContent =
+      'Erreur : ' + e.message;
+
+    document.getElementById('pModalError').style.display =
+      'block';
+  }
+
+  document.getElementById('pSaveBtn').textContent =
+    'Enregistrer';
+
+  document.getElementById('pSaveBtn').disabled =
+    false;
 }
 
-async function deletePdf(id,title){
-  if(!confirm(`Supprimer "${title}" ?`))return;
-  try{await adminFetch('delete-pdf',{method:'POST',body:{id}});await loadPdfsPage();toast('Formation supprimée');}
-  catch(e){toast('Erreur : '+e.message,'error');}
+
+// ════════════════════════════════════════════════════════════════════
+// DELETE
+// ════════════════════════════════════════════════════════════════════
+
+async function deletePdf(id, title) {
+
+  if (!confirm(`Supprimer "${title}" ?`))
+    return;
+
+  try {
+
+    await adminFetch(
+      'delete-pdf',
+      {
+        method: 'POST',
+        body: { id }
+      }
+    );
+
+    await loadPdfsPage();
+
+    toast('Formation supprimée');
+
+  } catch (e) {
+
+    toast(
+      'Erreur : ' + e.message,
+      'error'
+    );
+  }
 }
 
-function exportPdfsCSV(){
-  const h=['Titre','Catégorie','Prix FCFA','Ventes','Revenus FCFA'];
-  const r=filteredPdfs.map(p=>[p.title,p.category||'',p.price,p._sales,p._revenue]);
-  dlCSV([h,...r].map(x=>x.join(';')).join('\n'),'cultivatech_pdfs');
-}
 
+// ════════════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ════════════════════════════════════════════════════════════════════
+
+function exportPdfsCSV() {
+
+  const h = [
+    'Titre',
+    'Catégorie',
+    'Prix FCFA',
+    'Ventes',
+    'Revenus FCFA'
+  ];
+
+  const r =
+    filteredPdfs.map(p => [
+      p.title,
+      p.category || '',
+      p.price || 0,
+      p._sales || 0,
+      p._revenue || 0
+    ]);
+
+  dlCSV(
+    [h, ...r]
+      .map(x => x.join(';'))
+      .join('\n'),
+
+    'cultivatech_pdfs'
+  );
+}
 // ════════════════════════════════════════════════════════════════════
 // DIAGNOSTICS
 // ════════════════════════════════════════════════════════════════════
