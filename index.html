@@ -700,7 +700,47 @@ let adminToken    = null;
 let currentAdmin  = null;
 let sessionTimer  = null;
 let sessionEnd    = null;
-let autoRefreshInterval = null;
+let autoRefreshInterval = null
+let currentUser = null;
+let currentPermissions = { read: [], write: [] };
+
+// Fonctions de permission
+function canReadTable(tableName) {
+  if (currentUser?.role === 'super_admin') return true;
+  return currentPermissions.read?.includes('*') || currentPermissions.read?.includes(tableName);
+}
+
+function canWriteTable(tableName) {
+  if (currentUser?.role === 'super_admin') return true;
+  return currentPermissions.write?.includes('*') || currentPermissions.write?.includes(tableName);
+}
+
+ // Appliquer les permissions à l'interface
+function applyTablePermissions() {
+  // Cacher les sections non autorisées
+  if (!canReadTable('dashboard_users')) {
+    const elem = document.getElementById('dashboard-users-section');
+    if (elem) elem.style.display = 'none';
+  }
+  
+  if (!canWriteTable('pdf_documents')) {
+    document.querySelectorAll('.btn-add-pdf, .btn-edit-pdf, #pdfs .export-btn').forEach(btn => {
+      btn.style.display = 'none';
+    });
+  }
+  
+  if (!canWriteTable('shops')) {
+    document.querySelectorAll('.btn-add-shop, .btn-edit-shop, #boutiques .export-btn').forEach(btn => {
+      btn.style.display = 'none';
+    });
+  }
+  
+  // Masquer la section "Admins" pour les non super_admin
+  if (currentUser?.role !== 'super_admin') {
+    const adminNav = document.querySelector('[data-nav="admins"]');
+    if (adminNav) adminNav.style.display = 'none';
+  }
+}
 
 // ════════════════════════════════════════════════════════════════════
 // PROTECTION XSS — utiliser esc() sur toutes les données affichées
@@ -758,12 +798,31 @@ async function doLogin() {
 
     adminToken   = data.token;
     currentAdmin = data.user;
+    
+    // Stocker les infos utilisateur et permissions
+    currentUser = {
+      id: data.user.id,
+      username: data.user.username,
+      full_name: data.user.full_name,
+      role: data.user.role,
+      department: data.user.department
+    };
+    currentPermissions = data.user.table_permissions || { read: [], write: [] };
+    
+   const roleBadge = currentUser.role === 'super_admin' 
+  ? '<span class="badge badge-amber" style="margin-left:8px">⭐ Super Admin</span>' 
+  : (currentUser.role === 'admin' ? '<span class="badge badge-green">Admin</span>' : '<span class="badge badge-blue">Viewer</span>');
+
+document.getElementById('sidebarRole').innerHTML = esc(currentAdmin.department || 'Administrateur') + ' ' + roleBadge;
 
     // Afficher infos dans sidebar
     const initials = (currentAdmin.full_name||currentAdmin.username||'A')[0].toUpperCase();
     document.getElementById('sidebarAvatar').textContent  = initials;
     document.getElementById('sidebarUser').textContent    = esc(currentAdmin.full_name || currentAdmin.username);
-    document.getElementById('sidebarRole').textContent    = esc(currentAdmin.department || 'Administrateur');
+    document.getElementById('sidebarRole').textContent    = esc(currentAdmin.department || (currentUser.role === 'super_admin' ? 'Super Administrateur' : 'Administrateur'));
+
+    // Appliquer les permissions à l'interface
+    applyTablePermissions();
 
     // Démarrer la session
     sessionEnd = Date.now() + 8 * 60 * 60 * 1000;
@@ -782,7 +841,6 @@ async function doLogin() {
     btn.disabled    = false;
   }
 }
-
 document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
 
 // ════════════════════════════════════════════════════════════════════
@@ -871,6 +929,12 @@ async function mutate(url, method, body) {
 // NAVIGATION
 // ════════════════════════════════════════════════════════════════════
 function showPage(name) {
+  // Vérifier si l'utilisateur a accès à cette page
+  const restrictedPages = ['admins'];
+if (restrictedPages.includes(name) && currentUser?.role !== 'super_admin') {
+  toast('Accès non autorisé - Permissions insuffisantes', 'error');
+  return;
+}
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
@@ -984,6 +1048,23 @@ async function loadTableDiagnostics() {
       return `<tr><td>${esc(d.culture_name)}</td><td class="td-muted">${esc(m.length>24?m.slice(0,24)+'…':m)}</td><td><span class="badge ${badge}">${esc(d.urgency||'—')}</span></td></tr>`;
     }).join('')||'<tr><td colspan="3" class="td-muted">Aucun</td></tr>';
   } catch { document.getElementById('tableDiagnostics').innerHTML='<tr><td colspan="3" class="td-muted">Non disponible</td></tr>'; }
+}
+  // Exemple : avant de supprimer un PDF
+async function deletePdf(id, title) {
+  // ⭐ Vérification des droits
+  if (!canWriteTable('pdf_documents')) {
+    toast('Permission refusée - Vous ne pouvez pas supprimer des formations', 'error');
+    return;
+  }
+  
+  if (!confirm(`Supprimer "${title}" ?`)) return;
+  try {
+    await mutate(`${SUPABASE_URL}/rest/v1/pdf_documents?id=eq.${id}`,'PATCH',{is_deleted:true});
+    await loadPdfsPage();
+    toast('Formation supprimée');
+  } catch(e) {
+    toast('Erreur : '+e.message,'error');
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════
