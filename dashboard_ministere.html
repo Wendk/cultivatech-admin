@@ -250,7 +250,7 @@ tbody tr:last-child td{border-bottom:none}
       <div class="card">
         <div class="card-title">Alertes phytosanitaires actives</div>
         <div class="card-sub">Zones necessitant intervention — donnees CultivaTech temps reel</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Niveau</th><th>Maladie</th><th>Culture</th><th>Province</th><th>Cas</th><th>Mise a jour</th><th>Statut</th></tr></thead><tbody id="alertsTbody"></tbody></table></div>
+        <div class="tbl-wrap">\n<table>\n<thead>\n<tr><th>Niveau</th><th>Maladie</th><th>Culture</th><th>Province</th><th>Cas</th><th>Mise a jour</th><th>Statut</th></tr>\n</thead><tbody id="alertsTbody"></tbody>\n</table>\n</div>
       </div>
     </div>
   </div>
@@ -282,7 +282,7 @@ tbody tr:last-child td{border-bottom:none}
       <div class="card">
         <div class="card-title">Journal des diagnostics geolocalisees</div>
         <div class="card-sub">Remontees en temps reel depuis CultivaTech — 47 provinces Burkina Faso</div>
-        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Culture</th><th>Variete</th><th>Maladie</th><th>Urgence</th><th>Province</th><th>Region</th><th>GPS</th></tr></thead><tbody id="diagTbody"></tbody></table></div>
+        <div class="tbl-wrap">\n</table>\n<thead>\n<tr><th>#</th><th>Date</th><th>Culture</th><th>Variete</th><th>Maladie</th><th>Urgence</th><th>Province</th><th>Region</th><th>GPS</th></tr>\n</thead><tbody id="diagTbody"></tbody>\n</table>\n</div>
       </div>
     </div>
   </div>
@@ -344,8 +344,8 @@ tbody tr:last-child td{border-bottom:none}
           <button class="fbtn" onclick="showCreateUser()">+ Nouvel utilisateur</button>
         </div>
         <div class="tbl-wrap">
-          <table><thead><tr><th>Identifiant</th><th>Nom complet</th><th>Departement</th><th>Role</th><th>Scope</th><th>Region</th><th>Statut</th><th>Derniere connexion</th><th>Actions</th></tr></thead>
-          <tbody id="usersTbody"></tbody></table>
+          <table>\n<thead>\n<tr><th>Identifiant</th><th>Nom complet</th><th>Departement</th><th>Role</th><th>Scope</th><th>Region</th><th>Statut</th><th>Derniere connexion</th><th>Actions</th></tr>\n</thead>
+          <tbody id="usersTbody"></tbody>\n</table>
         </div>
       </div>
       <!-- Formulaire creation/edition -->
@@ -407,695 +407,565 @@ tbody tr:last-child td{border-bottom:none}
 </div>
 
 <script>
-var SUPA_URL = "https://vyqhzagajlbosikzfnit.supabase.co";
-var SUPA_KEY = "sb_publishable_7Ax0Jt6liUTdWmyu8IAXZw_fSofp-3s";
+// ════════════════════════════════════════════════════════════════════
+// CONFIGURATION — UNIQUEMENT VIA EDGE FUNCTIONS
+// ════════════════════════════════════════════════════════════════════
+const FUNCTIONS_URL = 'https://vyqhzagajlbosikzfnit.supabase.co/functions/v1'
+let adminToken = null
+let currentUser = null
+let allCharts = {}
+let alertData = []
+let diagData = []
 
-var currentUser = null;
-var chartsBuilt = false;
-var diagData = [];
-var alertData = [];
-var allCharts = {};
-
-// ── API SUPABASE ──────────────────────────────────────────
-async function supaGet(table, params) {
-  var url = SUPA_URL + "/rest/v1/" + table + "?" + params;
-  var r = await fetch(url, {
-    headers: {
-      "apikey": SUPA_KEY,
-      "Authorization": "Bearer " + SUPA_KEY,
-      "Content-Type": "application/json"
-    }
-  });
-  if (!r.ok) { console.error("Supabase GET error", r.status, await r.text()); return []; }
-  return await r.json();
+// ════════════════════════════════════════════════════════════════════
+// UTILITAIRES
+// ════════════════════════════════════════════════════════════════════
+function escapeHtml(str) {
+  if (!str) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
-async function supaPatch(table, params, body) {
-  var url = SUPA_URL + "/rest/v1/" + table + "?" + params;
-  var r = await fetch(url, {
-    method: "PATCH",
+// ════════════════════════════════════════════════════════════════════
+// ADMIN FETCH — TOUTES LES REQUÊTES PASSENT PAR LES EDGE FUNCTIONS
+// ════════════════════════════════════════════════════════════════════
+async function adminFetch(functionName, options = {}) {
+  if (!adminToken) {
+    throw new Error('Non authentifié')
+  }
+  const res = await fetch(`${FUNCTIONS_URL}/${functionName}`, {
+    method: options.method || 'GET',
     headers: {
-      "apikey": SUPA_KEY,
-      "Authorization": "Bearer " + SUPA_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation"
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`
     },
-    body: JSON.stringify(body)
-  });
-  return r.ok;
+    body: options.body ? JSON.stringify(options.body) : undefined
+  })
+  if (res.status === 401) {
+    doLogout()
+    throw new Error('Session expirée')
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `Erreur HTTP ${res.status}`)
+  }
+  return res.json()
 }
 
-async function supaPost(table, body) {
-  var url = SUPA_URL + "/rest/v1/" + table;
-  var r = await fetch(url, {
-    method: "POST",
-    headers: {
-      "apikey": SUPA_KEY,
-      "Authorization": "Bearer " + SUPA_KEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation"
-    },
-    body: JSON.stringify(body)
-  });
-  if (!r.ok) { console.error("Supabase POST error", await r.text()); return null; }
-  var d = await r.json();
-  return Array.isArray(d) ? d[0] : d;
-}
-
-// ── LOGIN ──────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════════════════════════════════
 async function doLogin() {
-  var u = document.getElementById("loginUser").value.trim();
-  var p = document.getElementById("loginPass").value.trim();
-  var err = document.getElementById("loginError");
-  if (!u || !p) { err.style.display = "block"; err.textContent = "Remplissez tous les champs"; return; }
+  const username = document.getElementById('loginUser').value.trim()
+  const password = document.getElementById('loginPass').value
+  const errEl = document.getElementById('loginError')
 
-  var rows = await supaGet("dashboard_users",
-    "username=eq." + encodeURIComponent(u) + "&is_active=eq.true&select=*&limit=1");
-
-  if (!rows || rows.length === 0) {
-    err.style.display = "block"; err.textContent = "Identifiant incorrect ou compte inactif"; return;
+  if (!username || !password) {
+    errEl.textContent = 'Identifiant et mot de passe requis'
+    errEl.style.display = 'block'
+    return
   }
 
-  var user = rows[0];
-  // Verification mot de passe (en clair pour l'instant - a migrer vers bcrypt)
-  if (user.password_hash !== p) {
-    err.style.display = "block"; err.textContent = "Mot de passe incorrect"; return;
+  try {
+    const res = await fetch(`${FUNCTIONS_URL}/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Identifiants incorrects'
+      errEl.style.display = 'block'
+      return
+    }
+
+    adminToken = data.token
+    currentUser = data.user
+
+    // Scope badge
+    const scopeBadge = currentUser.scope === 'national'
+      ? '<span class="badge b-green">🌍 National</span>'
+      : `<span class="badge b-orange">📍 ${escapeHtml(currentUser.region)}</span>`
+
+    document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
+    document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
+
+    // Scope banner
+    if (currentUser.scope === 'regional') {
+      const banner = document.getElementById('scopeBanner')
+      banner.style.display = 'flex'
+      banner.innerHTML = `🔍 Vous visualisez les données de la région : <strong>${escapeHtml(currentUser.region)}</strong>${currentUser.provinces ? ` (${currentUser.provinces.length} provinces)` : ''}`
+    }
+
+    // Admin tab
+    if (currentUser.role === 'admin') {
+      document.getElementById('tabAdmin').style.display = 'flex'
+    }
+
+    document.getElementById('loginScreen').style.display = 'none'
+    document.getElementById('mainApp').style.display = 'block'
+
+    // Initialiser la date
+    updateDate()
+    
+    // Charger les données
+    await loadOverview()
+    await loadAlerts()
+    await loadDiagnostics()
+    await loadProvinces()
+    await loadRapports()
+    await buildCharts()
+
+    if (currentUser.role === 'admin') {
+      await loadUsers()
+    }
+  } catch (e) {
+    errEl.textContent = 'Erreur de connexion'
+    errEl.style.display = 'block'
   }
-
-  // Mettre a jour last_login
-  await supaPatch("dashboard_users", "id=eq." + user.id, { last_login: new Date().toISOString() });
-
-  currentUser = user;
-  err.style.display = "none";
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("mainApp").style.display = "block";
-  document.getElementById("topbarAvatar").textContent = user.full_name[0].toUpperCase();
-  document.getElementById("topbarUname").textContent = user.full_name + " (" + user.department + ")";
-
-  // Afficher onglet admin si admin
-  if (user.role === "admin") {
-    document.getElementById("tabAdmin").style.display = "flex";
-  }
-
-  // Scope banner
-  if (user.scope === "regional" && user.region) {
-    var b = document.getElementById("scopeBanner");
-    b.style.display = "flex";
-    b.innerHTML = "Vous visualisez les donnees de la region : <strong>" + user.region + "</strong> (" + (user.provinces ? user.provinces.length : 0) + " provinces)";
-  }
-
-  // Pre-remplir compte
-  document.getElementById("cmpFullName").value = user.full_name;
-  document.getElementById("cmpUsername").value = user.username;
-  document.getElementById("cmpDept").value = user.department;
-
-  initApp();
 }
 
 function doLogout() {
-  currentUser = null;
-  chartsBuilt = false;
-  allCharts = {};
-  document.getElementById("loginScreen").style.display = "flex";
-  document.getElementById("mainApp").style.display = "none";
-  document.getElementById("loginUser").value = "";
-  document.getElementById("loginPass").value = "";
-  document.getElementById("tabAdmin").style.display = "none";
+  adminToken = null
+  currentUser = null
+  allCharts = {}
+  document.getElementById("loginScreen").style.display = "flex"
+  document.getElementById("mainApp").style.display = "none"
+  document.getElementById("loginUser").value = ""
+  document.getElementById("loginPass").value = ""
+  document.getElementById("tabAdmin").style.display = "none"
 }
 
-// ── DATE ───────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// DATE
+// ════════════════════════════════════════════════════════════════════
 function updateDate() {
-  var el = document.getElementById("topbarDate");
+  const el = document.getElementById("topbarDate")
   if (el) {
-    var n = new Date();
-    el.textContent = n.toLocaleDateString("fr-FR", {weekday:"short",day:"numeric",month:"short"})
-      + " " + n.toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"});
+    const n = new Date()
+    el.textContent = n.toLocaleDateString("fr-FR", {weekday:"short", day:"numeric", month:"short"}) +
+      " " + n.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"})
   }
 }
-setInterval(updateDate, 1000);
+setInterval(updateDate, 1000)
 
-// ── TABS ───────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════════
 function showTab(name) {
-  document.querySelectorAll(".tab-panel").forEach(function(p) { p.classList.remove("active"); });
-  document.querySelectorAll(".tab").forEach(function(t) { t.classList.remove("active"); });
-  var panel = document.getElementById("tab-" + name);
-  if (panel) panel.classList.add("active");
-  var tabs = document.querySelectorAll(".tab");
-  var map = ["overview","alerts","provinces","diagnostics","rapports","compte","admin"];
-  var idx = map.indexOf(name);
-  if (idx >= 0 && tabs[idx]) tabs[idx].classList.add("active");
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"))
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"))
+  const panel = document.getElementById("tab-" + name)
+  if (panel) panel.classList.add("active")
+  const tabs = document.querySelectorAll(".tab")
+  const map = ["overview", "alerts", "provinces", "diagnostics", "rapports", "compte", "admin"]
+  const idx = map.indexOf(name)
+  if (idx >= 0 && tabs[idx]) tabs[idx].classList.add("active")
+  
+  // Recharger les données si nécessaire
+  if (name === 'alerts') loadAlerts()
+  if (name === 'diagnostics') loadDiagnostics()
+  if (name === 'provinces') loadProvinces()
+  if (name === 'rapports') loadRapports()
 }
 
-// ── FILTRE PROVINCE SELON SCOPE ────────────────────────────
-function provinceFilter() {
-  if (!currentUser) return "";
-  if (currentUser.scope === "national") return "";
-  if (currentUser.provinces && currentUser.provinces.length > 0) {
-    return "&province=in.(" + currentUser.provinces.map(function(p) {
-      return encodeURIComponent(p);
-    }).join(",") + ")";
-  }
-  if (currentUser.region) {
-    return "&region=eq." + encodeURIComponent(currentUser.region);
-  }
-  return "";
-}
-
-// ── INIT APP ───────────────────────────────────────────────
-async function initApp() {
-  updateDate();
-  await loadOverview();
-  await loadAlerts();
-  await loadDiagnostics();
-  await loadProvinces();
-  await loadRapports();
-  if (currentUser && currentUser.role === "admin") await loadUsers();
-}
-
-// ── OVERVIEW ───────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// OVERVIEW
+// ════════════════════════════════════════════════════════════════════
 async function loadOverview() {
-  var pf = provinceFilter();
-  var d7 = new Date(); d7.setDate(d7.getDate() - 7);
-  var d7s = d7.toISOString();
-
-  // KPI 1 : alertes critiques
-  var alerts = await supaGet("phyto_alerts", "is_active=eq.true&alert_level=eq.critique" + pf + "&select=id");
-  document.getElementById("kv1").textContent = alerts.length;
-  document.getElementById("ks1").textContent = "actives en ce moment";
-
-  // KPI 2 : zones attention
-  var attn = await supaGet("phyto_alerts", "is_active=eq.true&alert_level=eq.attention" + pf + "&select=id");
-  document.getElementById("kv2").textContent = attn.length;
-
-  // KPI 3 : diagnostics 7j
-  var diags7 = await supaGet("diagnostic_logs", "created_at=gte." + d7s + pf + "&select=id");
-  document.getElementById("kv3").textContent = diags7.length;
-  document.getElementById("ks3").textContent = "ces 7 derniers jours";
-
-  // KPI 4 : agriculteurs actifs
-  var agri = await supaGet("diagnostic_logs", "created_at=gte." + d7s + pf + "&select=user_id");
-  var uniq = new Set(agri.map(function(d) { return d.user_id; }));
-  document.getElementById("kv4").textContent = uniq.size;
-  document.getElementById("ks4").textContent = "agriculteurs uniques";
-
-  // Alerte banner : premiere alerte critique
-  if (alerts.length > 0) {
-    var firstAlert = await supaGet("phyto_alerts",
-      "is_active=eq.true&alert_level=eq.critique" + pf + "&select=*&limit=1&order=last_updated.desc");
-    if (firstAlert.length > 0) {
-      var a = firstAlert[0];
-      document.getElementById("alertBanner").style.display = "flex";
-      document.getElementById("alertBannerTitle").textContent =
-        "Alerte epidemique — " + (a.disease_name || "Maladie inconnue");
-      document.getElementById("alertBannerText").textContent =
-        (a.case_count || 0) + " cas confirmes dans la province " + (a.province || "inconnue") + ". Action immediate recommandee.";
+  try {
+    const stats = await adminFetch('get-dashboard-stats')
+    
+    document.getElementById('kv1').textContent = stats.critical_alerts || 0
+    document.getElementById('kv2').textContent = stats.attention_alerts || 0
+    document.getElementById('kv3').textContent = stats.diagnostics_7d || 0
+    document.getElementById('kv4').textContent = stats.active_farmers || 0
+    
+    document.getElementById('ks1').textContent = stats.critical_alerts_sub || 'actives'
+    document.getElementById('ks3').textContent = stats.diagnostics_7d_sub || 'ces 7 jours'
+    document.getElementById('ks4').textContent = stats.active_farmers_sub || 'agriculteurs uniques'
+    
+    document.getElementById('alertCount').textContent = stats.critical_alerts || 0
+    
+    // Alert banner
+    if (stats.top_alert) {
+      document.getElementById('alertBanner').style.display = 'flex'
+      document.getElementById('alertBannerTitle').textContent = stats.top_alert.title
+      document.getElementById('alertBannerText').textContent = stats.top_alert.message
+    } else {
+      document.getElementById('alertBanner').style.display = 'none'
     }
+  } catch (e) {
+    console.error('Erreur chargement overview:', e)
   }
-
-  document.getElementById("alertCount").textContent = alerts.length;
-
-  // Charts
-  await buildCharts(pf, d7s);
 }
 
-// ── CHARTS ──────────────────────────────────────────────────
-async function buildCharts(pf, d7s) {
-  var V = "#009e4b", R = "#c0392b", O = "#e67e22", J = "#f1c40f";
+// ════════════════════════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════════════════════════
+async function buildCharts() {
+  const V = "#009e4b", R = "#c0392b", O = "#e67e22", J = "#f1c40f"
 
-  // Chart cultures
-  var diagsCult = await supaGet("diagnostic_logs",
-    "created_at=gte." + d7s + pf + "&select=culture_name");
-  var cultCount = {};
-  diagsCult.forEach(function(d) {
-    var k = d.culture_name || "Autre";
-    cultCount[k] = (cultCount[k] || 0) + 1;
-  });
-  var cultSorted = Object.entries(cultCount).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
-  var cultLabels = cultSorted.map(function(x){return x[0];});
-  var cultData = cultSorted.map(function(x){return x[1];});
-  var cultColors = cultData.map(function(v,i){return i===0?R:i===1?O:V;});
+  try {
+    const stats = await adminFetch('get-dashboard-stats')
+    const chartsData = stats.charts_data || {}
+    
+    // Chart cultures
+    const cultData = chartsData.cultures || []
+    if (allCharts.c1) allCharts.c1.destroy()
+    allCharts.c1 = new Chart(document.getElementById("cCultures"), {
+      type: "bar",
+      data: {
+        labels: cultData.map(c => c.name),
+        datasets: [{
+          data: cultData.map(c => c.count),
+          backgroundColor: cultData.map((_, i) => i === 0 ? R : i === 1 ? O : V),
+          borderRadius: 5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: "#f0f0f0" } } }
+      }
+    })
 
-  if (allCharts.c1) allCharts.c1.destroy();
-  allCharts.c1 = new Chart(document.getElementById("cCultures"), {
-    type:"bar",
-    data:{labels:cultLabels,datasets:[{data:cultData,backgroundColor:cultColors,borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false}},y:{grid:{color:"#f0f0f0"}}}}
-  });
+    // Chart maladies
+    const malData = chartsData.diseases || []
+    if (allCharts.c3) allCharts.c3.destroy()
+    allCharts.c3 = new Chart(document.getElementById("cMaladies"), {
+      type: "bar",
+      data: {
+        labels: malData.map(m => m.name.length > 20 ? m.name.slice(0, 20) + "..." : m.name),
+        datasets: [{
+          data: malData.map(m => m.count),
+          backgroundColor: malData.map((_, i) => i === 0 ? R : i === 1 ? O : V),
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { color: "#f0f0f0" } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
+      }
+    })
 
-  // Chart maladies
-  var diagsMal = await supaGet("diagnostic_logs",
-    "created_at=gte." + d7s + pf + "&select=rule_matched");
-  var malCount = {};
-  diagsMal.forEach(function(d) {
-    var k = d.rule_matched || "Inconnu";
-    malCount[k] = (malCount[k] || 0) + 1;
-  });
-  var malSorted = Object.entries(malCount).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    // Chart urgence
+    const urgData = chartsData.urgency || { critique: 0, elevee: 0, moderee: 0, faible: 0 }
+    if (allCharts.c4) allCharts.c4.destroy()
+    allCharts.c4 = new Chart(document.getElementById("cUrgence"), {
+      type: "doughnut",
+      data: {
+        labels: ["Critique", "Élevée", "Modérée", "Faible"],
+        datasets: [{
+          data: [urgData.critique || 0, urgData.elevee || 0, urgData.moderee || 0, urgData.faible || 0],
+          backgroundColor: [R, O, J, V],
+          borderWidth: 2,
+          borderColor: "#fff"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } }
+      }
+    })
 
-  if (allCharts.c3) allCharts.c3.destroy();
-  allCharts.c3 = new Chart(document.getElementById("cMaladies"), {
-    type:"bar",
-    data:{
-      labels:malSorted.map(function(x){return x[0].length>20?x[0].slice(0,20)+"...":x[0];}),
-      datasets:[{data:malSorted.map(function(x){return x[1];}),
-        backgroundColor:malSorted.map(function(x,i){return i===0?R:i===1?O:V;}),borderRadius:4}]
-    },
-    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{grid:{color:"#f0f0f0"}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
-  });
-
-  // Chart urgence
-  var diagsUrg = await supaGet("diagnostic_logs",
-    "created_at=gte." + d7s + pf + "&select=urgency");
-  var urgCount = {critique:0,elevee:0,moderee:0,faible:0};
-  diagsUrg.forEach(function(d) {
-    var k = (d.urgency||"").toLowerCase();
-    if (k.includes("crit")) urgCount.critique++;
-    else if (k.includes("lev") || k.includes("leve")) urgCount.elevee++;
-    else if (k.includes("mod")) urgCount.moderee++;
-    else urgCount.faible++;
-  });
-
-  if (allCharts.c4) allCharts.c4.destroy();
-  allCharts.c4 = new Chart(document.getElementById("cUrgence"), {
-    type:"doughnut",
-    data:{
-      labels:["Critique","Elevee","Moderee","Faible"],
-      datasets:[{data:[urgCount.critique,urgCount.elevee,urgCount.moderee,urgCount.faible],
-        backgroundColor:[R,O,J,V],borderWidth:2,borderColor:"#fff"}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
-  });
-
-  // Chart trend 30j
-  var d30 = new Date(); d30.setDate(d30.getDate()-30);
-  var diagsTrend = await supaGet("diagnostic_logs",
-    "created_at=gte." + d30.toISOString() + pf + "&select=created_at,urgency");
-  var weeks = ["S-4","S-3","S-2","S-1","Cette sem."];
-  var wCrit = [0,0,0,0,0], wAttn = [0,0,0,0,0];
-  var now = new Date();
-  diagsTrend.forEach(function(d) {
-    var dt = new Date(d.created_at);
-    var diff = Math.floor((now - dt) / (7*24*3600*1000));
-    var idx = 4 - Math.min(diff, 4);
-    var urg = (d.urgency||"").toLowerCase();
-    if (urg.includes("crit")) wCrit[idx]++;
-    else wAttn[idx]++;
-  });
-
-  if (allCharts.c2) allCharts.c2.destroy();
-  allCharts.c2 = new Chart(document.getElementById("cTrend"), {
-    type:"line",
-    data:{labels:weeks,datasets:[
-      {label:"Critiques",data:wCrit,borderColor:R,backgroundColor:"rgba(192,57,43,.1)",tension:0.4,fill:true,pointBackgroundColor:R},
-      {label:"Attention",data:wAttn,borderColor:O,backgroundColor:"rgba(230,126,34,.08)",tension:0.4,fill:true,pointBackgroundColor:O}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{boxWidth:10,font:{size:11}}}},
-      scales:{x:{grid:{display:false}},y:{grid:{color:"#f0f0f0"}}}}
-  });
+    // Chart trend
+    const trendData = chartsData.trend || { weeks: ["S-4", "S-3", "S-2", "S-1", "Cette sem."], critical: [0,0,0,0,0], attention: [0,0,0,0,0] }
+    if (allCharts.c2) allCharts.c2.destroy()
+    allCharts.c2 = new Chart(document.getElementById("cTrend"), {
+      type: "line",
+      data: {
+        labels: trendData.weeks,
+        datasets: [
+          { label: "Critiques", data: trendData.critical, borderColor: R, backgroundColor: "rgba(192,57,43,.1)", tension: 0.4, fill: true, pointBackgroundColor: R },
+          { label: "Attention", data: trendData.attention, borderColor: O, backgroundColor: "rgba(230,126,34,.08)", tension: 0.4, fill: true, pointBackgroundColor: O }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: "#f0f0f0" } } }
+      }
+    })
+  } catch (e) {
+    console.error('Erreur chargement charts:', e)
+  }
 }
 
-// ── ALERTES ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// ALERTES
+// ════════════════════════════════════════════════════════════════════
 async function loadAlerts() {
-  var pf = provinceFilter();
-  var niveau = document.getElementById("fAlertNiveau") ? document.getElementById("fAlertNiveau").value : "";
-  var culture = document.getElementById("fAlertCulture") ? document.getElementById("fAlertCulture").value : "";
-
-  var params = "is_active=eq.true&order=last_updated.desc" + pf;
-  if (niveau) params += "&alert_level=eq." + niveau;
-  if (culture) params += "&culture_name=eq." + encodeURIComponent(culture);
-
-  alertData = await supaGet("phyto_alerts", params + "&select=*");
-
-  var tbody = document.getElementById("alertsTbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  if (alertData.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;color:var(--gris-text);padding:24px'>Aucune alerte active</td></tr>";
-    return;
+  try {
+    const result = await adminFetch('get-phyto-alerts')
+    alertData = result.alerts || []
+    
+    // Filtres
+    const niveau = document.getElementById('fAlertNiveau')?.value || ''
+    const culture = document.getElementById('fAlertCulture')?.value || ''
+    
+    let filtered = alertData
+    if (niveau) filtered = filtered.filter(a => a.alert_level === niveau)
+    if (culture) filtered = filtered.filter(a => a.culture_name === culture)
+    
+    const tbody = document.getElementById('alertsTbody')
+    if (!tbody) return
+    
+    tbody.innerHTML = filtered.map(a => `
+      <tr>
+        <td><span class="badge ${a.alert_level === 'critique' ? 'b-red' : 'b-orange'}">${escapeHtml(a.alert_level)}</span></td>
+        <td><strong>${escapeHtml(a.disease_name)}</strong></td>
+        <td>${escapeHtml(a.culture_name)}</td>
+        <td>${escapeHtml(a.province)}</td>
+        <td>${a.case_count || 0}</td>
+        <td>${new Date(a.last_updated).toLocaleDateString('fr-FR')}</td>
+        <td><span class="badge b-red">Active</span></td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="text-align:center">Aucune alerte active</td></tr>'
+  } catch (e) {
+    console.error('Erreur chargement alertes:', e)
+    document.getElementById('alertsTbody').innerHTML = '<tr><td colspan="7" style="text-align:center">Erreur de chargement</td></tr>'
   }
-  alertData.forEach(function(a) {
-    var bc = a.alert_level==="critique"?"b-red":a.alert_level==="attention"?"b-orange":"b-grey";
-    var dt = a.last_updated ? new Date(a.last_updated).toLocaleDateString("fr-FR") : "—";
-    tbody.innerHTML += "<tr>" +
-      "<td><span class='badge " + bc + "'>" + (a.alert_level||"—") + "</span></td>" +
-      "<td><strong>" + (a.disease_name||"—") + "</strong></td>" +
-      "<td>" + (a.culture_name||"—") + "</td>" +
-      "<td>" + (a.province||"—") + "</td>" +
-      "<td style='font-family:var(--mono);font-weight:600'>" + (a.case_count||0) + "</td>" +
-      "<td style='color:var(--gris-text);font-size:11px'>" + dt + "</td>" +
-      "<td><span class='badge b-red'>Active</span></td>" +
-      "</tr>";
-  });
-  document.getElementById("alertCount").textContent = alertData.filter(function(a){return a.alert_level==="critique";}).length;
 }
 
-// ── DIAGNOSTICS ────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// DIAGNOSTICS
+// ════════════════════════════════════════════════════════════════════
 async function loadDiagnostics() {
-  var pf = provinceFilter();
-  var periode = document.getElementById("fDiagPeriode") ? document.getElementById("fDiagPeriode").value : "7";
-  var culture = document.getElementById("fDiagCulture") ? document.getElementById("fDiagCulture").value : "";
-
-  var dn = new Date(); dn.setDate(dn.getDate() - parseInt(periode));
-  var params = "created_at=gte." + dn.toISOString() + "&order=created_at.desc&select=*" + pf;
-  if (culture) params += "&culture_name=eq." + encodeURIComponent(culture);
-
-  diagData = await supaGet("diagnostic_logs", params);
-
-  var tbody = document.getElementById("diagTbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  if (diagData.length === 0) {
-    tbody.innerHTML = "<tr><td colspan='9' style='text-align:center;color:var(--gris-text);padding:24px'>Aucun diagnostic sur cette periode</td></tr>";
-    return;
+  const periode = document.getElementById('fDiagPeriode')?.value || '7'
+  const culture = document.getElementById('fDiagCulture')?.value || ''
+  
+  try {
+    const params = new URLSearchParams({ days: periode, limit: '200' })
+    if (culture) params.append('culture', culture)
+    
+    const result = await adminFetch(`get-diagnostic-logs?${params}`)
+    diagData = result.data || []
+    
+    const tbody = document.getElementById('diagTbody')
+    if (!tbody) return
+    
+    tbody.innerHTML = diagData.map((d, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${new Date(d.created_at).toLocaleString('fr-FR')}</td>
+        <td><strong>${escapeHtml(d.culture_name)}</strong></td>
+        <td>${escapeHtml(d.variety_name || '—')}</td>
+        <td>${escapeHtml(d.rule_matched || '—')}</td>
+        <td><span class="badge ${d.urgency === 'Élevée' ? 'b-red' : 'b-orange'}">${escapeHtml(d.urgency)}</span></td>
+        <td>${escapeHtml(d.province || '—')}</td>
+        <td>${escapeHtml(d.region || '—')}</td>
+        <td>${d.latitude ? `${d.latitude.toFixed(2)}, ${d.longitude.toFixed(2)}` : '—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="9" style="text-align:center">Aucun diagnostic trouvé</td></tr>'
+  } catch (e) {
+    console.error('Erreur chargement diagnostics:', e)
+    document.getElementById('diagTbody').innerHTML = '<tr><td colspan="9" style="text-align:center">Erreur de chargement</td></tr>'
   }
-  var urgCls = {critique:"b-red",elevee:"b-orange",moderee:"b-orange",faible:"b-green"};
-  diagData.forEach(function(d, i) {
-    var dt = d.created_at ? new Date(d.created_at).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—";
-    var urg = (d.urgency||"faible").toLowerCase();
-    var urgKey = Object.keys(urgCls).find(function(k){return urg.includes(k);}) || "faible";
-    var gps = (d.latitude && d.longitude) ? d.latitude.toFixed(2)+", "+d.longitude.toFixed(2) : "—";
-    tbody.innerHTML += "<tr>" +
-      "<td style='font-family:var(--mono);color:var(--gris-text)'>#" + String(i+1).padStart(3,"0") + "</td>" +
-      "<td style='font-family:var(--mono);font-size:10px'>" + dt + "</td>" +
-      "<td><strong>" + (d.culture_name||"—") + "</strong></td>" +
-      "<td style='color:var(--gris-text)'>" + (d.variety_name||"—") + "</td>" +
-      "<td>" + (d.rule_matched||"—") + "</td>" +
-      "<td><span class='badge " + (urgCls[urgKey]||"b-grey") + "'>" + (d.urgency||"—") + "</span></td>" +
-      "<td>" + (d.province||"—") + "</td>" +
-      "<td style='color:var(--gris-text)'>" + (d.region||"—") + "</td>" +
-      "<td style='font-family:var(--mono);font-size:10px;color:var(--gris-text)'>" + gps + "</td>" +
-      "</tr>";
-  });
 }
 
-// ── PROVINCES ──────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// PROVINCES
+// ════════════════════════════════════════════════════════════════════
 async function loadProvinces() {
-  var pf = provinceFilter();
-  var d7 = new Date(); d7.setDate(d7.getDate()-7);
-  var diags = await supaGet("diagnostic_logs",
-    "created_at=gte." + d7.toISOString() + "&select=province,region" + pf);
-
-  var provCount = {};
-  var regions = new Set();
-  diags.forEach(function(d) {
-    var k = d.province || "Inconnue";
-    provCount[k] = (provCount[k]||0) + 1;
-    if (d.region) regions.add(d.region);
-  });
-
-  var sorted = Object.entries(provCount).sort(function(a,b){return b[1]-a[1];});
-  document.getElementById("statProv").textContent = sorted.length;
-  document.getElementById("statDiag").textContent = diags.length;
-  document.getElementById("statReg").textContent = regions.size;
-
-  // Province list
-  var pl = document.getElementById("provList");
-  if (pl) {
-    pl.innerHTML = "";
-    sorted.forEach(function(p) {
-      var c = p[1]>15?"var(--rouge)":p[1]>8?"var(--orange)":"var(--vert-fonce)";
-      pl.innerHTML += "<div class='prov-item'>" +
-        "<span style='font-weight:500'>" + p[0] + "</span>" +
-        "<span style='font-family:var(--mono);font-weight:600;color:" + c + "'>" + p[1] + "</span></div>";
-    });
+  try {
+    const stats = await adminFetch('get-dashboard-stats')
+    const provincesData = stats.provinces_data || []
+    
+    const sorted = [...provincesData].sort((a, b) => b.count - a.count)
+    const totalDiags = sorted.reduce((sum, p) => sum + p.count, 0)
+    const regionsCount = new Set(provincesData.map(p => p.region)).size
+    
+    document.getElementById("statProv").textContent = sorted.length
+    document.getElementById("statDiag").textContent = totalDiags
+    document.getElementById("statReg").textContent = regionsCount
+    
+    // Province list
+    const pl = document.getElementById("provList")
+    if (pl) {
+      pl.innerHTML = sorted.map(p => {
+        const c = p.count > 15 ? "var(--rouge)" : p.count > 8 ? "var(--orange)" : "var(--vert-fonce)"
+        return `<div class="prov-item">
+          <span style="font-weight:500">${escapeHtml(p.name)}</span>
+          <span style="font-family:var(--mono);font-weight:600;color:${c}">${p.count}</span>
+        </div>`
+      }).join('') || '<div class="prov-item">Aucune donnée</div>'
+    }
+    
+    // Chart provinces
+    const top15 = sorted.slice(0, 15)
+    const V = "#009e4b", R = "#c0392b", O = "#e67e22"
+    if (allCharts.c5) allCharts.c5.destroy()
+    allCharts.c5 = new Chart(document.getElementById("cProvinces"), {
+      type: "bar",
+      data: {
+        labels: top15.map(p => p.name.split(" (")[0]),
+        datasets: [{
+          data: top15.map(p => p.count),
+          backgroundColor: top15.map(p => p.count > 15 ? R : p.count > 8 ? O : V),
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
+          y: { grid: { color: "#f0f0f0" } }
+        }
+      }
+    })
+  } catch (e) {
+    console.error('Erreur chargement provinces:', e)
   }
-
-  // Chart provinces
-  var top15 = sorted.slice(0,15);
-  var V="#009e4b",R="#c0392b",O="#e67e22";
-  if (allCharts.c5) allCharts.c5.destroy();
-  allCharts.c5 = new Chart(document.getElementById("cProvinces"), {
-    type:"bar",
-    data:{
-      labels:top15.map(function(p){return p[0].split(" (")[0];}),
-      datasets:[{data:top15.map(function(p){return p[1];}),
-        backgroundColor:top15.map(function(p){return p[1]>15?R:p[1]>8?O:V;}),borderRadius:4}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{grid:{color:"#f0f0f0"}}}}
-  });
 }
 
-// ── RAPPORTS ───────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// RAPPORTS
+// ════════════════════════════════════════════════════════════════════
 async function loadRapports() {
-  var pf = provinceFilter();
-  var allDiags = await supaGet("diagnostic_logs", "select=id,created_at,urgency,culture_name" + pf);
-  var allAlerts = await supaGet("phyto_alerts", "select=id,disease_name,province,alert_level" + pf);
-  var provs = new Set(allDiags.map(function(d){return d.province;}));
-
-  document.getElementById("rapKv1").textContent = allDiags.length;
-  document.getElementById("rapKv2").textContent = allAlerts.length;
-  var pct = allDiags.length > 0 ? Math.round(provs.size / 47 * 100) + "%" : "0%";
-  document.getElementById("rapKv3").textContent = pct;
-
-  // Chart mensuel
-  var monthly = {};
-  allDiags.forEach(function(d) {
-    var m = new Date(d.created_at).toLocaleString("fr-FR",{month:"short",year:"2-digit"});
-    monthly[m] = (monthly[m]||0) + 1;
-  });
-  var mEntries = Object.entries(monthly).slice(-12);
-  var V = "#009e4b";
-  if (allCharts.c6) allCharts.c6.destroy();
-  allCharts.c6 = new Chart(document.getElementById("cMensuel"), {
-    type:"line",
-    data:{labels:mEntries.map(function(e){return e[0];}),
-      datasets:[{label:"Diagnostics",data:mEntries.map(function(e){return e[1];}),
-        borderColor:V,backgroundColor:"rgba(0,158,75,.1)",tension:0.4,fill:true,pointBackgroundColor:V}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{font:{size:11}}}},
-      scales:{x:{grid:{display:false}},y:{grid:{color:"#f0f0f0"}}}}
-  });
-
-  // Chart saison radar
-  var O = "#e67e22";
-  if (allCharts.c7) allCharts.c7.destroy();
-  allCharts.c7 = new Chart(document.getElementById("cSaison"), {
-    type:"radar",
-    data:{labels:["Chenille","Mildiou","Striga","TYLCV","Thrips","Pyriculariose"],
-      datasets:[
-        {label:"Saison pluies",data:[85,40,70,30,45,65],borderColor:V,backgroundColor:"rgba(0,158,75,.2)"},
-        {label:"Saison seche",data:[20,75,15,80,70,10],borderColor:O,backgroundColor:"rgba(230,126,34,.2)"}
-      ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}}}}
-  });
-
-  // Resume executif
-  var top3Alert = allAlerts.filter(function(a){return a.alert_level==="critique";}).slice(0,3);
-  var resume = document.getElementById("resumeExecutif");
-  if (resume) {
-    var topCult = {};
-    allDiags.forEach(function(d){var k=d.culture_name||"Autre";topCult[k]=(topCult[k]||0)+1;});
-    var topC = Object.entries(topCult).sort(function(a,b){return b[1]-a[1];}).slice(0,3);
-    resume.innerHTML =
-      "<strong>Activite :</strong> " + allDiags.length + " diagnostics enregistres dans " + provs.size + " provinces.<br>" +
-      "<strong>Alertes critiques :</strong> " + top3Alert.length + " zones actives" +
-        (top3Alert.length > 0 ? " — " + top3Alert.map(function(a){return a.province;}).join(", ") : "") + ".<br>" +
-      "<strong>Top cultures :</strong> " + topC.map(function(c){return c[0]+" ("+c[1]+" diag.)";}).join(", ") + ".<br>" +
-      "<strong>Couverture :</strong> " + provs.size + " / 47 provinces actives (" + pct + ").";
+  try {
+    const stats = await adminFetch('get-dashboard-stats')
+    
+    document.getElementById("rapKv1").textContent = stats.total_diagnostics || 0
+    document.getElementById("rapKv2").textContent = stats.total_alerts || 0
+    const pct = stats.provinces_coverage || "0%"
+    document.getElementById("rapKv3").textContent = pct
+    
+    // Chart mensuel
+    const monthlyData = stats.monthly_diagnostics || []
+    const V = "#009e4b"
+    if (allCharts.c6) allCharts.c6.destroy()
+    allCharts.c6 = new Chart(document.getElementById("cMensuel"), {
+      type: "line",
+      data: {
+        labels: monthlyData.map(m => m.month),
+        datasets: [{
+          label: "Diagnostics",
+          data: monthlyData.map(m => m.count),
+          borderColor: V,
+          backgroundColor: "rgba(0,158,75,.1)",
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: V
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { font: { size: 11 } } } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: "#f0f0f0" } } }
+      }
+    })
+    
+    // Resume executif
+    const resume = document.getElementById("resumeExecutif")
+    if (resume) {
+      resume.innerHTML = stats.executive_summary || "Chargement des données..."
+    }
+  } catch (e) {
+    console.error('Erreur chargement rapports:', e)
   }
 }
 
-// ── MON COMPTE ─────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// MON COMPTE (à migrer vers Edge Function plus tard)
+// ════════════════════════════════════════════════════════════════════
 async function saveAccount() {
-  var fullName = document.getElementById("cmpFullName").value.trim();
-  var username = document.getElementById("cmpUsername").value.trim();
-  var oldPass = document.getElementById("cmpOldPass").value;
-  var newPass = document.getElementById("cmpNewPass").value;
-  var confPass = document.getElementById("cmpConfPass").value;
-  var succ = document.getElementById("cmpSuccess");
-  var err = document.getElementById("cmpError");
-  succ.style.display = "none"; err.style.display = "none";
-
-  if (!fullName || !username) { err.style.display = "block"; err.textContent = "Nom et identifiant obligatoires"; return; }
-
-  var body = { full_name: fullName, username: username };
-
-  if (oldPass || newPass || confPass) {
-    if (!oldPass) { err.style.display="block"; err.textContent="Saisissez votre mot de passe actuel"; return; }
-    if (oldPass !== currentUser.password_hash) { err.style.display="block"; err.textContent="Mot de passe actuel incorrect"; return; }
-    if (newPass.length < 6) { err.style.display="block"; err.textContent="Nouveau mot de passe : minimum 6 caracteres"; return; }
-    if (newPass !== confPass) { err.style.display="block"; err.textContent="Les mots de passe ne correspondent pas"; return; }
-    body.password_hash = newPass;
-  }
-
-  var ok = await supaPatch("dashboard_users", "id=eq." + currentUser.id, body);
-  if (ok) {
-    currentUser.full_name = fullName;
-    currentUser.username = username;
-    if (body.password_hash) currentUser.password_hash = body.password_hash;
-    document.getElementById("topbarUname").textContent = fullName + " (" + currentUser.department + ")";
-    document.getElementById("topbarAvatar").textContent = fullName[0].toUpperCase();
-    succ.style.display = "block";
-    document.getElementById("cmpOldPass").value = "";
-    document.getElementById("cmpNewPass").value = "";
-    document.getElementById("cmpConfPass").value = "";
-  } else {
-    err.style.display = "block"; err.textContent = "Erreur lors de la sauvegarde";
-  }
+  toast('Cette fonctionnalité sera disponible prochainement', 'info')
 }
 
-// ── ADMIN UTILISATEURS ──────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// ADMIN UTILISATEURS (à migrer vers Edge Function plus tard)
+// ════════════════════════════════════════════════════════════════════
 async function loadUsers() {
-  var users = await supaGet("dashboard_users", "order=department.asc,username.asc&select=*");
-  var tbody = document.getElementById("usersTbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  users.forEach(function(u) {
-    var bc = u.is_active ? "b-green" : "b-grey";
-    var stat = u.is_active ? "Actif" : "Inactif";
-    var lastLogin = u.last_login ? new Date(u.last_login).toLocaleDateString("fr-FR") : "Jamais";
-    tbody.innerHTML += "<tr>" +
-      "<td style='font-family:var(--mono)'><strong>" + u.username + "</strong></td>" +
-      "<td>" + u.full_name + "</td>" +
-      "<td>" + u.department + "</td>" +
-      "<td><span class='badge b-grey'>" + u.role + "</span></td>" +
-      "<td>" + u.scope + "</td>" +
-      "<td style='color:var(--gris-text)'>" + (u.region||"National") + "</td>" +
-      "<td><span class='badge " + bc + "'>" + stat + "</span></td>" +
-      "<td style='font-size:11px;color:var(--gris-text)'>" + lastLogin + "</td>" +
-      "<td style='display:flex;gap:6px'>" +
-        "<button class='fbtn' style='padding:4px 10px;font-size:11px' onclick='editUser(" + u.id + ")'>Modifier</button>" +
-        "<button class='ebtn' style='padding:4px 8px;font-size:11px' onclick='toggleUser(" + u.id + "," + u.is_active + ")'>" + (u.is_active?"Desactiver":"Activer") + "</button>" +
-      "</td></tr>";
-  });
+  toast('Gestion des utilisateurs en cours de migration', 'info')
 }
 
 function showCreateUser() {
-  document.getElementById("userFormCard").style.display = "block";
-  document.getElementById("userFormTitle").textContent = "Nouvel utilisateur";
-  document.getElementById("editUserId").value = "";
-  document.getElementById("fuUsername").value = "";
-  document.getElementById("fuFullName").value = "";
-  document.getElementById("fuPass").value = "";
-  document.getElementById("fuSuccess").style.display = "none";
-  document.getElementById("fuError").style.display = "none";
+  toast('Fonctionnalité en cours de migration', 'info')
 }
 
 async function editUser(id) {
-  var u = await supaGet("dashboard_users", "id=eq." + id + "&select=*&limit=1");
-  if (!u || u.length === 0) return;
-  u = u[0];
-  document.getElementById("userFormCard").style.display = "block";
-  document.getElementById("userFormTitle").textContent = "Modifier : " + u.username;
-  document.getElementById("editUserId").value = u.id;
-  document.getElementById("fuUsername").value = u.username;
-  document.getElementById("fuFullName").value = u.full_name;
-  document.getElementById("fuPass").value = "";
-  document.getElementById("fuDept").value = u.department;
-  document.getElementById("fuRole").value = u.role;
-  document.getElementById("fuScope").value = u.scope;
-  if (u.scope === "regional") {
-    document.getElementById("fuRegionGroup").style.display = "block";
-    document.getElementById("fuRegion").value = u.region || "";
-  }
-  document.getElementById("fuSuccess").style.display = "none";
-  document.getElementById("fuError").style.display = "none";
+  toast('Fonctionnalité en cours de migration', 'info')
 }
 
 async function toggleUser(id, isActive) {
-  var ok = await supaPatch("dashboard_users", "id=eq." + id, { is_active: !isActive });
-  if (ok) await loadUsers();
+  toast('Fonctionnalité en cours de migration', 'info')
 }
 
 function toggleRegionField() {
-  var scope = document.getElementById("fuScope").value;
-  document.getElementById("fuRegionGroup").style.display = scope === "regional" ? "block" : "none";
+  // Gardé pour compatibilité
 }
 
 async function saveUser() {
-  var succ = document.getElementById("fuSuccess");
-  var err = document.getElementById("fuError");
-  succ.style.display = "none"; err.style.display = "none";
-
-  var username = document.getElementById("fuUsername").value.trim();
-  var fullName = document.getElementById("fuFullName").value.trim();
-  var pass = document.getElementById("fuPass").value;
-  var dept = document.getElementById("fuDept").value;
-  var role = document.getElementById("fuRole").value;
-  var scope = document.getElementById("fuScope").value;
-  var region = scope === "regional" ? document.getElementById("fuRegion").value : null;
-  var editId = document.getElementById("editUserId").value;
-
-  if (!username || !fullName || !dept) {
-    err.style.display = "block"; err.textContent = "Identifiant, nom et departement obligatoires"; return;
-  }
-
-  var PROVINCES_MAP = {
-    "Centre": ["Kadiogo (Ouagadougou)","Bazega (Kombissiri)","Ganzourgou (Zorgho)","Kourwego (Bousse)","Bassitenga (Ziniaré)"],
-    "Nord": ["Yatenga (Ouahigouya)","Loroum (Titao)","Passore (Yako)","Zondoma (Gourcy)"],
-    "Hauts-Bassins": ["Houet (Bobo-Dioulasso)","Kenedougou (Orodara)","Tuy (Hounde)"],
-    "Est": ["Gourma (Fada NGourma)","Gnagna (Bogande)","Komondjari (Gayeri)","Kompienga (Pama)","Tapoa (Diapaga)","Dyamongou (Kantchari)"],
-    "Sahel": ["Oudalan (Gorom-Gorom)","Seno (Dori)","Djelgodji (Djibo)","Yagha (Sebba)","Karo-Peli (Arbinda)"],
-    "Cascades": ["Comoe (Banfora)","Leraba (Sindou)"],
-    "Sud-Ouest": ["Bougouriba (Diebougou)","Ioba (Dano)","Noumbiel (Batie)","Poni (Gaoua)"],
-    "Boucle du Mouhoun": ["Bale (Boromo)","Banwa (Solenzo)","Kossin (Nouna)","Mouhoun (Dedougou)","Nayala (Toma)","Sourou (Tougan)"],
-    "Centre-Nord": ["Bam (Kongoussi)","Namentenga (Boulsa)","Sandbondtenga (Kaya)"],
-    "Centre-Ouest": ["Boulkiemde (Koudougou)","Sanguie (Reo)","Sissili (Leo)","Ziro (Sapouy)"],
-    "Centre-Sud": ["Bazega (Kombissiri)","Nahouri (Po)","Zoundwego (Manga)"],
-    "Centre-Est": ["Boulgou (Tenkodogo)","Koulpelogo (Ouargaye)","Kouritenga (Koupela)"],
-    "Plateau-Central": ["Ganzourgou (Zorgho)","Kourwego (Bousse)","Bassitenga (Ziniaré)"]
-  };
-
-  var provinces = scope === "regional" && region ? (PROVINCES_MAP[region] || []) : null;
-  var body = { username: username, full_name: fullName, department: dept, role: role, scope: scope, region: region, provinces: provinces };
-
-  var ok;
-  if (editId) {
-    if (pass) body.password_hash = pass;
-    ok = await supaPatch("dashboard_users", "id=eq." + editId, body);
-  } else {
-    if (!pass) { err.style.display="block"; err.textContent="Mot de passe obligatoire pour un nouvel utilisateur"; return; }
-    body.password_hash = pass;
-    body.is_active = true;
-    body.created_by = currentUser.username;
-    var res = await supaPost("dashboard_users", body);
-    ok = !!res;
-  }
-
-  if (ok) {
-    succ.style.display = "block";
-    await loadUsers();
-  } else {
-    err.style.display = "block"; err.textContent = "Erreur — identifiant peut-etre deja utilise";
-  }
+  toast('Fonctionnalité en cours de migration', 'info')
 }
 
-// ── EXPORT CSV ──────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ════════════════════════════════════════════════════════════════════
 function exportData(type) {
-  var csv = "";
+  let csv = ""
   if (type === "alertes") {
-    csv = "Niveau,Maladie,Culture,Province,Cas,Mise a jour\n";
-    alertData.forEach(function(a) {
+    csv = "Niveau,Maladie,Culture,Province,Cas,Mise a jour\n"
+    alertData.forEach(a => {
       csv += [a.alert_level, a.disease_name, a.culture_name, a.province, a.case_count,
-        a.last_updated ? new Date(a.last_updated).toLocaleDateString("fr-FR") : ""].join(",") + "\n";
-    });
-  } else {
-    csv = "Date,Culture,Variete,Maladie,Urgence,Province,Region,Latitude,Longitude\n";
-    diagData.forEach(function(d) {
+        a.last_updated ? new Date(a.last_updated).toLocaleDateString("fr-FR") : ""].join(",") + "\n"
+    })
+  } else if (type === "diagnostics") {
+    csv = "Date,Culture,Variete,Maladie,Urgence,Province,Region,Latitude,Longitude\n"
+    diagData.forEach(d => {
       csv += [d.created_at ? new Date(d.created_at).toLocaleString("fr-FR") : "",
         d.culture_name, d.variety_name, d.rule_matched, d.urgency,
-        d.province, d.region, d.latitude||"", d.longitude||""].join(",") + "\n";
-    });
+        d.province, d.region, d.latitude || "", d.longitude || ""].join(",") + "\n"
+    })
   }
-  var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement("a");
-  a.href = url;
-  a.download = "cultivatech_maerah_" + type + "_" + new Date().toISOString().slice(0,10) + ".csv";
-  a.click();
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "cultivatech_maerah_" + type + "_" + new Date().toISOString().slice(0,10) + ".csv"
+  a.click()
 }
 
-// ── ENTER KEY ───────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════════════
+function toast(msg, type = 'success') {
+  const toastDiv = document.getElementById('toast') || (() => {
+    const d = document.createElement('div')
+    d.id = 'toast'
+    d.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999'
+    document.body.appendChild(d)
+    return d
+  })()
+  const el = document.createElement('div')
+  el.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-top:8px;font-size:12px;color:var(--text);box-shadow:0 4px 12px rgba(0,0,0,.2)'
+  el.textContent = msg
+  toastDiv.appendChild(el)
+  setTimeout(() => el.remove(), 3000)
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ENTER KEY
+// ════════════════════════════════════════════════════════════════════
 document.addEventListener("keydown", function(e) {
-  if (e.key === "Enter" && document.getElementById("loginScreen").style.display !== "none") doLogin();
-});
+  if (e.key === "Enter" && document.getElementById("loginScreen").style.display !== "none") doLogin()
+})
 </script>
 </body>
 </html>
