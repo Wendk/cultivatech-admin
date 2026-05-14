@@ -914,29 +914,183 @@ async function loadRapports() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// MON COMPTE (à migrer vers Edge Function)
+// MON COMPTE
 // ════════════════════════════════════════════════════════════════════
 async function saveAccount() {
-  toast('Cette fonctionnalité sera disponible prochainement', 'info')
+  const fullName = document.getElementById('cmpFullName').value.trim()
+  const username = document.getElementById('cmpUsername').value.trim()
+  const oldPass = document.getElementById('cmpOldPass').value
+  const newPass = document.getElementById('cmpNewPass').value
+  const confPass = document.getElementById('cmpConfPass').value
+  const succ = document.getElementById('cmpSuccess')
+  const err = document.getElementById('cmpError')
+  
+  succ.style.display = 'none'
+  err.style.display = 'none'
+
+  if (!fullName || !username) {
+    err.style.display = 'block'
+    err.textContent = 'Nom et identifiant obligatoires'
+    return
+  }
+
+  // Préparer la requête
+  const body = {
+    full_name: fullName,
+    username: username
+  }
+
+  if (oldPass || newPass || confPass) {
+    if (!oldPass) {
+      err.style.display = 'block'
+      err.textContent = 'Saisissez votre mot de passe actuel'
+      return
+    }
+    if (newPass.length < 6) {
+      err.style.display = 'block'
+      err.textContent = 'Nouveau mot de passe : minimum 6 caractères'
+      return
+    }
+    if (newPass !== confPass) {
+      err.style.display = 'block'
+      err.textContent = 'Les mots de passe ne correspondent pas'
+      return
+    }
+    body.current_password = oldPass
+    body.new_password = newPass
+  }
+
+  try {
+    const result = await adminFetch('update-dashboard-profile', {
+      method: 'POST',
+      body: body
+    })
+
+    // Mettre à jour le token et currentUser avec les nouvelles infos
+    if (result.token) {
+      adminToken = result.token
+      currentUser = result.user
+    }
+
+    // Mettre à jour l'affichage
+    const scopeBadge = currentUser.scope === 'national'
+      ? '<span class="badge b-green">🌍 National</span>'
+      : `<span class="badge b-orange">📍 ${escapeHtml(currentUser.region)}</span>`
+
+    document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
+    document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
+
+    // Vider les champs mot de passe
+    document.getElementById('cmpOldPass').value = ''
+    document.getElementById('cmpNewPass').value = ''
+    document.getElementById('cmpConfPass').value = ''
+
+    succ.style.display = 'block'
+    setTimeout(() => { succ.style.display = 'none' }, 3000)
+    
+    toast('Profil mis à jour avec succès')
+
+  } catch (e) {
+    err.style.display = 'block'
+    err.textContent = e.message || 'Erreur lors de la sauvegarde'
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════
-// ADMIN UTILISATEURS (à migrer vers Edge Function)
+// ADMIN UTILISATEURS
 // ════════════════════════════════════════════════════════════════════
 async function loadUsers() {
-  toast('Gestion des utilisateurs en cours de migration', 'info')
+  try {
+    const users = await adminFetch('get-dashboard-users')
+    
+    const tbody = document.getElementById('usersTbody')
+    if (!tbody) return
+    
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center">Aucun utilisateur trouvé</td></tr>'
+      return
+    }
+    
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td style="font-family:var(--mono)"><strong>${escapeHtml(u.username)}</strong></td>
+        <td>${escapeHtml(u.full_name)}</td>
+        <td>${escapeHtml(u.department)}</td>
+        <td><span class="badge b-grey">${escapeHtml(u.role)}</span></td>
+        <td>${escapeHtml(u.scope || 'national')}</td>
+        <td style="color:var(--gris-text)">${escapeHtml(u.region || 'National')}</td>
+        <td><span class="badge ${u.is_active ? 'b-green' : 'b-grey'}">${u.is_active ? 'Actif' : 'Inactif'}</span></td>
+        <td style="font-size:11px">${u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais'}</td>
+        <td style="display:flex;gap:6px">
+          <button class="fbtn" style="padding:4px 10px;font-size:11px" onclick="editUser(${u.id})">Modifier</button>
+          <button class="ebtn" style="padding:4px 8px;font-size:11px" onclick="toggleUser(${u.id}, ${u.is_active})">${u.is_active ? 'Désactiver' : 'Activer'}</button>
+        </td>
+      </tr>
+    `).join('')
+    
+  } catch (e) {
+    console.error('Erreur chargement utilisateurs:', e)
+    document.getElementById('usersTbody').innerHTML = '<tr><td colspan="9" style="text-align:center">Erreur de chargement</td></tr>'
+  }
 }
 
 function showCreateUser() {
-  toast('Fonctionnalité en cours de migration', 'info')
+  document.getElementById('userFormCard').style.display = 'block'
+  document.getElementById('userFormTitle').textContent = 'Nouvel utilisateur'
+  document.getElementById('editUserId').value = ''
+  document.getElementById('fuUsername').value = ''
+  document.getElementById('fuFullName').value = ''
+  document.getElementById('fuPass').value = ''
+  document.getElementById('fuDept').value = 'DGPV'
+  document.getElementById('fuRole').value = 'lecteur'
+  document.getElementById('fuScope').value = 'national'
+  document.getElementById('fuRegionGroup').style.display = 'none'
+  document.getElementById('fuSuccess').style.display = 'none'
+  document.getElementById('fuError').style.display = 'none'
 }
 
 async function editUser(id) {
-  toast('Fonctionnalité en cours de migration', 'info')
+  try {
+    const users = await adminFetch('get-dashboard-users')
+    const user = users.find(u => u.id === id)
+    if (!user) return
+    
+    document.getElementById('userFormCard').style.display = 'block'
+    document.getElementById('userFormTitle').textContent = `Modifier : ${user.username}`
+    document.getElementById('editUserId').value = user.id
+    document.getElementById('fuUsername').value = user.username
+    document.getElementById('fuFullName').value = user.full_name
+    document.getElementById('fuPass').value = ''
+    document.getElementById('fuDept').value = user.department
+    document.getElementById('fuRole').value = user.role
+    document.getElementById('fuScope').value = user.scope || 'national'
+    
+    if (user.scope === 'regional') {
+      document.getElementById('fuRegionGroup').style.display = 'block'
+      document.getElementById('fuRegion').value = user.region || ''
+    } else {
+      document.getElementById('fuRegionGroup').style.display = 'none'
+    }
+    
+    document.getElementById('fuSuccess').style.display = 'none'
+    document.getElementById('fuError').style.display = 'none'
+  } catch (e) {
+    toast('Erreur lors du chargement de l\'utilisateur', 'error')
+  }
 }
 
+// ✅ CORRIGÉ : Utilise update-dashboard-user
 async function toggleUser(id, isActive) {
-  toast('Fonctionnalité en cours de migration', 'info')
+  try {
+    await adminFetch('update-dashboard-user', {
+      method: 'POST',
+      body: { id, is_active: !isActive }
+    })
+    await loadUsers()
+    toast(`Utilisateur ${!isActive ? 'activé' : 'désactivé'} avec succès`)
+  } catch (e) {
+    toast('Erreur lors du changement de statut', 'error')
+  }
 }
 
 function toggleRegionField() {
@@ -944,8 +1098,83 @@ function toggleRegionField() {
   document.getElementById('fuRegionGroup').style.display = scope === 'regional' ? 'block' : 'none'
 }
 
+// ✅ CORRIGÉ : Utilise update-dashboard-user et create-dashboard-user
 async function saveUser() {
-  toast('Fonctionnalité en cours de migration', 'info')
+  const succ = document.getElementById('fuSuccess')
+  const err = document.getElementById('fuError')
+  succ.style.display = 'none'
+  err.style.display = 'none'
+
+  const username = document.getElementById('fuUsername').value.trim()
+  const fullName = document.getElementById('fuFullName').value.trim()
+  const pass = document.getElementById('fuPass').value
+  const dept = document.getElementById('fuDept').value
+  const role = document.getElementById('fuRole').value
+  const scope = document.getElementById('fuScope').value
+  const region = scope === 'regional' ? document.getElementById('fuRegion').value : null
+  const editId = document.getElementById('editUserId').value
+
+  if (!username || !fullName || !dept) {
+    err.style.display = 'block'
+    err.textContent = 'Identifiant, nom et département obligatoires'
+    return
+  }
+
+  const PROVINCES_MAP = {
+    "Centre": ["Kadiogo (Ouagadougou)", "Bazèga (Kombissiri)", "Ganzourgou (Zorgho)", "Kourwéogo (Boussé)", "Bassitenga (Ziniaré)"],
+    "Nord": ["Yatenga (Ouahigouya)", "Loroum (Titao)", "Passoré (Yako)", "Zondoma (Gourcy)"],
+    "Hauts-Bassins": ["Houet (Bobo-Dioulasso)", "Kénédougou (Orodara)", "Tuy (Houndé)"],
+    "Est": ["Gourma (Fada N'Gourma)", "Gnagna (Bogandé)", "Komondjari (Gayéri)", "Kompienga (Pama)", "Tapoa (Diapaga)", "Dyamongou (Kantchari)"],
+    "Sahel": ["Oudalan (Gorom-Gorom)", "Séno (Dori)", "Djelgodji (Djibo)", "Yagha (Sebba)", "Karo-Peli (Arbinda)"],
+    "Cascades": ["Comoé (Banfora)", "Léraba (Sindou)"],
+    "Sud-Ouest": ["Bougouriba (Diébougou)", "Ioba (Dano)", "Noumbiel (Batié)", "Poni (Gaoua)"],
+    "Boucle du Mouhoun": ["Balé (Boromo)", "Banwa (Solenzo)", "Kossin (Nouna)", "Mouhoun (Dédougou)", "Nayala (Toma)", "Sourou (Tougan)"],
+    "Centre-Nord": ["Bam (Kongoussi)", "Namentenga (Boulsa)", "Sandbondtenga (Kaya)"],
+    "Centre-Ouest": ["Boulkiemdé (Koudougou)", "Sanguié (Réo)", "Sissili (Léo)", "Ziro (Sapouy)"],
+    "Centre-Sud": ["Bazèga (Kombissiri)", "Nahouri (Pô)", "Zoundwéogo (Manga)"],
+    "Centre-Est": ["Boulgou (Tenkodogo)", "Koulpélogo (Ouargaye)", "Kouritenga (Koupéla)"],
+    "Plateau-Central": ["Ganzourgou (Zorgho)", "Kourwéogo (Boussé)", "Bassitenga (Ziniaré)"]
+  }
+
+  const provinces = scope === 'regional' && region ? (PROVINCES_MAP[region] || []) : null
+  
+  const body = {
+    username,
+    full_name: fullName,
+    department: dept,
+    role: role,
+    scope: scope,
+    region: region,
+    provinces: provinces
+  }
+  
+  if (pass) body.password_hash = pass
+
+  try {
+    if (editId) {
+      // ✅ MODIFICATION : utilise update-dashboard-user
+      body.id = parseInt(editId)
+      await adminFetch('update-dashboard-user', { method: 'POST', body })
+      toast('Utilisateur modifié avec succès')
+    } else {
+      // ✅ CRÉATION : utilise create-dashboard-user
+      if (!pass) {
+        err.style.display = 'block'
+        err.textContent = 'Mot de passe obligatoire pour un nouvel utilisateur'
+        return
+      }
+      body.is_active = true
+      body.created_by = currentUser.username
+      await adminFetch('create-dashboard-user', { method: 'POST', body })
+      toast('Utilisateur créé avec succès')
+    }
+    
+    document.getElementById('userFormCard').style.display = 'none'
+    await loadUsers()
+  } catch (e) {
+    err.style.display = 'block'
+    err.textContent = e.message || 'Erreur lors de l\'enregistrement'
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════
