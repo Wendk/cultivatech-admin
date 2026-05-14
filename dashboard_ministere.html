@@ -291,7 +291,7 @@ tbody tr:last-child td{border-bottom:none}
         <div class="card-title">Journal des diagnostics géolocalisés</div>
         <div class="card-sub">Remontées en temps réel depuis CultivaTech — 47 provinces Burkina Faso</div>
         <div class="tbl-wrap">
-          <table>
+          </table>
             <thead>
               <tr><th>#</th><th>Date</th><th>Culture</th><th>Variété</th><th>Maladie</th><th>Urgence</th><th>Province</th><th>Région</th><th>GPS</th></tr>
             </thead>
@@ -305,7 +305,6 @@ tbody tr:last-child td{border-bottom:none}
   <!-- ═══ TAB RAPPORTS ═══ -->
   <div id="tab-rapports" class="tab-panel">
     <div class="content">
-      <!-- Filtre de période pour les rapports -->
       <div class="filter-bar">
         <select class="fsel" id="reportPeriod" onchange="loadRapports()">
           <option value="7">7 derniers jours</option>
@@ -370,7 +369,7 @@ tbody tr:last-child td{border-bottom:none}
           <button class="fbtn" onclick="showCreateUser()">+ Nouvel utilisateur</button>
         </div>
         <div class="tbl-wrap">
-          <table>
+          </table>
             <thead>
               <tr><th>Identifiant</th><th>Nom complet</th><th>Département</th><th>Rôle</th><th>Scope</th><th>Région</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th></tr>
             </thead>
@@ -527,7 +526,6 @@ async function doLogin() {
     adminToken = data.token
     currentUser = data.user
 
-    // Scope badge
     const scopeBadge = currentUser.scope === 'national'
       ? '<span class="badge b-green">🌍 National</span>'
       : `<span class="badge b-orange">📍 ${escapeHtml(currentUser.region)}</span>`
@@ -535,7 +533,6 @@ async function doLogin() {
     document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
     document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
 
-    // Afficher la bannière de scope pour les utilisateurs régionaux
     if (currentUser.scope === 'regional') {
       const banner = document.getElementById('scopeBanner')
       if (banner) {
@@ -544,7 +541,6 @@ async function doLogin() {
       }
     }
 
-    // Admin tab
     if (currentUser.role === 'admin') {
       document.getElementById('tabAdmin').style.display = 'flex'
     }
@@ -552,10 +548,8 @@ async function doLogin() {
     document.getElementById('loginScreen').style.display = 'none'
     document.getElementById('mainApp').style.display = 'block'
 
-    // Initialiser la date
     updateDate()
     
-    // Charger les données
     await loadOverview()
     await loadAlerts()
     await loadDiagnostics()
@@ -624,7 +618,7 @@ async function loadOverview() {
     
     document.getElementById('kv1').textContent = stats.critical_alerts || 0
     document.getElementById('kv2').textContent = stats.attention_alerts || 0
-    document.getElementById('kv3').textContent = stats.diagnostics_6months || stats.total_diagnostics || 0
+    document.getElementById('kv3').textContent = stats.diagnostics_period || stats.total_diagnostics || 0
     document.getElementById('kv4').textContent = stats.active_farmers || 0
     
     document.getElementById('ks1').textContent = stats.critical_alerts_sub || 'actives'
@@ -655,7 +649,6 @@ async function buildCharts() {
     const stats = await adminFetch('get-dashboard-stats?days=180')
     const chartsData = stats.charts_data || {}
     
-    // Chart cultures
     const cultData = chartsData.cultures || []
     if (allCharts.c1) allCharts.c1.destroy()
     allCharts.c1 = new Chart(document.getElementById("cCultures"), {
@@ -676,7 +669,6 @@ async function buildCharts() {
       }
     })
 
-    // Chart maladies
     const malData = chartsData.diseases || []
     if (allCharts.c3) allCharts.c3.destroy()
     allCharts.c3 = new Chart(document.getElementById("cMaladies"), {
@@ -698,7 +690,6 @@ async function buildCharts() {
       }
     })
 
-    // Chart urgence
     const urgData = chartsData.urgency || { critique: 0, elevee: 0, moderee: 0, faible: 0 }
     if (allCharts.c4) allCharts.c4.destroy()
     allCharts.c4 = new Chart(document.getElementById("cUrgence"), {
@@ -719,7 +710,6 @@ async function buildCharts() {
       }
     })
 
-    // Chart trend
     const trendData = chartsData.trend || { weeks: ["S-4", "S-3", "S-2", "S-1", "Cette sem."], critical: [0,0,0,0,0], attention: [0,0,0,0,0] }
     if (allCharts.c2) allCharts.c2.destroy()
     allCharts.c2 = new Chart(document.getElementById("cTrend"), {
@@ -739,7 +729,6 @@ async function buildCharts() {
       }
     })
 
-    // Chart saison (si disponible)
     if (stats.seasonal_diseases) {
       const seasonData = stats.seasonal_diseases
       if (allCharts.c7) allCharts.c7.destroy()
@@ -786,10 +775,10 @@ async function loadAlerts() {
       <tr>
         <td><span class="badge ${a.alert_level === 'critique' ? 'b-red' : 'b-orange'}">${escapeHtml(a.alert_level)}</span></td>
         <td><strong>${escapeHtml(a.disease_name)}</strong></td>
-        <td>${escapeHtml(a.culture_name)}</td>
-        <td>${escapeHtml(a.province)}</td>
-        <td>${a.case_count || 0}</td>
-        <td>${new Date(a.last_updated).toLocaleDateString('fr-FR')}</td>
+        <td>${escapeHtml(a.culture_name)}</span></td>
+        <td>${escapeHtml(a.province)}</span></td>
+        <td>${a.case_count || 0}</span></td>
+        <td>${new Date(a.last_updated).toLocaleDateString('fr-FR')}</span></td>
         <td><span class="badge b-red">Active</span></td>
       </tr>
     `).join('') || '<tr><td colspan="7" style="text-align:center">Aucune alerte active</td></tr>'
@@ -948,7 +937,7 @@ async function loadRapports() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// EXPORT RAPPORT CSV
+// EXPORT RAPPORT CSV (avec maladies détaillées)
 // ════════════════════════════════════════════════════════════════════
 async function exportRapportCSV() {
   const periodDays = currentReportPeriod || 180
@@ -961,7 +950,32 @@ async function exportRapportCSV() {
     const alertsResult = await adminFetch('get-phyto-alerts')
     const alerts = alertsResult.alerts || []
     
-    let csv = "=== DIAGNOSTICS ===\n"
+    const diseaseStats = {}
+    diagnostics.forEach(d => {
+      const disease = d.rule_matched || 'Inconnue'
+      diseaseStats[disease] = (diseaseStats[disease] || 0) + 1
+    })
+    
+    let csv = ""
+    
+    csv += "=== RÉSUMÉ DE LA PÉRIODE ===\n"
+    csv += `Période,${periodText}\n`
+    csv += `Date d'export,${new Date().toLocaleString('fr-FR')}\n`
+    csv += `Total diagnostics,${diagnostics.length}\n`
+    csv += `Alertes critiques,${currentReportData?.critical_alerts || 0}\n`
+    csv += `Zones à surveiller,${currentReportData?.attention_alerts || 0}\n\n`
+    
+    csv += "=== MALADIES DIAGNOSTIQUÉES ===\n"
+    csv += "Maladie,Nombre de cas,Pourcentage\n"
+    Object.entries(diseaseStats)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([disease, count]) => {
+        const pct = Math.round((count / diagnostics.length) * 100)
+        csv += `"${disease.replace(/"/g, '""')}",${count},${pct}%\n`
+      })
+    csv += "\n"
+    
+    csv += "=== DIAGNOSTICS DÉTAILLÉS ===\n"
     csv += "Date,Culture,Variété,Maladie,Urgence,Province,Région,Latitude,Longitude\n"
     diagnostics.forEach(d => {
       csv += [
@@ -1006,17 +1020,22 @@ async function exportRapportCSV() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// GÉNÉRATION PDF DU RAPPORT
+// GÉNÉRATION PDF DU RAPPORT (avec maladies détaillées)
 // ════════════════════════════════════════════════════════════════════
 function generatePDFReport() {
   const periodDays = currentReportPeriod || 180
   const periodText = getPeriodText(periodDays)
   const stats = currentReportData
+  const activeFarmers = stats?.active_farmers || 0
   
   if (!stats) {
     toast('Chargez d\'abord les données', 'error')
     return
   }
+  
+  const diseases = stats.charts_data?.diseases || []
+  const topDiseases = diseases.slice(0, 10)
+  const urgency = stats.charts_data?.urgency || { critique: 0, elevee: 0, moderee: 0, faible: 0 }
   
   const printWindow = window.open('', '_blank')
   printWindow.document.write(`
@@ -1027,12 +1046,20 @@ function generatePDFReport() {
       <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         h1 { color: #009e4b; }
+        h2 { color: #006b32; margin-top: 20px; border-bottom: 1px solid #ccc; }
         .header { text-align: center; margin-bottom: 30px; }
         .section { margin-bottom: 30px; }
         .kpi { background: #f4f6f5; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .kpi-grid { display: flex; gap: 15px; flex-wrap: wrap; }
+        .kpi-card { background: #f4f6f5; padding: 15px; border-radius: 8px; flex: 1; min-width: 150px; text-align: center; }
+        .kpi-value { font-size: 28px; font-weight: bold; color: #009e4b; }
+        .kpi-label { font-size: 12px; color: #666; }
         table { width: 100%; border-collapse: collapse; margin: 15px 0; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #e8f7ef; }
+        .badge-red { background: #ffe8e8; color: #c0392b; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+        .badge-orange { background: #fff3e0; color: #e67e22; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+        .badge-green { background: #e8f7ef; color: #009e4b; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
         .footer { text-align: center; margin-top: 50px; font-size: 10px; color: #666; }
       </style>
     </head>
@@ -1040,32 +1067,89 @@ function generatePDFReport() {
       <div class="header">
         <h1>CultivaTech - Rapport Phytosanitaire</h1>
         <p>Période : ${periodText}</p>
-        <p>Généré le : ${new Date().toLocaleDateString('fr-FR')}</p>
+        <p>Généré le : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
       </div>
       
       <div class="section">
-        <h2>Indicateurs clés</h2>
-        <div class="kpi">
-          <strong>📊 Diagnostics :</strong> ${stats.total_diagnostics || 0}<br>
-          <strong>⚠️ Alertes critiques :</strong> ${stats.critical_alerts || 0}<br>
-          <strong>🟠 Zones à surveiller :</strong> ${stats.attention_alerts || 0}<br>
-          <strong>🗺️ Couverture :</strong> ${stats.provinces_coverage || '0%'}<br>
-          <strong>👨‍🌾 Agriculteurs actifs :</strong> ${stats.active_farmers || 0}
+        <h2>📊 Indicateurs clés</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-value">${stats.total_diagnostics || 0}</div>
+            <div class="kpi-label">Diagnostics</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value" style="color:#c0392b">${stats.critical_alerts || 0}</div>
+            <div class="kpi-label">Alertes critiques</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value" style="color:#e67e22">${stats.attention_alerts || 0}</div>
+            <div class="kpi-label">Zones à surveiller</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value">${activeFarmers}</div>
+            <div class="kpi-label">Agriculteurs actifs</div>
+          </div>
         </div>
       </div>
       
       <div class="section">
-        <h2>Résumé exécutif</h2>
-        <div>${stats.executive_summary || 'Aucune donnée'}</div>
+        <h2>🦠 Top 10 maladies diagnostiquées</h2>
+        <table>
+          <thead>
+            <tr><th>Rang</th><th>Maladie</th><th>Nombre de cas</th><th>Pourcentage</th></tr>
+          </thead>
+          <tbody>
+            ${topDiseases.map((d, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td><strong>${escapeHtml(d.name)}</strong></td>
+                <td>${d.count}</td>
+                <td>${Math.round((d.count / stats.total_diagnostics) * 100)}%</td>
+              </tr>
+            `).join('')}
+            ${topDiseases.length === 0 ? '<tr><td colspan="4">Aucune maladie enregistrée</td></tr>' : ''}
+          </tbody>
+        </table>
       </div>
       
       <div class="section">
-        <h2>Top provinces</h2>
+        <h2>⚠️ Répartition par niveau d'urgence</h2>
         <table>
-          <thead><tr><th>Province</th><th>Nombre de diagnostics</th></tr></thead>
+          <thead><tr><th>Niveau</th><th>Nombre</th><th>Pourcentage</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge-red">Critique</span></td><td>${urgency.critique || 0}</td><td>${Math.round(((urgency.critique || 0) / stats.total_diagnostics) * 100)}%</td></tr>
+            <tr><td><span class="badge-orange">Élevée</span></td><td>${urgency.elevee || 0}</td><td>${Math.round(((urgency.elevee || 0) / stats.total_diagnostics) * 100)}%</td></tr>
+            <tr><td><span class="badge-orange">Modérée</span></td><td>${urgency.moderee || 0}</td><td>${Math.round(((urgency.moderee || 0) / stats.total_diagnostics) * 100)}%</td></tr>
+            <tr><td><span class="badge-green">Faible</span></td><td>${urgency.faible || 0}</td><td>${Math.round(((urgency.faible || 0) / stats.total_diagnostics) * 100)}%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="section">
+        <h2>🗺️ Top provinces touchées</h2>
+        <table>
+          <thead><tr><th>Province</th><th>Nombre de diagnostics</th><th>Pourcentage</th></tr></thead>
           <tbody>
             ${(stats.provinces_data || []).slice(0, 10).map(p => `
-              <tr><td>${escapeHtml(p.name)}</td><td>${p.count}</td></tr>
+              <tr><td>${escapeHtml(p.name)}</td><td>${p.count}</td><td>${Math.round((p.count / stats.total_diagnostics) * 100)}%</td></tr>
+            `).join('')}
+            ${(stats.provinces_data || []).length === 0 ? '<tr><td colspan="3">Aucune province enregistrée</td></tr>' : ''}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="section">
+        <h2>📈 Résumé exécutif</h2>
+        <div class="kpi">${stats.executive_summary || 'Aucune donnée'}</div>
+      </div>
+      
+      <div class="section">
+        <h2>🌾 Cultures les plus touchées</h2>
+        <table>
+          <thead><tr><th>Culture</th><th>Nombre de diagnostics</th><th>Pourcentage</th></tr></thead>
+          <tbody>
+            ${(stats.charts_data?.cultures || []).slice(0, 5).map(c => `
+              <tr><td><strong>${escapeHtml(c.name)}</strong></td><td>${c.count}</td><td>${Math.round((c.count / stats.total_diagnostics) * 100)}%</td></tr>
             `).join('')}
           </tbody>
         </table>
@@ -1074,6 +1158,7 @@ function generatePDFReport() {
       <div class="footer">
         <p>Rapport généré automatiquement par CultivaTech x MAERAH</p>
         <p>Burkina Faso - Système National de Surveillance Phytosanitaire</p>
+        <p>Source: Diagnostics enregistrés via l'application mobile CultivaTech</p>
       </div>
     </body>
     </html>
