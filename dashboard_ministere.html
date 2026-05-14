@@ -471,7 +471,7 @@ async function doLogin() {
   }
 
   try {
-    const res = await fetch(`${FUNCTIONS_URL}/admin-login`, {
+    const res = await fetch(`${FUNCTIONS_URL}/ministry-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
