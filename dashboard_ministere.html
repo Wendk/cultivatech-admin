@@ -217,11 +217,11 @@ tbody tr:last-child td{border-bottom:none}
   <div id="tab-overview" class="tab-panel active">
     <div class="content">
       <div id="scopeBanner" class="scope-banner" style="display:none"></div>
-      <div class="stitle">Indicateurs — 7 derniers jours</div>
+      <div class="stitle">Indicateurs — 6 derniers mois</div>
       <div class="kpi-grid">
         <div class="kpi red"><span class="kpi-ico">🔴</span><div class="kpi-val" id="kv1">—</div><div class="kpi-lbl">Alertes critiques</div><div class="kpi-sub" id="ks1">Chargement...</div></div>
         <div class="kpi orange"><span class="kpi-ico">🟠</span><div class="kpi-val" id="kv2">—</div><div class="kpi-lbl">Zones à surveiller</div><div class="kpi-sub" id="ks2">Sur les provinces</div></div>
-        <div class="kpi green"><span class="kpi-ico">🟢</span><div class="kpi-val" id="kv3">—</div><div class="kpi-lbl">Diagnostics effectués</div><div class="kpi-sub" id="ks3">Chargement...</div></div>
+        <div class="kpi green"><span class="kpi-ico">🟢</span><div class="kpi-val" id="kv3">—</div><div class="kpi-lbl">Diagnostics (6 mois)</div><div class="kpi-sub" id="ks3">Chargement...</div></div>
         <div class="kpi yellow"><span class="kpi-ico">🟡</span><div class="kpi-val" id="kv4">—</div><div class="kpi-lbl">Agriculteurs actifs</div><div class="kpi-sub" id="ks4">Chargement...</div></div>
       </div>
       <div id="alertBanner" style="display:none" class="alert-banner">
@@ -229,12 +229,12 @@ tbody tr:last-child td{border-bottom:none}
         <div><h4 id="alertBannerTitle"></h4><p id="alertBannerText"></p></div>
       </div>
       <div class="charts-2">
-        <div class="card"><div class="card-title">Diagnostics par culture</div><div class="card-sub">7 derniers jours</div><div style="height:250px"><canvas id="cCultures"></canvas></div></div>
+        <div class="card"><div class="card-title">Diagnostics par culture</div><div class="card-sub">6 derniers mois</div><div style="height:250px"><canvas id="cCultures"></canvas></div></div>
         <div class="card"><div class="card-title">Évolution des alertes</div><div class="card-sub">30 derniers jours</div><div style="height:250px"><canvas id="cTrend"></canvas></div></div>
       </div>
       <div class="charts-32">
-        <div class="card"><div class="card-title">Maladies les plus signalées</div><div class="card-sub">Top pathogènes cette semaine</div><div style="height:250px"><canvas id="cMaladies"></canvas></div></div>
-        <div class="card"><div class="card-title">Répartition par urgence</div><div class="card-sub">Niveau des diagnostics</div><div style="height:250px"><canvas id="cUrgence"></canvas></div></div>
+        <div class="card"><div class="card-title">Maladies les plus signalées</div><div class="card-sub">Top pathogènes (6 mois)</div><div style="height:250px"><canvas id="cMaladies"></canvas></div></div>
+        <div class="card"><div class="card-title">Répartition par urgence</div><div class="card-sub">Niveau des diagnostics (6 mois)</div><div style="height:250px"><canvas id="cUrgence"></canvas></div></div>
       </div>
     </div>
   </div>
@@ -268,12 +268,12 @@ tbody tr:last-child td{border-bottom:none}
     <div class="content">
       <div class="stats-row">
         <div class="stat-mini"><span style="font-size:18px">🗺️</span><div><div class="stat-mini-val" id="statProv">—</div><div class="stat-mini-lbl">Provinces actives</div></div></div>
-        <div class="stat-mini"><span style="font-size:18px">📊</span><div><div class="stat-mini-val" id="statDiag">—</div><div class="stat-mini-lbl">Total diagnostics</div></div></div>
+        <div class="stat-mini"><span style="font-size:18px">📊</span><div><div class="stat-mini-val" id="statDiag">—</div><div class="stat-mini-lbl">Total diagnostics (6 mois)</div></div></div>
         <div class="stat-mini"><span style="font-size:18px">📍</span><div><div class="stat-mini-val" id="statReg">—</div><div class="stat-mini-lbl">Régions couvertes</div></div></div>
       </div>
       <div class="charts-2">
-        <div class="card"><div class="card-title">Top provinces — Diagnostics reçus</div><div class="card-sub">Signalements via CultivaTech</div><div style="height:320px"><canvas id="cProvinces"></canvas></div></div>
-        <div class="card"><div class="card-title">Toutes les provinces</div><div class="card-sub">Activité cette semaine</div><div class="prov-list" id="provList"></div></div>
+        <div class="card"><div class="card-title">Top provinces — Diagnostics reçus</div><div class="card-sub">Signalements via CultivaTech (6 mois)</div><div style="height:320px"><canvas id="cProvinces"></canvas></div></div>
+        <div class="card"><div class="card-title">Toutes les provinces</div><div class="card-sub">Activité (6 mois)</div><div class="prov-list" id="provList"></div></div>
       </div>
     </div>
   </div>
@@ -282,7 +282,7 @@ tbody tr:last-child td{border-bottom:none}
   <div id="tab-diagnostics" class="tab-panel">
     <div class="content">
       <div class="filter-bar">
-        <select class="fsel" id="fDiagPeriode"><option value="7">7 derniers jours</option><option value="30">30 derniers jours</option><option value="90">3 derniers mois</option></select>
+        <select class="fsel" id="fDiagPeriode"><option value="180" selected>6 derniers mois</option><option value="7">7 derniers jours</option><option value="30">30 derniers jours</option><option value="90">3 derniers mois</option></select>
         <select class="fsel" id="fDiagCulture"><option value="">Toutes cultures</option><option value="Mais">Mais</option><option value="Tomate">Tomate</option><option value="Sorgho">Sorgho</option><option value="Mil">Mil</option><option value="Oignon">Oignon</option><option value="Riz">Riz</option></select>
         <button class="fbtn" onclick="loadDiagnostics()">Filtrer</button>
         <button class="ebtn" onclick="exportData('diagnostics')">Export CSV</button>
@@ -305,20 +305,31 @@ tbody tr:last-child td{border-bottom:none}
   <!-- ═══ TAB RAPPORTS ═══ -->
   <div id="tab-rapports" class="tab-panel">
     <div class="content">
+      <!-- Filtre de période pour les rapports -->
+      <div class="filter-bar">
+        <select class="fsel" id="reportPeriod" onchange="loadRapports()">
+          <option value="7">7 derniers jours</option>
+          <option value="30">30 derniers jours</option>
+          <option value="90">3 derniers mois</option>
+          <option value="180" selected>6 derniers mois</option>
+        </select>
+        <button class="fbtn" onclick="exportRapportCSV()">📥 Exporter les données</button>
+        <button class="fbtn" onclick="generatePDFReport()">📄 Générer PDF</button>
+      </div>
+
       <div class="kpi-grid-3">
-        <div class="kpi green"><span class="kpi-ico">📋</span><div class="kpi-val" id="rapKv1">—</div><div class="kpi-lbl">Total diagnostics</div><div class="kpi-sub">Toutes périodes</div></div>
-        <div class="kpi orange"><span class="kpi-ico">⚠️</span><div class="kpi-val" id="rapKv2">—</div><div class="kpi-lbl">Alertes générées</div><div class="kpi-sub">Actives et résolues</div></div>
-        <div class="kpi green"><span class="kpi-ico">🗺️</span><div class="kpi-val" id="rapKv3">—</div><div class="kpi-lbl">Couverture provinciale</div><div class="kpi-sub">Sur 47 provinces</div></div>
+        <div class="kpi green"><span class="kpi-ico">📋</span><div class="kpi-val" id="rapKv1">—</div><div class="kpi-lbl">Total diagnostics</div><div class="kpi-sub" id="rapKv1Sub">Chargement...</div></div>
+        <div class="kpi orange"><span class="kpi-ico">⚠️</span><div class="kpi-val" id="rapKv2">—</div><div class="kpi-lbl">Alertes générées</div><div class="kpi-sub" id="rapKv2Sub">Actives et résolues</div></div>
+        <div class="kpi green"><span class="kpi-ico">🗺️</span><div class="kpi-val" id="rapKv3">—</div><div class="kpi-lbl">Couverture provinciale</div><div class="kpi-sub" id="rapKv3Sub">Sur 47 provinces</div></div>
       </div>
       <div class="charts-2">
-        <div class="card"><div class="card-title">Évolution mensuelle</div><div class="card-sub">Diagnostics reçus par mois</div><div style="height:250px"><canvas id="cMensuel"></canvas></div></div>
+        <div class="card"><div class="card-title">Évolution mensuelle</div><div class="card-sub" id="monthlyChartSub">Diagnostics reçus par mois</div><div style="height:250px"><canvas id="cMensuel"></canvas></div></div>
         <div class="card"><div class="card-title">Maladies par saison</div><div class="card-sub">Saison sèche vs saison des pluies</div><div style="height:250px"><canvas id="cSaison"></canvas></div></div>
       </div>
       <div class="card">
         <div class="card-title">Résumé exécutif DGPV</div>
-        <div class="card-sub">Rapport hebdomadaire automatique</div>
+        <div class="card-sub" id="executiveSummarySub">Rapport hebdomadaire automatique</div>
         <div id="resumeExecutif" style="padding:14px;background:var(--vert-pale);border-radius:8px;font-size:12px;line-height:1.9;color:var(--noir)">Chargement...</div>
-        <button class="btn-save" style="margin-top:12px" onclick="alert('PDF disponible en production avec connexion complète')">Générer PDF officiel</button>
       </div>
     </div>
   </div>
@@ -434,6 +445,8 @@ let currentUser = null
 let allCharts = {}
 let alertData = []
 let diagData = []
+let currentReportData = null
+let currentReportPeriod = 180
 
 // ════════════════════════════════════════════════════════════════════
 // UTILITAIRES
@@ -446,6 +459,14 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+function getPeriodText(days) {
+  if (days === 7) return '7 derniers jours'
+  if (days === 30) return '30 derniers jours'
+  if (days === 90) return '3 derniers mois'
+  if (days === 180) return '6 derniers mois'
+  return `${days} jours`
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -506,11 +527,6 @@ async function doLogin() {
     adminToken = data.token
     currentUser = data.user
 
-console.log('=== SCOPE DEBUG ===')
-console.log('scope:', currentUser.scope)
-console.log('region:', currentUser.region)
-console.log('provinces:', currentUser.provinces)
-
     // Scope badge
     const scopeBadge = currentUser.scope === 'national'
       ? '<span class="badge b-green">🌍 National</span>'
@@ -519,14 +535,14 @@ console.log('provinces:', currentUser.provinces)
     document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
     document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
 
-   // Afficher la bannière de scope pour les utilisateurs régionaux
-if (currentUser.scope === 'regional') {
-  const banner = document.getElementById('scopeBanner')
-  if (banner) {
-    banner.style.display = 'flex'
-    banner.innerHTML = `🔍 Vous visualisez les données de la région : <strong>${currentUser.region}</strong> (${currentUser.provinces?.length || 0} provinces)`
-  }
-}
+    // Afficher la bannière de scope pour les utilisateurs régionaux
+    if (currentUser.scope === 'regional') {
+      const banner = document.getElementById('scopeBanner')
+      if (banner) {
+        banner.style.display = 'flex'
+        banner.innerHTML = `🔍 Vous visualisez les données de la région : <strong>${currentUser.region}</strong> (${currentUser.provinces?.length || 0} provinces)`
+      }
+    }
 
     // Admin tab
     if (currentUser.role === 'admin') {
@@ -600,19 +616,19 @@ function showTab(name) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// OVERVIEW
+// OVERVIEW (6 mois par défaut)
 // ════════════════════════════════════════════════════════════════════
 async function loadOverview() {
   try {
-    const stats = await adminFetch('get-dashboard-stats')
+    const stats = await adminFetch('get-dashboard-stats?days=180')
     
     document.getElementById('kv1').textContent = stats.critical_alerts || 0
     document.getElementById('kv2').textContent = stats.attention_alerts || 0
-    document.getElementById('kv3').textContent = stats.diagnostics_7d || 0
+    document.getElementById('kv3').textContent = stats.diagnostics_6months || stats.total_diagnostics || 0
     document.getElementById('kv4').textContent = stats.active_farmers || 0
     
     document.getElementById('ks1').textContent = stats.critical_alerts_sub || 'actives'
-    document.getElementById('ks3').textContent = stats.diagnostics_7d_sub || 'ces 7 jours'
+    document.getElementById('ks3').textContent = '6 derniers mois'
     document.getElementById('ks4').textContent = stats.active_farmers_sub || 'agriculteurs uniques'
     
     document.getElementById('alertCount').textContent = stats.critical_alerts || 0
@@ -636,7 +652,7 @@ async function buildCharts() {
   const V = "#009e4b", R = "#c0392b", O = "#e67e22", J = "#f1c40f"
 
   try {
-    const stats = await adminFetch('get-dashboard-stats')
+    const stats = await adminFetch('get-dashboard-stats?days=180')
     const chartsData = stats.charts_data || {}
     
     // Chart cultures
@@ -787,11 +803,11 @@ async function loadAlerts() {
 // DIAGNOSTICS
 // ════════════════════════════════════════════════════════════════════
 async function loadDiagnostics() {
-  const periode = document.getElementById('fDiagPeriode')?.value || '7'
+  const periode = document.getElementById('fDiagPeriode')?.value || '180'
   const culture = document.getElementById('fDiagCulture')?.value || ''
   
   try {
-    const params = new URLSearchParams({ days: periode, limit: '200' })
+    const params = new URLSearchParams({ days: periode, limit: '500' })
     if (culture) params.append('culture', culture)
     
     const result = await adminFetch(`get-diagnostic-logs?${params}`)
@@ -824,7 +840,7 @@ async function loadDiagnostics() {
 // ════════════════════════════════════════════════════════════════════
 async function loadProvinces() {
   try {
-    const stats = await adminFetch('get-dashboard-stats')
+    const stats = await adminFetch('get-dashboard-stats?days=180')
     const provincesData = stats.provinces_data || []
     
     const sorted = [...provincesData].sort((a, b) => b.count - a.count)
@@ -875,16 +891,27 @@ async function loadProvinces() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// RAPPORTS
+// RAPPORTS (avec période personnalisable)
 // ════════════════════════════════════════════════════════════════════
 async function loadRapports() {
+  const periodDays = parseInt(document.getElementById('reportPeriod')?.value || '180')
+  currentReportPeriod = periodDays
+  const periodText = getPeriodText(periodDays)
+  
   try {
-    const stats = await adminFetch('get-dashboard-stats')
+    const stats = await adminFetch(`get-dashboard-stats?days=${periodDays}`)
+    currentReportData = stats
     
     document.getElementById("rapKv1").textContent = stats.total_diagnostics || 0
     document.getElementById("rapKv2").textContent = stats.total_alerts || 0
     const pct = stats.provinces_coverage || "0%"
     document.getElementById("rapKv3").textContent = pct
+    
+    document.getElementById("rapKv1Sub").textContent = periodText
+    document.getElementById("rapKv2Sub").textContent = 'Actives et résolues'
+    document.getElementById("rapKv3Sub").textContent = `Sur 47 provinces (${periodText})`
+    document.getElementById("monthlyChartSub").textContent = `Diagnostics reçus par mois (${periodText})`
+    document.getElementById("executiveSummarySub").textContent = `Rapport ${periodText}`
     
     const monthlyData = stats.monthly_diagnostics || []
     const Vc = "#009e4b"
@@ -894,7 +921,7 @@ async function loadRapports() {
       data: {
         labels: monthlyData.map(m => m.month),
         datasets: [{
-          label: "Diagnostics",
+          label: `Diagnostics (${periodText})`,
           data: monthlyData.map(m => m.count),
           borderColor: Vc,
           backgroundColor: "rgba(0,158,75,.1)",
@@ -913,11 +940,146 @@ async function loadRapports() {
     
     const resume = document.getElementById("resumeExecutif")
     if (resume) {
-      resume.innerHTML = stats.executive_summary || "Chargement des données..."
+      resume.innerHTML = stats.executive_summary || `Chargement des données pour ${periodText}...`
     }
   } catch (e) {
     console.error('Erreur chargement rapports:', e)
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EXPORT RAPPORT CSV
+// ════════════════════════════════════════════════════════════════════
+async function exportRapportCSV() {
+  const periodDays = currentReportPeriod || 180
+  const periodText = getPeriodText(periodDays)
+  
+  try {
+    const result = await adminFetch(`get-diagnostic-logs?days=${periodDays}&limit=5000`)
+    const diagnostics = result.data || []
+    
+    const alertsResult = await adminFetch('get-phyto-alerts')
+    const alerts = alertsResult.alerts || []
+    
+    let csv = "=== DIAGNOSTICS ===\n"
+    csv += "Date,Culture,Variété,Maladie,Urgence,Province,Région,Latitude,Longitude\n"
+    diagnostics.forEach(d => {
+      csv += [
+        d.created_at ? new Date(d.created_at).toLocaleString('fr-FR') : "",
+        `"${(d.culture_name || '').replace(/"/g, '""')}"`,
+        `"${(d.variety_name || '').replace(/"/g, '""')}"`,
+        `"${(d.rule_matched || '').replace(/"/g, '""')}"`,
+        d.urgency || "",
+        d.province || "",
+        d.region || "",
+        d.latitude || "",
+        d.longitude || ""
+      ].join(",") + "\n"
+    })
+    
+    csv += "\n=== ALERTES ===\n"
+    csv += "Niveau,Maladie,Culture,Province,Cas,Mise à jour,Statut\n"
+    alerts.forEach(a => {
+      csv += [
+        a.alert_level || "",
+        `"${(a.disease_name || '').replace(/"/g, '""')}"`,
+        `"${(a.culture_name || '').replace(/"/g, '""')}"`,
+        a.province || "",
+        a.case_count || 0,
+        a.last_updated ? new Date(a.last_updated).toLocaleDateString('fr-FR') : "",
+        a.is_active ? "Active" : "Résolue"
+      ].join(",") + "\n"
+    })
+    
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `rapport_cultivatech_${periodText.replace(/ /g, '_')}_${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    toast(`Rapport exporté pour ${periodText}`, 'success')
+  } catch (e) {
+    toast('Erreur lors de l\'export: ' + e.message, 'error')
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// GÉNÉRATION PDF DU RAPPORT
+// ════════════════════════════════════════════════════════════════════
+function generatePDFReport() {
+  const periodDays = currentReportPeriod || 180
+  const periodText = getPeriodText(periodDays)
+  const stats = currentReportData
+  
+  if (!stats) {
+    toast('Chargez d\'abord les données', 'error')
+    return
+  }
+  
+  const printWindow = window.open('', '_blank')
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Rapport CultivaTech - ${periodText}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #009e4b; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .section { margin-bottom: 30px; }
+        .kpi { background: #f4f6f5; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #e8f7ef; }
+        .footer { text-align: center; margin-top: 50px; font-size: 10px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>CultivaTech - Rapport Phytosanitaire</h1>
+        <p>Période : ${periodText}</p>
+        <p>Généré le : ${new Date().toLocaleDateString('fr-FR')}</p>
+      </div>
+      
+      <div class="section">
+        <h2>Indicateurs clés</h2>
+        <div class="kpi">
+          <strong>📊 Diagnostics :</strong> ${stats.total_diagnostics || 0}<br>
+          <strong>⚠️ Alertes critiques :</strong> ${stats.critical_alerts || 0}<br>
+          <strong>🟠 Zones à surveiller :</strong> ${stats.attention_alerts || 0}<br>
+          <strong>🗺️ Couverture :</strong> ${stats.provinces_coverage || '0%'}<br>
+          <strong>👨‍🌾 Agriculteurs actifs :</strong> ${stats.active_farmers || 0}
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2>Résumé exécutif</h2>
+        <div>${stats.executive_summary || 'Aucune donnée'}</div>
+      </div>
+      
+      <div class="section">
+        <h2>Top provinces</h2>
+        <table>
+          <thead><tr><th>Province</th><th>Nombre de diagnostics</th></tr></thead>
+          <tbody>
+            ${(stats.provinces_data || []).slice(0, 10).map(p => `
+              <tr><td>${escapeHtml(p.name)}</td><td>${p.count}</td></tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="footer">
+        <p>Rapport généré automatiquement par CultivaTech x MAERAH</p>
+        <p>Burkina Faso - Système National de Surveillance Phytosanitaire</p>
+      </div>
+    </body>
+    </html>
+  `)
+  printWindow.document.close()
+  printWindow.print()
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -941,7 +1103,6 @@ async function saveAccount() {
     return
   }
 
-  // Préparer la requête
   const body = {
     full_name: fullName,
     username: username
@@ -973,13 +1134,11 @@ async function saveAccount() {
       body: body
     })
 
-    // Mettre à jour le token et currentUser avec les nouvelles infos
     if (result.token) {
       adminToken = result.token
       currentUser = result.user
     }
 
-    // Mettre à jour l'affichage
     const scopeBadge = currentUser.scope === 'national'
       ? '<span class="badge b-green">🌍 National</span>'
       : `<span class="badge b-orange">📍 ${escapeHtml(currentUser.region)}</span>`
@@ -987,7 +1146,6 @@ async function saveAccount() {
     document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
     document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
 
-    // Vider les champs mot de passe
     document.getElementById('cmpOldPass').value = ''
     document.getElementById('cmpNewPass').value = ''
     document.getElementById('cmpConfPass').value = ''
@@ -1086,7 +1244,6 @@ async function editUser(id) {
   }
 }
 
-// ✅ CORRIGÉ : Utilise update-dashboard-user
 async function toggleUser(id, isActive) {
   try {
     await adminFetch('update-dashboard-user', {
@@ -1105,7 +1262,6 @@ function toggleRegionField() {
   document.getElementById('fuRegionGroup').style.display = scope === 'regional' ? 'block' : 'none'
 }
 
-// ✅ CORRIGÉ : Utilise update-dashboard-user et create-dashboard-user
 async function saveUser() {
   const succ = document.getElementById('fuSuccess')
   const err = document.getElementById('fuError')
@@ -1159,12 +1315,10 @@ async function saveUser() {
 
   try {
     if (editId) {
-      // ✅ MODIFICATION : utilise update-dashboard-user
       body.id = parseInt(editId)
       await adminFetch('update-dashboard-user', { method: 'POST', body })
       toast('Utilisateur modifié avec succès')
     } else {
-      // ✅ CRÉATION : utilise create-dashboard-user
       if (!pass) {
         err.style.display = 'block'
         err.textContent = 'Mot de passe obligatoire pour un nouvel utilisateur'
@@ -1185,7 +1339,7 @@ async function saveUser() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// EXPORT CSV
+// EXPORT CSV (alertes et diagnostics)
 // ════════════════════════════════════════════════════════════════════
 function exportData(type) {
   let csv = ""
@@ -1203,7 +1357,7 @@ function exportData(type) {
         d.province, d.region, d.latitude || "", d.longitude || ""].join(",") + "\n"
     })
   }
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
