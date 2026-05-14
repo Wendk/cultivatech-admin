@@ -506,6 +506,11 @@ async function doLogin() {
     adminToken = data.token
     currentUser = data.user
 
+console.log('=== SCOPE DEBUG ===')
+console.log('scope:', currentUser.scope)
+console.log('region:', currentUser.region)
+console.log('provinces:', currentUser.provinces)
+
     // Scope badge
     const scopeBadge = currentUser.scope === 'national'
       ? '<span class="badge b-green">🌍 National</span>'
@@ -514,12 +519,14 @@ async function doLogin() {
     document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
     document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
 
-    // Scope banner
-    if (currentUser.scope === 'regional') {
-      const banner = document.getElementById('scopeBanner')
-      banner.style.display = 'flex'
-      banner.innerHTML = `🔍 Vous visualisez les données de la région : <strong>${escapeHtml(currentUser.region)}</strong>${currentUser.provinces ? ` (${currentUser.provinces.length} provinces)` : ''}`
-    }
+   // Afficher la bannière de scope pour les utilisateurs régionaux
+if (currentUser.scope === 'regional') {
+  const banner = document.getElementById('scopeBanner')
+  if (banner) {
+    banner.style.display = 'flex'
+    banner.innerHTML = `🔍 Vous visualisez les données de la région : <strong>${currentUser.region}</strong> (${currentUser.provinces?.length || 0} provinces)`
+  }
+}
 
     // Admin tab
     if (currentUser.role === 'admin') {
