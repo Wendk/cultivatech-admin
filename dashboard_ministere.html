@@ -501,6 +501,7 @@ async function doLogin() {
   const username = document.getElementById('loginUser').value.trim()
   const password = document.getElementById('loginPass').value
   const errEl = document.getElementById('loginError')
+  startAutoRefresh()
 
   if (!username || !password) {
     errEl.textContent = 'Identifiant et mot de passe requis'
@@ -566,6 +567,41 @@ async function doLogin() {
   }
 }
 
+  // ════════════════════════════════════════════════════════════════════
+// AUTO-ACTUALISATION (toutes les 5 minutes)
+// ════════════════════════════════════════════════════════════════════
+let autoRefreshInterval = null
+
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval)
+  
+  // Rafraîchit toutes les 5 minutes (300 000 ms)
+  autoRefreshInterval = setInterval(() => {
+    const activeTab = document.querySelector('.tab-panel.active')?.id
+    
+    if (activeTab === 'tab-overview') {
+      console.log('🔄 Auto-refresh: chargement des données...')
+      loadOverview()
+      buildCharts()
+    } else if (activeTab === 'tab-alerts') {
+      loadAlerts()
+    } else if (activeTab === 'tab-diagnostics') {
+      loadDiagnostics()
+    } else if (activeTab === 'tab-provinces') {
+      loadProvinces()
+    } else if (activeTab === 'tab-rapports') {
+      loadRapports()
+    }
+  }, 300000) // 5 minutes
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval)
+    autoRefreshInterval = null
+  }
+}
+
 function doLogout() {
   adminToken = null
   currentUser = null
@@ -575,6 +611,7 @@ function doLogout() {
   document.getElementById("loginUser").value = ""
   document.getElementById("loginPass").value = ""
   document.getElementById("tabAdmin").style.display = "none"
+  stopAutoRefresh()
 }
 
 // ════════════════════════════════════════════════════════════════════
