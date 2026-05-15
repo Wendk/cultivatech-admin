@@ -965,11 +965,20 @@ async function loadDashboard() {
 }
 
 async function loadKPIs() {
-  const stats = await adminFetch('get-dashboard-stats');
-  setKPI('kpiUsers', stats.users_total, 'kpiUsersNew', `+${stats.users_new_this_month} ce mois`);
-  setKPI('kpiRevenue', (stats.revenue_total||0).toLocaleString('fr-FR'), 'kpiRevenueSub', `${stats.purchases_count} achats`);
-  setKPI('kpiProductions', stats.productions_total, 'kpiProductionsSub', `${stats.productions_active} en cours`);
-  setKPI('kpiDiagnostics', stats.diagnostics_total, 'kpiDiagnosticsSub', 'depuis installation');
+  const stats = await adminFetch('get-admin-stats')
+  
+  // Mettre à jour les KPIs
+  document.getElementById('kpiUsers').textContent = stats.users_total || 0
+  document.getElementById('kpiUsersNew').innerHTML = `+${stats.users_new_this_month} ce mois`
+  
+  document.getElementById('kpiRevenue').textContent = (stats.revenue_total || 0).toLocaleString('fr-FR')
+  document.getElementById('kpiRevenueSub').innerHTML = `${stats.purchases_count} achats`
+  
+  document.getElementById('kpiProductions').textContent = stats.productions_total || 0
+  document.getElementById('kpiProductionsSub').innerHTML = `${stats.productions_active} en cours`
+  
+  document.getElementById('kpiDiagnostics').textContent = stats.diagnostics_total || 0
+  document.getElementById('kpiDiagnosticsSub').innerHTML = `${stats.diagnostics_7d} cette semaine`
 }
 
 async function loadRevenueChart() {
@@ -1002,14 +1011,19 @@ async function loadTableFormations() {
 }
 
 async function loadTableScores() {
-  try {
-    const users=(await adminFetch('get-users')).sort((a,b)=>(b.score_agricole||0)-(a.score_agricole||0)).slice(0,5);
-    document.getElementById('tableScores').innerHTML=users.map(u=>{
-      const pct=Math.min(100,(u.score_agricole||0)/10);
-      const badge=u.statut_credit==='Éligible crédit'?'badge-green':u.statut_credit==='À évaluer'?'badge-amber':'badge-red';
-      return `<tr><td>${esc(u.first_name)} ${esc(u.last_name)}</td><td><div>${u.score_agricole||0} pts</div><div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div></td><td><span class="badge ${badge}">${esc(u.statut_credit||'Insuffisant')}</span></td></tr>`;
-    }).join('')||'<tr><td colspan="3" class="td-muted">Aucun</td></tr>';
-  } catch { document.getElementById('tableScores').innerHTML='<tr><td colspan="3" class="td-muted">Non disponible</td></tr>'; }
+  const stats = await adminFetch('get-admin-stats')
+  const users = stats.top_scores || []
+  
+  document.getElementById('tableScores').innerHTML = users.map(u => {
+    const pct = Math.min(100, (u.score_agricole || 0) / 10)
+    const badge = u.statut_credit === 'Éligible crédit' ? 'badge-green' : 
+                  u.statut_credit === 'À évaluer' ? 'badge-amber' : 'badge-red'
+    return `<tr>
+      <td>${esc(u.first_name)} ${esc(u.last_name)}</td>
+      <td><div>${u.score_agricole || 0} pts</div><div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div></td>
+      <td><span class="badge ${badge}">${esc(u.statut_credit || 'Insuffisant')}</span></td>
+     </tr>`
+  }).join('') || '<tr><td colspan="3">Aucun utilisateur</td></tr>'
 }
 
 async function loadTableBoutiques() {
