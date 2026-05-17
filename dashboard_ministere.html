@@ -703,18 +703,27 @@ async function loadProvinces() {
   } catch(e) { console.error('Erreur provinces:', e) }
 }
 
-// ── Carte choroplèthe ────────────────────────────────────────────────
+// ── Carte choroplèthe (version autonome) ────────────────────────────────
 async function renderBurkinaMap(stats) {
   var provincesData = stats.provinces_data || []
 
-  // Agréger par région (chaque province a un champ region)
+  // Agréger par région
   var regCounts = {}
   provincesData.forEach(function(p) {
     if (p.region) regCounts[p.region] = (regCounts[p.region] || 0) + p.count
   })
 
-  // Couleur selon densité
-  function diagColor(count) {
+  // Régions du Burkina Faso
+  var allRegions = [
+    'Boucle du Mouhoun', 'Cascades', 'Centre', 'Centre-Est', 'Centre-Nord',
+    'Centre-Ouest', 'Centre-Sud', 'Est', 'Hauts-Bassins', 'Nord',
+    'Plateau-Central', 'Sahel', 'Sud-Ouest'
+  ]
+  allRegions.forEach(function(region) {
+    if (!regCounts[region]) regCounts[region] = 0
+  })
+
+  function getDiagColor(count) {
     if (!count || count === 0) return '#f0f4f0'
     if (count <= 5)  return '#a8d5b5'
     if (count <= 15) return '#5cb87a'
@@ -722,110 +731,99 @@ async function renderBurkinaMap(stats) {
     return '#c0392b'
   }
 
-  // Normalisation des noms de régions (GeoJSON geoBoundaries → noms locaux)
-  var REGION_ALIASES = {
-    'Boucle du Mouhoun': ['Boucle du Mouhoun','Boucle De Mouhoun','Boucle Du Mouhoun'],
-    'Centre': ['Centre'],
-    'Centre-Est': ['Centre-Est','Centre Est'],
-    'Centre-Nord': ['Centre-Nord','Centre Nord'],
-    'Centre-Ouest': ['Centre-Ouest','Centre Ouest'],
-    'Centre-Sud': ['Centre-Sud','Centre Sud'],
-    'Est': ['Est'],
-    'Hauts-Bassins': ['Hauts-Bassins','Hauts Bassins','Haut-Bassins'],
-    'Nord': ['Nord'],
-    'Plateau-Central': ['Plateau-Central','Plateau Central'],
-    'Sahel': ['Sahel'],
-    'Cascades': ['Cascades'],
-    'Sud-Ouest': ['Sud-Ouest','Sud Ouest']
+  var regionsCentroids = {
+    'Boucle du Mouhoun': { lat: 12.45, lng: -3.45 },
+    'Cascades':        { lat: 10.35, lng: -4.55 },
+    'Centre':          { lat: 12.37, lng: -1.52 },
+    'Centre-Est':      { lat: 12.05, lng: -0.55 },
+    'Centre-Nord':     { lat: 13.25, lng: -1.25 },
+    'Centre-Ouest':    { lat: 11.85, lng: -2.35 },
+    'Centre-Sud':      { lat: 11.35, lng: -1.45 },
+    'Est':             { lat: 12.25, lng: 0.75 },
+    'Hauts-Bassins':   { lat: 11.20, lng: -4.20 },
+    'Nord':            { lat: 13.80, lng: -2.15 },
+    'Plateau-Central': { lat: 12.60, lng: -1.05 },
+    'Sahel':           { lat: 14.20, lng: -0.35 },
+    'Sud-Ouest':       { lat: 10.25, lng: -3.10 }
   }
 
-  function matchRegion(geojsonName) {
-    if (!geojsonName) return null
-    var n = geojsonName.trim()
-    // Recherche directe
-    if (regCounts[n] !== undefined) return n
-    // Recherche dans les alias
-    for (var localName in REGION_ALIASES) {
-      var aliases = REGION_ALIASES[localName]
-      for (var i = 0; i < aliases.length; i++) {
-        if (aliases[i].toLowerCase() === n.toLowerCase()) return localName
-      }
-    }
-    // Recherche insensible à la casse dans regCounts
-    for (var k in regCounts) {
-      if (k.toLowerCase() === n.toLowerCase()) return k
-    }
-    return null
-  }
-
-  // Initialiser la carte Leaflet une seule fois
   if (!burkinaMap) {
-    burkinaMap = L.map('burkinaMap', { zoomControl:true, attributionControl:true }).setView([12.3,-1.7], 6)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:'&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
-      opacity: 0.4
+    burkinaMap = L.map('burkinaMap', { zoomControl: true, attributionControl: true }).setView([12.37, -1.52], 6.8)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+      subdomains: 'abcd'
     }).addTo(burkinaMap)
   }
 
-  // Charger le GeoJSON des régions du Burkina Faso (geoBoundaries ADM1)
-  var GEOJSON_URL = 'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson'
+  if (burkinaGeoLayer) { burkinaGeoLayer.remove(); burkinaGeoLayer = null }
+  burkinaGeoLayer = L.layerGroup().addTo(burkinaMap)
 
-  try {
-    var res = await fetch(GEOJSON_URL)
-    if (!res.ok) throw new Error('GeoJSON non disponible')
-    var geojson = await res.json()
+  var maxCount = Math.max.apply(null, Object.values(regCounts))
+  var minRadius = 12, maxRadius = 48
 
-    if (burkinaGeoLayer) { burkinaGeoLayer.remove(); burkinaGeoLayer = null }
+  for (var region in regionsCentroids) {
+    var count = regCounts[region] || 0
+    var coords = regionsCentroids[region]
+    var radius = minRadius
+    if (maxCount > 0) radius = minRadius + (count / maxCount) * (maxRadius - minRadius)
+    var color = getDiagColor(count)
 
-    burkinaGeoLayer = L.geoJSON(geojson, {
-      style: function(feature) {
-        var rawName = (feature.properties.shapeName || feature.properties.name || '')
-        var localName = matchRegion(rawName)
-        var count = localName ? (regCounts[localName] || 0) : 0
-        return {
-          fillColor: diagColor(count),
-          weight: 1.5,
-          opacity: 1,
-          color: '#4a7a5a',
-          fillOpacity: 0.82
-        }
-      },
-      onEachFeature: function(feature, layer) {
-        var rawName = (feature.properties.shapeName || feature.properties.name || '')
-        var localName = matchRegion(rawName) || rawName
-        var count = regCounts[localName] || 0
-        var urgLabel = count > 30 ? ' 🔴 Critique' : count > 15 ? ' 🟠 Élevé' : count > 5 ? ' 🟡 Modéré' : count > 0 ? ' 🟢 Faible' : ''
-        layer.bindTooltip(
-          '<div style="font-family:IBM Plex Sans,sans-serif;min-width:140px">' +
-          '<strong style="font-size:13px">' + escapeHtml(localName) + '</strong>' +
-          '<br><span style="font-size:12px">📊 ' + count + ' diagnostic' + (count !== 1 ? 's' : '') + urgLabel + '</span>' +
-          '</div>',
-          { sticky: true, opacity: 0.95 }
-        )
-        layer.on('mouseover', function(e) {
-          e.target.setStyle({ weight: 2.5, fillOpacity: 0.95, color: '#1a2e22' })
-          e.target.bringToFront()
-        })
-        layer.on('mouseout', function(e) { burkinaGeoLayer.resetStyle(e.target) })
-        layer.on('click', function() {
-          burkinaMap.fitBounds(layer.getBounds(), { padding: [40, 40] })
-        })
-      }
-    }).addTo(burkinaMap)
+    var circle = L.circleMarker([coords.lat, coords.lng], {
+      radius: radius,
+      fillColor: color,
+      color: '#4a7a5a',
+      weight: 1.5,
+      opacity: 1,
+      fillOpacity: 0.82
+    }).addTo(burkinaGeoLayer)
 
-    burkinaMap.fitBounds(burkinaGeoLayer.getBounds(), { padding: [10, 10] })
+    var urgencyText = ''
+    if (count > 30) urgencyText = ' 🔴 Critique'
+    else if (count > 15) urgencyText = ' 🟠 Élevé'
+    else if (count > 5) urgencyText = ' 🟡 Modéré'
+    else if (count > 0) urgencyText = ' 🟢 Faible'
 
-  } catch(e) {
-    console.error('Erreur carte:', e)
-    // Fallback : afficher un message dans le container
-    var mapEl = document.getElementById('burkinaMap')
-    if (mapEl && !burkinaGeoLayer) {
-      mapEl.style.display = 'flex'
-      mapEl.style.alignItems = 'center'
-      mapEl.style.justifyContent = 'center'
-      mapEl.innerHTML = '<div style="text-align:center;color:var(--gris-text);padding:40px"><div style="font-size:32px;margin-bottom:10px">🗺️</div><div style="font-size:13px">Carte indisponible — vérifiez la connexion</div><div style="font-size:11px;margin-top:4px">Les données provinces restent accessibles ci-dessous</div></div>'
-    }
+    circle.bindTooltip(
+      '<div style="font-family:IBM Plex Sans,sans-serif;min-width:160px">' +
+      '<strong style="font-size:13px">' + escapeHtml(region) + '</strong>' +
+      '<br><span style="font-size:12px">📊 ' + count + ' diagnostic' + (count !== 1 ? 's' : '') + urgencyText + '</span>' +
+      '</div>',
+      { sticky: true, opacity: 0.95 }
+    )
+
+    circle.on('mouseover', function(e) {
+      e.target.setStyle({ weight: 3, fillOpacity: 0.95, color: '#1a2e22' })
+      e.target.bringToFront()
+    })
+    circle.on('mouseout', function(e) {
+      e.target.setStyle({ weight: 1.5, fillOpacity: 0.82, color: '#4a7a5a' })
+    })
   }
+
+  var legend = L.control({ position: 'bottomright' })
+  legend.onAdd = function() {
+    var div = L.DomUtil.create('div', 'legend-custom')
+    div.style.background = 'white'
+    div.style.padding = '8px 14px'
+    div.style.borderRadius = '8px'
+    div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)'
+    div.style.fontSize = '11px'
+    div.style.fontFamily = 'IBM Plex Sans, sans-serif'
+    div.style.lineHeight = '1.5'
+    div.innerHTML = 
+      '<strong style="display:block;margin-bottom:6px">📊 Densité diagnostics</strong>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="display:inline-block;width:14px;height:14px;background:#f0f4f0;border:1px solid #ccc;border-radius:2px"></span> Aucun (0)</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="display:inline-block;width:14px;height:14px;background:#a8d5b5;border-radius:2px"></span> Faible (1–5)</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="display:inline-block;width:14px;height:14px;background:#5cb87a;border-radius:2px"></span> Modéré (6–15)</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="display:inline-block;width:14px;height:14px;background:#e67e22;border-radius:2px"></span> Élevé (16–30)</div>' +
+      '<div style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;width:14px;height:14px;background:#c0392b;border-radius:2px"></span> Critique (30+)</div>' +
+      '<hr style="margin:8px 0 4px;border-color:#eee">' +
+      '<div style="font-size:10px;color:#888;text-align:center">● Taille des cercles proportionnelle au nombre de diagnostics</div>'
+    return div
+  }
+  legend.addTo(burkinaMap)
+
+  setTimeout(function() { if (burkinaMap) burkinaMap.invalidateSize() }, 100)
 }
 
 // ════════════════════════════════════════════════════════════════════
