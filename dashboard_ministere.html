@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Wendk/cultivatech-admin/main/logo-MAERAH.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 :root{
   --vert:#009e4b;--vert-fonce:#006b32;--vert-pale:#e8f7ef;--vert-clair:#c8edd8;
@@ -148,6 +150,12 @@ tbody tr:last-child td{border-bottom:none}
 .scope-banner{background:var(--vert-pale);border:1.5px solid var(--vert-clair);
   border-radius:8px;padding:10px 14px;font-size:12px;color:var(--vert-fonce);
   font-weight:500;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+/* MAP */
+#burkinaMap{height:440px;border-radius:8px;overflow:hidden;z-index:1}
+.map-legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-text)}
+.legend-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.leaflet-tooltip{font-family:var(--font);font-size:12px}
 /* FOOTER */
 .footer{text-align:center;padding:18px 24px;font-size:10px;color:var(--gris-text);
   border-top:1px solid var(--gris-bord);margin-top:12px}
@@ -160,7 +168,7 @@ tbody tr:last-child td{border-bottom:none}
 </head>
 <body>
 
-<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-box">
     <img src="https://raw.githubusercontent.com/Wendk/cultivatech-admin/main/logo-MAERAH.png" alt="MAERAH" class="login-logo">
@@ -181,7 +189,7 @@ tbody tr:last-child td{border-bottom:none}
   </div>
 </div>
 
-<!-- ═══════════════════ MAIN APP ═══════════════════ -->
+<!-- MAIN APP -->
 <div id="mainApp">
 
   <!-- TOPBAR -->
@@ -213,7 +221,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="tab" id="tabAdmin" style="display:none" onclick="showTab('admin')">Admin utilisateurs</div>
   </div>
 
-  <!-- ═══ TAB OVERVIEW ═══ -->
+  <!-- TAB OVERVIEW -->
   <div id="tab-overview" class="tab-panel active">
     <div class="content">
       <div id="scopeBanner" class="scope-banner" style="display:none"></div>
@@ -239,7 +247,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- ═══ TAB ALERTES ═══ -->
+  <!-- TAB ALERTES -->
   <div id="tab-alerts" class="tab-panel">
     <div class="content">
       <div class="filter-bar">
@@ -253,9 +261,7 @@ tbody tr:last-child td{border-bottom:none}
         <div class="card-sub">Zones nécessitant intervention — données CultivaTech temps réel</div>
         <div class="tbl-wrap">
           <table>
-            <thead>
-              <tr><th>Niveau</th><th>Maladie</th><th>Culture</th><th>Province</th><th>Cas</th><th>Mise à jour</th><th>Statut</th></tr>
-            </thead>
+            <thead><tr><th>Niveau</th><th>Maladie</th><th>Culture</th><th>Province</th><th>Cas</th><th>Mise à jour</th><th>Statut</th></tr></thead>
             <tbody id="alertsTbody"></tbody>
           </table>
         </div>
@@ -263,7 +269,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- ═══ TAB PROVINCES ═══ -->
+  <!-- TAB PROVINCES -->
   <div id="tab-provinces" class="tab-panel">
     <div class="content">
       <div class="stats-row">
@@ -271,6 +277,21 @@ tbody tr:last-child td{border-bottom:none}
         <div class="stat-mini"><span style="font-size:18px">📊</span><div><div class="stat-mini-val" id="statDiag">—</div><div class="stat-mini-lbl">Total diagnostics (6 mois)</div></div></div>
         <div class="stat-mini"><span style="font-size:18px">📍</span><div><div class="stat-mini-val" id="statReg">—</div><div class="stat-mini-lbl">Régions couvertes</div></div></div>
       </div>
+
+      <!-- CARTE BURKINA FASO -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">🗺️ Carte phytosanitaire — Burkina Faso</div>
+        <div class="card-sub">Densité des diagnostics CultivaTech par région — 6 derniers mois</div>
+        <div id="burkinaMap"></div>
+        <div class="map-legend" id="mapLegend">
+          <div class="legend-item"><div class="legend-dot" style="background:#f0f4f0;border:1px solid #ccc"></div> Aucun diagnostic</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#a8d5b5"></div> Faible (1–5)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#5cb87a"></div> Modéré (6–15)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e67e22"></div> Élevé (16–30)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c0392b"></div> Critique (30+)</div>
+        </div>
+      </div>
+
       <div class="charts-2">
         <div class="card"><div class="card-title">Top provinces — Diagnostics reçus</div><div class="card-sub">Signalements via CultivaTech (6 mois)</div><div style="height:320px"><canvas id="cProvinces"></canvas></div></div>
         <div class="card"><div class="card-title">Toutes les provinces</div><div class="card-sub">Activité (6 mois)</div><div class="prov-list" id="provList"></div></div>
@@ -278,7 +299,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- ═══ TAB DIAGNOSTICS ═══ -->
+  <!-- TAB DIAGNOSTICS -->
   <div id="tab-diagnostics" class="tab-panel">
     <div class="content">
       <div class="filter-bar">
@@ -292,9 +313,7 @@ tbody tr:last-child td{border-bottom:none}
         <div class="card-sub">Remontées en temps réel depuis CultivaTech — 47 provinces Burkina Faso</div>
         <div class="tbl-wrap">
           <table>
-            <thead>
-              <tr><th>#</th><th>Date</th><th>Culture</th><th>Variété</th><th>Maladie</th><th>Urgence</th><th>Province</th><th>Région</th><th>GPS</th></tr>
-            </thead>
+            <thead><tr><th>#</th><th>Date</th><th>Culture</th><th>Variété</th><th>Maladie</th><th>Urgence</th><th>Province</th><th>Région</th><th>GPS</th></tr></thead>
             <tbody id="diagTbody"></tbody>
           </table>
         </div>
@@ -302,7 +321,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- ═══ TAB RAPPORTS ═══ -->
+  <!-- TAB RAPPORTS -->
   <div id="tab-rapports" class="tab-panel">
     <div class="content">
       <div class="filter-bar">
@@ -315,7 +334,6 @@ tbody tr:last-child td{border-bottom:none}
         <button class="fbtn" onclick="exportRapportCSV()">📥 Exporter les données</button>
         <button class="fbtn" onclick="generatePDFReport()">📄 Générer PDF</button>
       </div>
-
       <div class="kpi-grid-3">
         <div class="kpi green"><span class="kpi-ico">📋</span><div class="kpi-val" id="rapKv1">—</div><div class="kpi-lbl">Total diagnostics</div><div class="kpi-sub" id="rapKv1Sub">Chargement...</div></div>
         <div class="kpi orange"><span class="kpi-ico">⚠️</span><div class="kpi-val" id="rapKv2">—</div><div class="kpi-lbl">Alertes générées</div><div class="kpi-sub" id="rapKv2Sub">Actives et résolues</div></div>
@@ -333,7 +351,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- ═══ TAB MON COMPTE ═══ -->
+  <!-- TAB MON COMPTE -->
   <div id="tab-compte" class="tab-panel">
     <div class="content">
       <div class="card" style="max-width:600px">
@@ -359,20 +377,16 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- ═══ TAB ADMIN ═══ -->
+  <!-- TAB ADMIN -->
   <div id="tab-admin" class="tab-panel">
     <div class="content">
       <div class="card">
         <div class="card-title">Gestion des utilisateurs</div>
         <div class="card-sub">Créer, modifier ou désactiver des comptes — Admin DGPV uniquement</div>
-        <div style="margin-bottom:16px">
-          <button class="fbtn" onclick="showCreateUser()">+ Nouvel utilisateur</button>
-        </div>
+        <div style="margin-bottom:16px"><button class="fbtn" onclick="showCreateUser()">+ Nouvel utilisateur</button></div>
         <div class="tbl-wrap">
           <table>
-            <thead>
-              <tr><th>Identifiant</th><th>Nom complet</th><th>Département</th><th>Rôle</th><th>Scope</th><th>Région</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th></tr>
-            </thead>
+            <thead><tr><th>Identifiant</th><th>Nom complet</th><th>Département</th><th>Rôle</th><th>Scope</th><th>Région</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th></tr></thead>
             <tbody id="usersTbody"></tbody>
           </table>
         </div>
@@ -436,28 +450,28 @@ tbody tr:last-child td{border-bottom:none}
 
 <script>
 // ════════════════════════════════════════════════════════════════════
-// CONFIGURATION — UNIQUEMENT VIA EDGE FUNCTIONS
+// CONFIGURATION
 // ════════════════════════════════════════════════════════════════════
-const FUNCTIONS_URL = 'https://vyqhzagajlbosikzfnit.supabase.co/functions/v1'
-let adminToken = null
-let currentUser = null
-let allCharts = {}
-let alertData = []
-let diagData = []
-let currentReportData = null
-let currentReportPeriod = 180
+var FUNCTIONS_URL = 'https://vyqhzagajlbosikzfnit.supabase.co/functions/v1'
+var adminToken = null
+var currentUser = null
+var allCharts = {}
+var alertData = []
+var diagData = []
+var currentReportData = null
+var currentReportPeriod = 180
+
+// Carte
+var burkinaMap = null
+var burkinaGeoLayer = null
+var mapStatsCache = null
 
 // ════════════════════════════════════════════════════════════════════
 // UTILITAIRES
 // ════════════════════════════════════════════════════════════════════
 function escapeHtml(str) {
   if (!str) return ''
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
 
 function getPeriodText(days) {
@@ -465,32 +479,22 @@ function getPeriodText(days) {
   if (days === 30) return '30 derniers jours'
   if (days === 90) return '3 derniers mois'
   if (days === 180) return '6 derniers mois'
-  return `${days} jours`
+  return days + ' jours'
 }
 
 // ════════════════════════════════════════════════════════════════════
-// ADMIN FETCH — TOUTES LES REQUÊTES PASSENT PAR LES EDGE FUNCTIONS
+// ADMIN FETCH
 // ════════════════════════════════════════════════════════════════════
-async function adminFetch(functionName, options = {}) {
-  if (!adminToken) {
-    throw new Error('Non authentifié')
-  }
-  const res = await fetch(`${FUNCTIONS_URL}/${functionName}`, {
+async function adminFetch(functionName, options) {
+  options = options || {}
+  if (!adminToken) throw new Error('Non authentifié')
+  var res = await fetch(FUNCTIONS_URL + '/' + functionName, {
     method: options.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminToken}`
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
     body: options.body ? JSON.stringify(options.body) : undefined
   })
-  if (res.status === 401) {
-    doLogout()
-    throw new Error('Session expirée')
-  }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `Erreur HTTP ${res.status}`)
-  }
+  if (res.status === 401) { doLogout(); throw new Error('Session expirée') }
+  if (!res.ok) { var err = await res.json().catch(function(){ return {} }); throw new Error(err.error || 'Erreur HTTP ' + res.status) }
   return res.json()
 }
 
@@ -498,119 +502,58 @@ async function adminFetch(functionName, options = {}) {
 // LOGIN
 // ════════════════════════════════════════════════════════════════════
 async function doLogin() {
-  const username = document.getElementById('loginUser').value.trim()
-  const password = document.getElementById('loginPass').value
-  const errEl = document.getElementById('loginError')
+  var username = document.getElementById('loginUser').value.trim()
+  var password = document.getElementById('loginPass').value
+  var errEl = document.getElementById('loginError')
   startAutoRefresh()
-
-  if (!username || !password) {
-    errEl.textContent = 'Identifiant et mot de passe requis'
-    errEl.style.display = 'block'
-    return
-  }
-
+  if (!username || !password) { errEl.textContent = 'Identifiant et mot de passe requis'; errEl.style.display = 'block'; return }
   try {
-    const res = await fetch(`${FUNCTIONS_URL}/ministry-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      errEl.textContent = data.error || 'Identifiants incorrects'
-      errEl.style.display = 'block'
-      return
-    }
-
-    adminToken = data.token
-    currentUser = data.user
-
-    const scopeBadge = currentUser.scope === 'national'
+    var res = await fetch(FUNCTIONS_URL + '/ministry-login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password}) })
+    var data = await res.json()
+    if (!res.ok) { errEl.textContent = data.error || 'Identifiants incorrects'; errEl.style.display = 'block'; return }
+    adminToken = data.token; currentUser = data.user
+    var scopeBadge = currentUser.scope === 'national'
       ? '<span class="badge b-green">🌍 National</span>'
-      : `<span class="badge b-orange">📍 ${escapeHtml(currentUser.region)}</span>`
-
-    document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
-    document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
-
+      : '<span class="badge b-orange">📍 ' + escapeHtml(currentUser.region) + '</span>'
+    document.getElementById('topbarUname').innerHTML = escapeHtml(currentUser.full_name) + ' ' + scopeBadge
+    document.getElementById('topbarAvatar').textContent = (currentUser.full_name && currentUser.full_name[0] || 'U').toUpperCase()
     if (currentUser.scope === 'regional') {
-      const banner = document.getElementById('scopeBanner')
-      if (banner) {
-        banner.style.display = 'flex'
-        banner.innerHTML = `🔍 Vous visualisez les données de la région : <strong>${currentUser.region}</strong> (${currentUser.provinces?.length || 0} provinces)`
-      }
+      var banner = document.getElementById('scopeBanner')
+      if (banner) { banner.style.display = 'flex'; banner.innerHTML = '🔍 Vous visualisez les données de la région : <strong>' + currentUser.region + '</strong> (' + (currentUser.provinces && currentUser.provinces.length || 0) + ' provinces)' }
     }
-
-    if (currentUser.role === 'admin') {
-      document.getElementById('tabAdmin').style.display = 'flex'
-    }
-
+    if (currentUser.role === 'admin') document.getElementById('tabAdmin').style.display = 'flex'
     document.getElementById('loginScreen').style.display = 'none'
     document.getElementById('mainApp').style.display = 'block'
-
     updateDate()
-    
-    await loadOverview()
-    await loadAlerts()
-    await loadDiagnostics()
-    await loadProvinces()
-    await loadRapports()
-    await buildCharts()
-
-    if (currentUser.role === 'admin') {
-      await loadUsers()
-    }
-  } catch (e) {
-    errEl.textContent = 'Erreur de connexion'
-    errEl.style.display = 'block'
-  }
+    await loadOverview(); await loadAlerts(); await loadDiagnostics(); await loadProvinces(); await loadRapports(); await buildCharts()
+    if (currentUser.role === 'admin') await loadUsers()
+  } catch(e) { errEl.textContent = 'Erreur de connexion'; errEl.style.display = 'block' }
 }
 
-  // ════════════════════════════════════════════════════════════════════
-// AUTO-ACTUALISATION (toutes les 5 minutes)
 // ════════════════════════════════════════════════════════════════════
-let autoRefreshInterval = null
-
+// AUTO-REFRESH (5 min)
+// ════════════════════════════════════════════════════════════════════
+var autoRefreshInterval = null
 function startAutoRefresh() {
   if (autoRefreshInterval) clearInterval(autoRefreshInterval)
-  
-  // Rafraîchit toutes les 5 minutes (300 000 ms)
-  autoRefreshInterval = setInterval(() => {
-    const activeTab = document.querySelector('.tab-panel.active')?.id
-    
-    if (activeTab === 'tab-overview') {
-      console.log('🔄 Auto-refresh: chargement des données...')
-      loadOverview()
-      buildCharts()
-    } else if (activeTab === 'tab-alerts') {
-      loadAlerts()
-    } else if (activeTab === 'tab-diagnostics') {
-      loadDiagnostics()
-    } else if (activeTab === 'tab-provinces') {
-      loadProvinces()
-    } else if (activeTab === 'tab-rapports') {
-      loadRapports()
-    }
-  }, 300000) // 5 minutes
+  autoRefreshInterval = setInterval(function() {
+    var activeTab = document.querySelector('.tab-panel.active') && document.querySelector('.tab-panel.active').id
+    if (activeTab === 'tab-overview') { loadOverview(); buildCharts() }
+    else if (activeTab === 'tab-alerts') loadAlerts()
+    else if (activeTab === 'tab-diagnostics') loadDiagnostics()
+    else if (activeTab === 'tab-provinces') loadProvinces()
+    else if (activeTab === 'tab-rapports') loadRapports()
+  }, 300000)
 }
-
-function stopAutoRefresh() {
-  if (autoRefreshInterval) {
-    clearInterval(autoRefreshInterval)
-    autoRefreshInterval = null
-  }
-}
+function stopAutoRefresh() { if (autoRefreshInterval) { clearInterval(autoRefreshInterval); autoRefreshInterval = null } }
 
 function doLogout() {
-  adminToken = null
-  currentUser = null
-  allCharts = {}
-  document.getElementById("loginScreen").style.display = "flex"
-  document.getElementById("mainApp").style.display = "none"
-  document.getElementById("loginUser").value = ""
-  document.getElementById("loginPass").value = ""
-  document.getElementById("tabAdmin").style.display = "none"
+  adminToken = null; currentUser = null; allCharts = {}
+  if (burkinaMap) { burkinaMap.remove(); burkinaMap = null; burkinaGeoLayer = null }
+  document.getElementById('loginScreen').style.display = 'flex'
+  document.getElementById('mainApp').style.display = 'none'
+  document.getElementById('loginUser').value = ''; document.getElementById('loginPass').value = ''
+  document.getElementById('tabAdmin').style.display = 'none'
   stopAutoRefresh()
 }
 
@@ -618,11 +561,10 @@ function doLogout() {
 // DATE
 // ════════════════════════════════════════════════════════════════════
 function updateDate() {
-  const el = document.getElementById("topbarDate")
+  var el = document.getElementById('topbarDate')
   if (el) {
-    const n = new Date()
-    el.textContent = n.toLocaleDateString("fr-FR", {weekday:"short", day:"numeric", month:"short"}) +
-      " " + n.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"})
+    var n = new Date()
+    el.textContent = n.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) + ' ' + n.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
   }
 }
 setInterval(updateDate, 1000)
@@ -631,163 +573,72 @@ setInterval(updateDate, 1000)
 // TABS
 // ════════════════════════════════════════════════════════════════════
 function showTab(name) {
-  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"))
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"))
-  const panel = document.getElementById("tab-" + name)
-  if (panel) panel.classList.add("active")
-  const tabs = document.querySelectorAll(".tab")
-  const map = ["overview", "alerts", "provinces", "diagnostics", "rapports", "compte", "admin"]
-  const idx = map.indexOf(name)
-  if (idx >= 0 && tabs[idx]) tabs[idx].classList.add("active")
-  
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active') })
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active') })
+  var panel = document.getElementById('tab-' + name)
+  if (panel) panel.classList.add('active')
+  var tabs = document.querySelectorAll('.tab')
+  var map2 = ['overview','alerts','provinces','diagnostics','rapports','compte','admin']
+  var idx = map2.indexOf(name)
+  if (idx >= 0 && tabs[idx]) tabs[idx].classList.add('active')
   if (name === 'alerts') loadAlerts()
   if (name === 'diagnostics') loadDiagnostics()
-  if (name === 'provinces') loadProvinces()
+  if (name === 'provinces') {
+    loadProvinces()
+    // Corriger l'affichage Leaflet après révélation du container
+    setTimeout(function() { if (burkinaMap) burkinaMap.invalidateSize() }, 150)
+  }
   if (name === 'rapports') loadRapports()
 }
 
 // ════════════════════════════════════════════════════════════════════
-// OVERVIEW (6 mois par défaut)
+// OVERVIEW
 // ════════════════════════════════════════════════════════════════════
 async function loadOverview() {
   try {
-    const stats = await adminFetch('get-dashboard-stats?days=180')
-    
+    var stats = await adminFetch('get-dashboard-stats?days=180')
     document.getElementById('kv1').textContent = stats.critical_alerts || 0
     document.getElementById('kv2').textContent = stats.attention_alerts || 0
     document.getElementById('kv3').textContent = stats.diagnostics_period || stats.total_diagnostics || 0
     document.getElementById('kv4').textContent = stats.active_farmers || 0
-    
     document.getElementById('ks1').textContent = stats.critical_alerts_sub || 'actives'
     document.getElementById('ks3').textContent = '6 derniers mois'
     document.getElementById('ks4').textContent = stats.active_farmers_sub || 'agriculteurs uniques'
-    
     document.getElementById('alertCount').textContent = stats.critical_alerts || 0
-    
     if (stats.top_alert) {
       document.getElementById('alertBanner').style.display = 'flex'
       document.getElementById('alertBannerTitle').textContent = stats.top_alert.title
       document.getElementById('alertBannerText').textContent = stats.top_alert.message
-    } else {
-      document.getElementById('alertBanner').style.display = 'none'
-    }
-  } catch (e) {
-    console.error('Erreur chargement overview:', e)
-  }
+    } else { document.getElementById('alertBanner').style.display = 'none' }
+  } catch(e) { console.error('Erreur overview:', e) }
 }
 
 // ════════════════════════════════════════════════════════════════════
 // CHARTS
 // ════════════════════════════════════════════════════════════════════
 async function buildCharts() {
-  const V = "#009e4b", R = "#c0392b", O = "#e67e22", J = "#f1c40f"
-
+  var V = '#009e4b', R = '#c0392b', O = '#e67e22', J = '#f1c40f'
   try {
-    const stats = await adminFetch('get-dashboard-stats?days=180')
-    const chartsData = stats.charts_data || {}
-    
-    const cultData = chartsData.cultures || []
+    var stats = await adminFetch('get-dashboard-stats?days=180')
+    var chartsData = stats.charts_data || {}
+    var cultData = chartsData.cultures || []
     if (allCharts.c1) allCharts.c1.destroy()
-    allCharts.c1 = new Chart(document.getElementById("cCultures"), {
-      type: "bar",
-      data: {
-        labels: cultData.map(c => c.name),
-        datasets: [{
-          data: cultData.map(c => c.count),
-          backgroundColor: cultData.map((_, i) => i === 0 ? R : i === 1 ? O : V),
-          borderRadius: 5
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: "#f0f0f0" } } }
-      }
-    })
-
-    const malData = chartsData.diseases || []
+    allCharts.c1 = new Chart(document.getElementById('cCultures'), { type:'bar', data:{ labels:cultData.map(function(c){return c.name}), datasets:[{data:cultData.map(function(c){return c.count}), backgroundColor:cultData.map(function(_,i){return i===0?R:i===1?O:V}), borderRadius:5}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f0f0f0'}}}} })
+    var malData = chartsData.diseases || []
     if (allCharts.c3) allCharts.c3.destroy()
-    allCharts.c3 = new Chart(document.getElementById("cMaladies"), {
-      type: "bar",
-      data: {
-        labels: malData.map(m => m.name.length > 20 ? m.name.slice(0, 20) + "..." : m.name),
-        datasets: [{
-          data: malData.map(m => m.count),
-          backgroundColor: malData.map((_, i) => i === 0 ? R : i === 1 ? O : V),
-          borderRadius: 4
-        }]
-      },
-      options: {
-        indexAxis: "y",
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { grid: { color: "#f0f0f0" } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } }
-      }
-    })
-
-    const urgData = chartsData.urgency || { critique: 0, elevee: 0, moderee: 0, faible: 0 }
+    allCharts.c3 = new Chart(document.getElementById('cMaladies'), { type:'bar', data:{ labels:malData.map(function(m){return m.name.length>20?m.name.slice(0,20)+'...':m.name}), datasets:[{data:malData.map(function(m){return m.count}), backgroundColor:malData.map(function(_,i){return i===0?R:i===1?O:V}), borderRadius:4}] }, options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f0f0f0'}},y:{grid:{display:false},ticks:{font:{size:10}}}}} })
+    var urgData = chartsData.urgency || {critique:0,elevee:0,moderee:0,faible:0}
     if (allCharts.c4) allCharts.c4.destroy()
-    allCharts.c4 = new Chart(document.getElementById("cUrgence"), {
-      type: "doughnut",
-      data: {
-        labels: ["Critique", "Élevée", "Modérée", "Faible"],
-        datasets: [{
-          data: [urgData.critique || 0, urgData.elevee || 0, urgData.moderee || 0, urgData.faible || 0],
-          backgroundColor: [R, O, J, V],
-          borderWidth: 2,
-          borderColor: "#fff"
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } }
-      }
-    })
-
-    const trendData = chartsData.trend || { weeks: ["S-4", "S-3", "S-2", "S-1", "Cette sem."], critical: [0,0,0,0,0], attention: [0,0,0,0,0] }
+    allCharts.c4 = new Chart(document.getElementById('cUrgence'), { type:'doughnut', data:{ labels:['Critique','Élevée','Modérée','Faible'], datasets:[{data:[urgData.critique||0,urgData.elevee||0,urgData.moderee||0,urgData.faible||0], backgroundColor:[R,O,J,V], borderWidth:2, borderColor:'#fff'}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}} })
+    var trendData = chartsData.trend || {weeks:['S-4','S-3','S-2','S-1','Cette sem.'],critical:[0,0,0,0,0],attention:[0,0,0,0,0]}
     if (allCharts.c2) allCharts.c2.destroy()
-    allCharts.c2 = new Chart(document.getElementById("cTrend"), {
-      type: "line",
-      data: {
-        labels: trendData.weeks,
-        datasets: [
-          { label: "Critiques", data: trendData.critical, borderColor: R, backgroundColor: "rgba(192,57,43,.1)", tension: 0.4, fill: true, pointBackgroundColor: R },
-          { label: "Attention", data: trendData.attention, borderColor: O, backgroundColor: "rgba(230,126,34,.08)", tension: 0.4, fill: true, pointBackgroundColor: O }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { boxWidth: 10, font: { size: 11 } } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: "#f0f0f0" } } }
-      }
-    })
-
+    allCharts.c2 = new Chart(document.getElementById('cTrend'), { type:'line', data:{ labels:trendData.weeks, datasets:[{label:'Critiques',data:trendData.critical,borderColor:R,backgroundColor:'rgba(192,57,43,.1)',tension:0.4,fill:true,pointBackgroundColor:R},{label:'Attention',data:trendData.attention,borderColor:O,backgroundColor:'rgba(230,126,34,.08)',tension:0.4,fill:true,pointBackgroundColor:O}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f0f0f0'}}}} })
     if (stats.seasonal_diseases) {
-      const seasonData = stats.seasonal_diseases
+      var seasonData = stats.seasonal_diseases
       if (allCharts.c7) allCharts.c7.destroy()
-      allCharts.c7 = new Chart(document.getElementById("cSaison"), {
-        type: "radar",
-        data: {
-          labels: seasonData.labels,
-          datasets: [
-            { label: "Saison des pluies", data: seasonData.rainy, borderColor: V, backgroundColor: "rgba(0,158,75,.2)" },
-            { label: "Saison sèche", data: seasonData.dry, borderColor: O, backgroundColor: "rgba(230,126,34,.2)" }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } }
-        }
-      })
+      allCharts.c7 = new Chart(document.getElementById('cSaison'), { type:'radar', data:{ labels:seasonData.labels, datasets:[{label:'Saison des pluies',data:seasonData.rainy,borderColor:V,backgroundColor:'rgba(0,158,75,.2)'},{label:'Saison sèche',data:seasonData.dry,borderColor:O,backgroundColor:'rgba(230,126,34,.2)'}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}} })
     }
-  } catch (e) {
-    console.error('Erreur chargement charts:', e)
-  }
+  } catch(e) { console.error('Erreur charts:', e) }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -795,492 +646,307 @@ async function buildCharts() {
 // ════════════════════════════════════════════════════════════════════
 async function loadAlerts() {
   try {
-    const result = await adminFetch('get-phyto-alerts')
+    var result = await adminFetch('get-phyto-alerts')
     alertData = result.alerts || []
-    
-    const niveau = document.getElementById('fAlertNiveau')?.value || ''
-    const culture = document.getElementById('fAlertCulture')?.value || ''
-    
-    let filtered = alertData
-    if (niveau) filtered = filtered.filter(a => a.alert_level === niveau)
-    if (culture) filtered = filtered.filter(a => a.culture_name === culture)
-    
-    const tbody = document.getElementById('alertsTbody')
-    if (!tbody) return
-    
-    tbody.innerHTML = filtered.map(a => `
-      <tr>
-        <td><span class="badge ${a.alert_level === 'critique' ? 'b-red' : 'b-orange'}">${escapeHtml(a.alert_level)}</span></td>
-        <td><strong>${escapeHtml(a.disease_name)}</strong></td>
-        <td>${escapeHtml(a.culture_name)}</span></td>
-        <td>${escapeHtml(a.province)}</span></td>
-        <td>${a.case_count || 0}</span></td>
-        <td>${new Date(a.last_updated).toLocaleDateString('fr-FR')}</span></td>
-        <td><span class="badge b-red">Active</span></td>
-      </tr>
-    `).join('') || '<tr><td colspan="7" style="text-align:center">Aucune alerte active</td></tr>'
-  } catch (e) {
-    console.error('Erreur chargement alertes:', e)
-    document.getElementById('alertsTbody').innerHTML = '<tr><td colspan="7" style="text-align:center">Erreur de chargement</td></tr>'
-  }
+    var niveau = (document.getElementById('fAlertNiveau') || {value:''}).value
+    var culture = (document.getElementById('fAlertCulture') || {value:''}).value
+    var filtered = alertData.filter(function(a){ return (!niveau||a.alert_level===niveau)&&(!culture||a.culture_name===culture) })
+    var tbody = document.getElementById('alertsTbody'); if (!tbody) return
+    tbody.innerHTML = filtered.map(function(a){ return '<tr><td><span class="badge ' + (a.alert_level==='critique'?'b-red':'b-orange') + '">' + escapeHtml(a.alert_level) + '</span></td><td><strong>' + escapeHtml(a.disease_name) + '</strong></td><td>' + escapeHtml(a.culture_name) + '</td><td>' + escapeHtml(a.province) + '</td><td>' + (a.case_count||0) + '</td><td>' + new Date(a.last_updated).toLocaleDateString('fr-FR') + '</td><td><span class="badge b-red">Active</span></td></tr>' }).join('') || '<tr><td colspan="7" style="text-align:center">Aucune alerte active</td></tr>'
+  } catch(e) { console.error('Erreur alertes:', e); document.getElementById('alertsTbody').innerHTML = '<tr><td colspan="7" style="text-align:center">Erreur de chargement</td></tr>' }
 }
 
 // ════════════════════════════════════════════════════════════════════
 // DIAGNOSTICS
 // ════════════════════════════════════════════════════════════════════
 async function loadDiagnostics() {
-  const periode = document.getElementById('fDiagPeriode')?.value || '180'
-  const culture = document.getElementById('fDiagCulture')?.value || ''
-  
+  var periode = (document.getElementById('fDiagPeriode') || {value:'180'}).value
+  var culture = (document.getElementById('fDiagCulture') || {value:''}).value
   try {
-    const params = new URLSearchParams({ days: periode, limit: '500' })
-    if (culture) params.append('culture', culture)
-    
-    const result = await adminFetch(`get-diagnostic-logs?${params}`)
+    var params = new URLSearchParams({days:periode,limit:'500'})
+    if (culture) params.append('culture',culture)
+    var result = await adminFetch('get-diagnostic-logs?' + params)
     diagData = result.data || []
-    
-    const tbody = document.getElementById('diagTbody')
-    if (!tbody) return
-    
-    tbody.innerHTML = diagData.map((d, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${new Date(d.created_at).toLocaleString('fr-FR')}</td>
-        <td><strong>${escapeHtml(d.culture_name)}</strong></td>
-        <td>${escapeHtml(d.variety_name || '—')}</td>
-        <td>${escapeHtml(d.rule_matched || '—')}</td>
-        <td><span class="badge ${d.urgency === 'Élevée' ? 'b-red' : 'b-orange'}">${escapeHtml(d.urgency)}</span></td>
-        <td>${escapeHtml(d.province || '—')}</td>
-        <td>${escapeHtml(d.region || '—')}</td>
-        <td>${d.latitude ? `${d.latitude.toFixed(2)}, ${d.longitude.toFixed(2)}` : '—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="9" style="text-align:center">Aucun diagnostic trouvé</td></tr>'
-  } catch (e) {
-    console.error('Erreur chargement diagnostics:', e)
-    document.getElementById('diagTbody').innerHTML = '<tr><td colspan="9" style="text-align:center">Erreur de chargement</td></tr>'
-  }
+    var tbody = document.getElementById('diagTbody'); if (!tbody) return
+    tbody.innerHTML = diagData.map(function(d,i){ return '<tr><td>' + (i+1) + '</td><td>' + new Date(d.created_at).toLocaleString('fr-FR') + '</td><td><strong>' + escapeHtml(d.culture_name) + '</strong></td><td>' + escapeHtml(d.variety_name||'—') + '</td><td>' + escapeHtml(d.rule_matched||'—') + '</td><td><span class="badge ' + (d.urgency==='Élevée'?'b-red':'b-orange') + '">' + escapeHtml(d.urgency) + '</span></td><td>' + escapeHtml(d.province||'—') + '</td><td>' + escapeHtml(d.region||'—') + '</td><td>' + (d.latitude ? d.latitude.toFixed(2)+', '+d.longitude.toFixed(2) : '—') + '</td></tr>' }).join('') || '<tr><td colspan="9" style="text-align:center">Aucun diagnostic trouvé</td></tr>'
+  } catch(e) { console.error('Erreur diagnostics:', e); document.getElementById('diagTbody').innerHTML = '<tr><td colspan="9" style="text-align:center">Erreur de chargement</td></tr>' }
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PROVINCES
+// PROVINCES + CARTE BURKINA FASO
 // ════════════════════════════════════════════════════════════════════
 async function loadProvinces() {
   try {
-    const stats = await adminFetch('get-dashboard-stats?days=180')
-    const provincesData = stats.provinces_data || []
-    
-    const sorted = [...provincesData].sort((a, b) => b.count - a.count)
-    const totalDiags = sorted.reduce((sum, p) => sum + p.count, 0)
-    const regionsCount = new Set(provincesData.map(p => p.region)).size
-    
-    document.getElementById("statProv").textContent = sorted.length
-    document.getElementById("statDiag").textContent = totalDiags
-    document.getElementById("statReg").textContent = regionsCount
-    
-    const pl = document.getElementById("provList")
+    var stats = await adminFetch('get-dashboard-stats?days=180')
+    mapStatsCache = stats
+    var provincesData = stats.provinces_data || []
+    var sorted = provincesData.slice().sort(function(a,b){ return b.count-a.count })
+    var totalDiags = sorted.reduce(function(s,p){ return s+p.count },0)
+    var regionsCount = new Set(provincesData.map(function(p){ return p.region })).size
+    document.getElementById('statProv').textContent = sorted.length
+    document.getElementById('statDiag').textContent = totalDiags
+    document.getElementById('statReg').textContent = regionsCount
+    var pl = document.getElementById('provList')
     if (pl) {
-      pl.innerHTML = sorted.map(p => {
-        const c = p.count > 15 ? "var(--rouge)" : p.count > 8 ? "var(--orange)" : "var(--vert-fonce)"
-        return `<div class="prov-item">
-          <span style="font-weight:500">${escapeHtml(p.name)}</span>
-          <span style="font-family:var(--mono);font-weight:600;color:${c}">${p.count}</span>
-        </div>`
+      pl.innerHTML = sorted.map(function(p){
+        var c = p.count>15?'var(--rouge)':p.count>8?'var(--orange)':'var(--vert-fonce)'
+        return '<div class="prov-item"><span style="font-weight:500">' + escapeHtml(p.name) + '</span><span style="font-family:var(--mono);font-weight:600;color:' + c + '">' + p.count + '</span></div>'
       }).join('') || '<div class="prov-item">Aucune donnée</div>'
     }
-    
-    const top15 = sorted.slice(0, 15)
-    const Vc = "#009e4b", Rc = "#c0392b", Oc = "#e67e22"
+    var top15 = sorted.slice(0,15)
+    var Vc = '#009e4b', Rc = '#c0392b', Oc = '#e67e22'
     if (allCharts.c5) allCharts.c5.destroy()
-    allCharts.c5 = new Chart(document.getElementById("cProvinces"), {
-      type: "bar",
-      data: {
-        labels: top15.map(p => p.name.split(" (")[0]),
-        datasets: [{
-          data: top15.map(p => p.count),
-          backgroundColor: top15.map(p => p.count > 15 ? Rc : p.count > 8 ? Oc : Vc),
-          borderRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
-          y: { grid: { color: "#f0f0f0" } }
-        }
+    allCharts.c5 = new Chart(document.getElementById('cProvinces'), { type:'bar', data:{ labels:top15.map(function(p){ return p.name.split(' (')[0] }), datasets:[{data:top15.map(function(p){ return p.count }), backgroundColor:top15.map(function(p){ return p.count>15?Rc:p.count>8?Oc:Vc }), borderRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{grid:{color:'#f0f0f0'}}}} })
+
+    // Rendu carte
+    await renderBurkinaMap(stats)
+  } catch(e) { console.error('Erreur provinces:', e) }
+}
+
+// ── Carte choroplèthe ────────────────────────────────────────────────
+async function renderBurkinaMap(stats) {
+  var provincesData = stats.provinces_data || []
+
+  // Agréger par région (chaque province a un champ region)
+  var regCounts = {}
+  provincesData.forEach(function(p) {
+    if (p.region) regCounts[p.region] = (regCounts[p.region] || 0) + p.count
+  })
+
+  // Couleur selon densité
+  function diagColor(count) {
+    if (!count || count === 0) return '#f0f4f0'
+    if (count <= 5)  return '#a8d5b5'
+    if (count <= 15) return '#5cb87a'
+    if (count <= 30) return '#e67e22'
+    return '#c0392b'
+  }
+
+  // Normalisation des noms de régions (GeoJSON geoBoundaries → noms locaux)
+  var REGION_ALIASES = {
+    'Boucle du Mouhoun': ['Boucle du Mouhoun','Boucle De Mouhoun','Boucle Du Mouhoun'],
+    'Centre': ['Centre'],
+    'Centre-Est': ['Centre-Est','Centre Est'],
+    'Centre-Nord': ['Centre-Nord','Centre Nord'],
+    'Centre-Ouest': ['Centre-Ouest','Centre Ouest'],
+    'Centre-Sud': ['Centre-Sud','Centre Sud'],
+    'Est': ['Est'],
+    'Hauts-Bassins': ['Hauts-Bassins','Hauts Bassins','Haut-Bassins'],
+    'Nord': ['Nord'],
+    'Plateau-Central': ['Plateau-Central','Plateau Central'],
+    'Sahel': ['Sahel'],
+    'Cascades': ['Cascades'],
+    'Sud-Ouest': ['Sud-Ouest','Sud Ouest']
+  }
+
+  function matchRegion(geojsonName) {
+    if (!geojsonName) return null
+    var n = geojsonName.trim()
+    // Recherche directe
+    if (regCounts[n] !== undefined) return n
+    // Recherche dans les alias
+    for (var localName in REGION_ALIASES) {
+      var aliases = REGION_ALIASES[localName]
+      for (var i = 0; i < aliases.length; i++) {
+        if (aliases[i].toLowerCase() === n.toLowerCase()) return localName
       }
-    })
-  } catch (e) {
-    console.error('Erreur chargement provinces:', e)
+    }
+    // Recherche insensible à la casse dans regCounts
+    for (var k in regCounts) {
+      if (k.toLowerCase() === n.toLowerCase()) return k
+    }
+    return null
+  }
+
+  // Initialiser la carte Leaflet une seule fois
+  if (!burkinaMap) {
+    burkinaMap = L.map('burkinaMap', { zoomControl:true, attributionControl:true }).setView([12.3,-1.7], 6)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:'&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
+      opacity: 0.4
+    }).addTo(burkinaMap)
+  }
+
+  // Charger le GeoJSON des régions du Burkina Faso (geoBoundaries ADM1)
+  var GEOJSON_URL = 'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson'
+
+  try {
+    var res = await fetch(GEOJSON_URL)
+    if (!res.ok) throw new Error('GeoJSON non disponible')
+    var geojson = await res.json()
+
+    if (burkinaGeoLayer) { burkinaGeoLayer.remove(); burkinaGeoLayer = null }
+
+    burkinaGeoLayer = L.geoJSON(geojson, {
+      style: function(feature) {
+        var rawName = (feature.properties.shapeName || feature.properties.name || '')
+        var localName = matchRegion(rawName)
+        var count = localName ? (regCounts[localName] || 0) : 0
+        return {
+          fillColor: diagColor(count),
+          weight: 1.5,
+          opacity: 1,
+          color: '#4a7a5a',
+          fillOpacity: 0.82
+        }
+      },
+      onEachFeature: function(feature, layer) {
+        var rawName = (feature.properties.shapeName || feature.properties.name || '')
+        var localName = matchRegion(rawName) || rawName
+        var count = regCounts[localName] || 0
+        var urgLabel = count > 30 ? ' 🔴 Critique' : count > 15 ? ' 🟠 Élevé' : count > 5 ? ' 🟡 Modéré' : count > 0 ? ' 🟢 Faible' : ''
+        layer.bindTooltip(
+          '<div style="font-family:IBM Plex Sans,sans-serif;min-width:140px">' +
+          '<strong style="font-size:13px">' + escapeHtml(localName) + '</strong>' +
+          '<br><span style="font-size:12px">📊 ' + count + ' diagnostic' + (count !== 1 ? 's' : '') + urgLabel + '</span>' +
+          '</div>',
+          { sticky: true, opacity: 0.95 }
+        )
+        layer.on('mouseover', function(e) {
+          e.target.setStyle({ weight: 2.5, fillOpacity: 0.95, color: '#1a2e22' })
+          e.target.bringToFront()
+        })
+        layer.on('mouseout', function(e) { burkinaGeoLayer.resetStyle(e.target) })
+        layer.on('click', function() {
+          burkinaMap.fitBounds(layer.getBounds(), { padding: [40, 40] })
+        })
+      }
+    }).addTo(burkinaMap)
+
+    burkinaMap.fitBounds(burkinaGeoLayer.getBounds(), { padding: [10, 10] })
+
+  } catch(e) {
+    console.error('Erreur carte:', e)
+    // Fallback : afficher un message dans le container
+    var mapEl = document.getElementById('burkinaMap')
+    if (mapEl && !burkinaGeoLayer) {
+      mapEl.style.display = 'flex'
+      mapEl.style.alignItems = 'center'
+      mapEl.style.justifyContent = 'center'
+      mapEl.innerHTML = '<div style="text-align:center;color:var(--gris-text);padding:40px"><div style="font-size:32px;margin-bottom:10px">🗺️</div><div style="font-size:13px">Carte indisponible — vérifiez la connexion</div><div style="font-size:11px;margin-top:4px">Les données provinces restent accessibles ci-dessous</div></div>'
+    }
   }
 }
 
 // ════════════════════════════════════════════════════════════════════
-// RAPPORTS (avec période personnalisable)
+// RAPPORTS
 // ════════════════════════════════════════════════════════════════════
 async function loadRapports() {
-  const periodDays = parseInt(document.getElementById('reportPeriod')?.value || '180')
+  var periodDays = parseInt((document.getElementById('reportPeriod') || {value:'180'}).value)
   currentReportPeriod = periodDays
-  const periodText = getPeriodText(periodDays)
-  
+  var periodText = getPeriodText(periodDays)
   try {
-    const stats = await adminFetch(`get-dashboard-stats?days=${periodDays}`)
+    var stats = await adminFetch('get-dashboard-stats?days=' + periodDays)
     currentReportData = stats
-    
-    document.getElementById("rapKv1").textContent = stats.total_diagnostics || 0
-    document.getElementById("rapKv2").textContent = stats.total_alerts || 0
-    const pct = stats.provinces_coverage || "0%"
-    document.getElementById("rapKv3").textContent = pct
-    
-    document.getElementById("rapKv1Sub").textContent = periodText
-    document.getElementById("rapKv2Sub").textContent = 'Actives et résolues'
-    document.getElementById("rapKv3Sub").textContent = `Sur 47 provinces (${periodText})`
-    document.getElementById("monthlyChartSub").textContent = `Diagnostics reçus par mois (${periodText})`
-    document.getElementById("executiveSummarySub").textContent = `Rapport ${periodText}`
-    
-    const monthlyData = stats.monthly_diagnostics || []
-    const Vc = "#009e4b"
+    document.getElementById('rapKv1').textContent = stats.total_diagnostics || 0
+    document.getElementById('rapKv2').textContent = stats.total_alerts || 0
+    document.getElementById('rapKv3').textContent = stats.provinces_coverage || '0%'
+    document.getElementById('rapKv1Sub').textContent = periodText
+    document.getElementById('rapKv2Sub').textContent = 'Actives et résolues'
+    document.getElementById('rapKv3Sub').textContent = 'Sur 47 provinces (' + periodText + ')'
+    document.getElementById('monthlyChartSub').textContent = 'Diagnostics reçus par mois (' + periodText + ')'
+    document.getElementById('executiveSummarySub').textContent = 'Rapport ' + periodText
+    var monthlyData = stats.monthly_diagnostics || []
+    var Vc = '#009e4b'
     if (allCharts.c6) allCharts.c6.destroy()
-    allCharts.c6 = new Chart(document.getElementById("cMensuel"), {
-      type: "line",
-      data: {
-        labels: monthlyData.map(m => m.month),
-        datasets: [{
-          label: `Diagnostics (${periodText})`,
-          data: monthlyData.map(m => m.count),
-          borderColor: Vc,
-          backgroundColor: "rgba(0,158,75,.1)",
-          tension: 0.4,
-          fill: true,
-          pointBackgroundColor: Vc
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { font: { size: 11 } } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: "#f0f0f0" } } }
-      }
-    })
-    
-    const resume = document.getElementById("resumeExecutif")
-    if (resume) {
-      resume.innerHTML = stats.executive_summary || `Chargement des données pour ${periodText}...`
-    }
-  } catch (e) {
-    console.error('Erreur chargement rapports:', e)
-  }
+    allCharts.c6 = new Chart(document.getElementById('cMensuel'), { type:'line', data:{ labels:monthlyData.map(function(m){return m.month}), datasets:[{label:'Diagnostics (' + periodText + ')',data:monthlyData.map(function(m){return m.count}),borderColor:Vc,backgroundColor:'rgba(0,158,75,.1)',tension:0.4,fill:true,pointBackgroundColor:Vc}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f0f0f0'}}}} })
+    var resume = document.getElementById('resumeExecutif')
+    if (resume) resume.innerHTML = stats.executive_summary || 'Chargement des données pour ' + periodText + '...'
+  } catch(e) { console.error('Erreur rapports:', e) }
 }
 
 // ════════════════════════════════════════════════════════════════════
-// EXPORT RAPPORT CSV (avec maladies détaillées)
+// EXPORT CSV
 // ════════════════════════════════════════════════════════════════════
 async function exportRapportCSV() {
-  const periodDays = currentReportPeriod || 180
-  const periodText = getPeriodText(periodDays)
-  
+  var periodDays = currentReportPeriod || 180
+  var periodText = getPeriodText(periodDays)
   try {
-    const result = await adminFetch(`get-diagnostic-logs?days=${periodDays}&limit=5000`)
-    const diagnostics = result.data || []
-    
-    const alertsResult = await adminFetch('get-phyto-alerts')
-    const alerts = alertsResult.alerts || []
-    
-    const diseaseStats = {}
-    diagnostics.forEach(d => {
-      const disease = d.rule_matched || 'Inconnue'
-      diseaseStats[disease] = (diseaseStats[disease] || 0) + 1
-    })
-    
-    let csv = ""
-    
-    csv += "=== RÉSUMÉ DE LA PÉRIODE ===\n"
-    csv += `Période,${periodText}\n`
-    csv += `Date d'export,${new Date().toLocaleString('fr-FR')}\n`
-    csv += `Total diagnostics,${diagnostics.length}\n`
-    csv += `Alertes critiques,${currentReportData?.critical_alerts || 0}\n`
-    csv += `Zones à surveiller,${currentReportData?.attention_alerts || 0}\n\n`
-    
-    csv += "=== MALADIES DIAGNOSTIQUÉES ===\n"
-    csv += "Maladie,Nombre de cas,Pourcentage\n"
-    Object.entries(diseaseStats)
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([disease, count]) => {
-        const pct = Math.round((count / diagnostics.length) * 100)
-        csv += `"${disease.replace(/"/g, '""')}",${count},${pct}%\n`
-      })
-    csv += "\n"
-    
-    csv += "=== DIAGNOSTICS DÉTAILLÉS ===\n"
-    csv += "Date,Culture,Variété,Maladie,Urgence,Province,Région,Latitude,Longitude\n"
-    diagnostics.forEach(d => {
-      csv += [
-        d.created_at ? new Date(d.created_at).toLocaleString('fr-FR') : "",
-        `"${(d.culture_name || '').replace(/"/g, '""')}"`,
-        `"${(d.variety_name || '').replace(/"/g, '""')}"`,
-        `"${(d.rule_matched || '').replace(/"/g, '""')}"`,
-        d.urgency || "",
-        d.province || "",
-        d.region || "",
-        d.latitude || "",
-        d.longitude || ""
-      ].join(",") + "\n"
-    })
-    
-    csv += "\n=== ALERTES ===\n"
-    csv += "Niveau,Maladie,Culture,Province,Cas,Mise à jour,Statut\n"
-    alerts.forEach(a => {
-      csv += [
-        a.alert_level || "",
-        `"${(a.disease_name || '').replace(/"/g, '""')}"`,
-        `"${(a.culture_name || '').replace(/"/g, '""')}"`,
-        a.province || "",
-        a.case_count || 0,
-        a.last_updated ? new Date(a.last_updated).toLocaleDateString('fr-FR') : "",
-        a.is_active ? "Active" : "Résolue"
-      ].join(",") + "\n"
-    })
-    
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `rapport_cultivatech_${periodText.replace(/ /g, '_')}_${new Date().toISOString().slice(0,10)}.csv`
-    a.click()
+    var result = await adminFetch('get-diagnostic-logs?days=' + periodDays + '&limit=5000')
+    var diagnostics = result.data || []
+    var alertsResult = await adminFetch('get-phyto-alerts')
+    var alerts = alertsResult.alerts || []
+    var diseaseStats = {}
+    diagnostics.forEach(function(d){ var disease = d.rule_matched || 'Inconnue'; diseaseStats[disease] = (diseaseStats[disease]||0)+1 })
+    var csv = '=== RÉSUMÉ DE LA PÉRIODE ===\nPériode,' + periodText + '\nDate d\'export,' + new Date().toLocaleString('fr-FR') + '\nTotal diagnostics,' + diagnostics.length + '\nAlertes critiques,' + (currentReportData && currentReportData.critical_alerts || 0) + '\nZones à surveiller,' + (currentReportData && currentReportData.attention_alerts || 0) + '\n\n=== MALADIES DIAGNOSTIQUÉES ===\nMaladie,Nombre de cas,Pourcentage\n'
+    Object.entries(diseaseStats).sort(function(a,b){return b[1]-a[1]}).forEach(function(e){ csv += '"' + e[0].replace(/"/g,'""') + '",' + e[1] + ',' + Math.round((e[1]/diagnostics.length)*100) + '%\n' })
+    csv += '\n=== DIAGNOSTICS DÉTAILLÉS ===\nDate,Culture,Variété,Maladie,Urgence,Province,Région,Latitude,Longitude\n'
+    diagnostics.forEach(function(d){ csv += [d.created_at?new Date(d.created_at).toLocaleString('fr-FR'):'','"'+(d.culture_name||'').replace(/"/g,'""')+'"','"'+(d.variety_name||'').replace(/"/g,'""')+'"','"'+(d.rule_matched||'').replace(/"/g,'""')+'"',d.urgency||'',d.province||'',d.region||'',d.latitude||'',d.longitude||''].join(',') + '\n' })
+    csv += '\n=== ALERTES ===\nNiveau,Maladie,Culture,Province,Cas,Mise à jour,Statut\n'
+    alerts.forEach(function(a){ csv += [a.alert_level||'','"'+(a.disease_name||'').replace(/"/g,'""')+'"','"'+(a.culture_name||'').replace(/"/g,'""')+'"',a.province||'',a.case_count||0,a.last_updated?new Date(a.last_updated).toLocaleDateString('fr-FR'):'',a.is_active?'Active':'Résolue'].join(',') + '\n' })
+    var blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'})
+    var url = URL.createObjectURL(blob)
+    var a = document.createElement('a'); a.href=url; a.download='rapport_cultivatech_' + periodText.replace(/ /g,'_') + '_' + new Date().toISOString().slice(0,10) + '.csv'; a.click()
     URL.revokeObjectURL(url)
-    
-    toast(`Rapport exporté pour ${periodText}`, 'success')
-  } catch (e) {
-    toast('Erreur lors de l\'export: ' + e.message, 'error')
+    toast('Rapport exporté pour ' + periodText, 'success')
+  } catch(e) { toast('Erreur export: ' + e.message, 'error') }
+}
+
+function exportData(type) {
+  var csv = ''
+  if (type === 'alertes') {
+    csv = 'Niveau,Maladie,Culture,Province,Cas,Mise à jour\n'
+    alertData.forEach(function(a){ csv += [a.alert_level,a.disease_name,a.culture_name,a.province,a.case_count,a.last_updated?new Date(a.last_updated).toLocaleDateString('fr-FR'):''].join(',') + '\n' })
+  } else if (type === 'diagnostics') {
+    csv = 'Date,Culture,Variété,Maladie,Urgence,Province,Région,Latitude,Longitude\n'
+    diagData.forEach(function(d){ csv += [d.created_at?new Date(d.created_at).toLocaleString('fr-FR'):'',d.culture_name,d.variety_name,d.rule_matched,d.urgency,d.province,d.region,d.latitude||'',d.longitude||''].join(',') + '\n' })
   }
+  var blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'})
+  var url = URL.createObjectURL(blob)
+  var a = document.createElement('a'); a.href=url; a.download='cultivatech_maerah_' + type + '_' + new Date().toISOString().slice(0,10) + '.csv'; a.click()
 }
 
 // ════════════════════════════════════════════════════════════════════
-// GÉNÉRATION PDF DU RAPPORT (avec maladies détaillées)
+// PDF RAPPORT
 // ════════════════════════════════════════════════════════════════════
 function generatePDFReport() {
-  const periodDays = currentReportPeriod || 180
-  const periodText = getPeriodText(periodDays)
-  const stats = currentReportData
-  const activeFarmers = stats?.active_farmers || 0
-  
-  if (!stats) {
-    toast('Chargez d\'abord les données', 'error')
-    return
-  }
-  
-  const diseases = stats.charts_data?.diseases || []
-  const topDiseases = diseases.slice(0, 10)
-  const urgency = stats.charts_data?.urgency || { critique: 0, elevee: 0, moderee: 0, faible: 0 }
-  
-  const printWindow = window.open('', '_blank')
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Rapport CultivaTech - ${periodText}</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        h1 { color: #009e4b; }
-        h2 { color: #006b32; margin-top: 20px; border-bottom: 1px solid #ccc; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .section { margin-bottom: 30px; }
-        .kpi { background: #f4f6f5; padding: 15px; border-radius: 8px; margin: 10px 0; }
-        .kpi-grid { display: flex; gap: 15px; flex-wrap: wrap; }
-        .kpi-card { background: #f4f6f5; padding: 15px; border-radius: 8px; flex: 1; min-width: 150px; text-align: center; }
-        .kpi-value { font-size: 28px; font-weight: bold; color: #009e4b; }
-        .kpi-label { font-size: 12px; color: #666; }
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #e8f7ef; }
-        .badge-red { background: #ffe8e8; color: #c0392b; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
-        .badge-orange { background: #fff3e0; color: #e67e22; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
-        .badge-green { background: #e8f7ef; color: #009e4b; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
-        .footer { text-align: center; margin-top: 50px; font-size: 10px; color: #666; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>CultivaTech - Rapport Phytosanitaire</h1>
-        <p>Période : ${periodText}</p>
-        <p>Généré le : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
-      </div>
-      
-      <div class="section">
-        <h2>📊 Indicateurs clés</h2>
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-value">${stats.total_diagnostics || 0}</div>
-            <div class="kpi-label">Diagnostics</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-value" style="color:#c0392b">${stats.critical_alerts || 0}</div>
-            <div class="kpi-label">Alertes critiques</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-value" style="color:#e67e22">${stats.attention_alerts || 0}</div>
-            <div class="kpi-label">Zones à surveiller</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-value">${activeFarmers}</div>
-            <div class="kpi-label">Agriculteurs actifs</div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="section">
-        <h2>🦠 Top 10 maladies diagnostiquées</h2>
-        <table>
-          <thead>
-            <tr><th>Rang</th><th>Maladie</th><th>Nombre de cas</th><th>Pourcentage</th></tr>
-          </thead>
-          <tbody>
-            ${topDiseases.map((d, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td><strong>${escapeHtml(d.name)}</strong></td>
-                <td>${d.count}</td>
-                <td>${Math.round((d.count / stats.total_diagnostics) * 100)}%</td>
-              </tr>
-            `).join('')}
-            ${topDiseases.length === 0 ? '<tr><td colspan="4">Aucune maladie enregistrée</td></tr>' : ''}
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="section">
-        <h2>⚠️ Répartition par niveau d'urgence</h2>
-        <table>
-          <thead><tr><th>Niveau</th><th>Nombre</th><th>Pourcentage</th></tr></thead>
-          <tbody>
-            <tr><td><span class="badge-red">Critique</span></td><td>${urgency.critique || 0}</td><td>${Math.round(((urgency.critique || 0) / stats.total_diagnostics) * 100)}%</td></tr>
-            <tr><td><span class="badge-orange">Élevée</span></td><td>${urgency.elevee || 0}</td><td>${Math.round(((urgency.elevee || 0) / stats.total_diagnostics) * 100)}%</td></tr>
-            <tr><td><span class="badge-orange">Modérée</span></td><td>${urgency.moderee || 0}</td><td>${Math.round(((urgency.moderee || 0) / stats.total_diagnostics) * 100)}%</td></tr>
-            <tr><td><span class="badge-green">Faible</span></td><td>${urgency.faible || 0}</td><td>${Math.round(((urgency.faible || 0) / stats.total_diagnostics) * 100)}%</td></tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="section">
-        <h2>🗺️ Top provinces touchées</h2>
-        <table>
-          <thead><tr><th>Province</th><th>Nombre de diagnostics</th><th>Pourcentage</th></tr></thead>
-          <tbody>
-            ${(stats.provinces_data || []).slice(0, 10).map(p => `
-              <tr><td>${escapeHtml(p.name)}</td><td>${p.count}</td><td>${Math.round((p.count / stats.total_diagnostics) * 100)}%</td></tr>
-            `).join('')}
-            ${(stats.provinces_data || []).length === 0 ? '<tr><td colspan="3">Aucune province enregistrée</td></tr>' : ''}
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="section">
-        <h2>📈 Résumé exécutif</h2>
-        <div class="kpi">${stats.executive_summary || 'Aucune donnée'}</div>
-      </div>
-      
-      <div class="section">
-        <h2>🌾 Cultures les plus touchées</h2>
-        <table>
-          <thead><tr><th>Culture</th><th>Nombre de diagnostics</th><th>Pourcentage</th></tr></thead>
-          <tbody>
-            ${(stats.charts_data?.cultures || []).slice(0, 5).map(c => `
-              <tr><td><strong>${escapeHtml(c.name)}</strong></td><td>${c.count}</td><td>${Math.round((c.count / stats.total_diagnostics) * 100)}%</td></tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="footer">
-        <p>Rapport généré automatiquement par CultivaTech x MAERAH</p>
-        <p>Burkina Faso - Système National de Surveillance Phytosanitaire</p>
-        <p>Source: Diagnostics enregistrés via l'application mobile CultivaTech</p>
-      </div>
-    </body>
-    </html>
-  `)
-  printWindow.document.close()
-  printWindow.print()
+  var periodDays = currentReportPeriod || 180
+  var periodText = getPeriodText(periodDays)
+  var stats = currentReportData
+  if (!stats) { toast('Chargez d\'abord les données', 'error'); return }
+  var diseases = (stats.charts_data && stats.charts_data.diseases) || []
+  var topDiseases = diseases.slice(0,10)
+  var urgency = (stats.charts_data && stats.charts_data.urgency) || {critique:0,elevee:0,moderee:0,faible:0}
+  var activeFarmers = stats.active_farmers || 0
+  var printWindow = window.open('','_blank')
+  printWindow.document.write('<!DOCTYPE html><html><head><title>Rapport CultivaTech - ' + periodText + '</title><style>body{font-family:Arial,sans-serif;margin:40px}h1{color:#009e4b}h2{color:#006b32;margin-top:20px;border-bottom:1px solid #ccc}.header{text-align:center;margin-bottom:30px}.kpi-grid{display:flex;gap:15px;flex-wrap:wrap}.kpi-card{background:#f4f6f5;padding:15px;border-radius:8px;flex:1;min-width:150px;text-align:center}.kpi-value{font-size:28px;font-weight:bold;color:#009e4b}.kpi-label{font-size:12px;color:#666}table{width:100%;border-collapse:collapse;margin:15px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#e8f7ef}.footer{text-align:center;margin-top:50px;font-size:10px;color:#666}</style></head><body>')
+  printWindow.document.write('<div class="header"><h1>CultivaTech - Rapport Phytosanitaire</h1><p>Période : ' + periodText + '</p><p>Généré le : ' + new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString('fr-FR') + '</p></div>')
+  printWindow.document.write('<h2>📊 Indicateurs clés</h2><div class="kpi-grid"><div class="kpi-card"><div class="kpi-value">' + (stats.total_diagnostics||0) + '</div><div class="kpi-label">Diagnostics</div></div><div class="kpi-card"><div class="kpi-value" style="color:#c0392b">' + (stats.critical_alerts||0) + '</div><div class="kpi-label">Alertes critiques</div></div><div class="kpi-card"><div class="kpi-value" style="color:#e67e22">' + (stats.attention_alerts||0) + '</div><div class="kpi-label">Zones à surveiller</div></div><div class="kpi-card"><div class="kpi-value">' + activeFarmers + '</div><div class="kpi-label">Agriculteurs actifs</div></div></div>')
+  printWindow.document.write('<h2>🦠 Top 10 maladies</h2><table><thead><tr><th>Rang</th><th>Maladie</th><th>Cas</th><th>%</th></tr></thead><tbody>' + topDiseases.map(function(d,i){ return '<tr><td>' + (i+1) + '</td><td><strong>' + escapeHtml(d.name) + '</strong></td><td>' + d.count + '</td><td>' + Math.round((d.count/stats.total_diagnostics)*100) + '%</td></tr>' }).join('') + (topDiseases.length===0?'<tr><td colspan="4">Aucune maladie</td></tr>':'') + '</tbody></table>')
+  printWindow.document.write('<h2>🗺️ Top provinces</h2><table><thead><tr><th>Province</th><th>Diagnostics</th><th>%</th></tr></thead><tbody>' + (stats.provinces_data||[]).slice(0,10).map(function(p){ return '<tr><td>' + escapeHtml(p.name) + '</td><td>' + p.count + '</td><td>' + Math.round((p.count/stats.total_diagnostics)*100) + '%</td></tr>' }).join('') + '</tbody></table>')
+  printWindow.document.write('<div class="footer"><p>CultivaTech x MAERAH — Burkina Faso</p></div></body></html>')
+  printWindow.document.close(); printWindow.print()
 }
 
 // ════════════════════════════════════════════════════════════════════
 // MON COMPTE
 // ════════════════════════════════════════════════════════════════════
 async function saveAccount() {
-  const fullName = document.getElementById('cmpFullName').value.trim()
-  const username = document.getElementById('cmpUsername').value.trim()
-  const oldPass = document.getElementById('cmpOldPass').value
-  const newPass = document.getElementById('cmpNewPass').value
-  const confPass = document.getElementById('cmpConfPass').value
-  const succ = document.getElementById('cmpSuccess')
-  const err = document.getElementById('cmpError')
-  
-  succ.style.display = 'none'
-  err.style.display = 'none'
-
-  if (!fullName || !username) {
-    err.style.display = 'block'
-    err.textContent = 'Nom et identifiant obligatoires'
-    return
-  }
-
-  const body = {
-    full_name: fullName,
-    username: username
-  }
-
+  var fullName = document.getElementById('cmpFullName').value.trim()
+  var username = document.getElementById('cmpUsername').value.trim()
+  var oldPass = document.getElementById('cmpOldPass').value
+  var newPass = document.getElementById('cmpNewPass').value
+  var confPass = document.getElementById('cmpConfPass').value
+  var succ = document.getElementById('cmpSuccess'); var err = document.getElementById('cmpError')
+  succ.style.display = 'none'; err.style.display = 'none'
+  if (!fullName || !username) { err.style.display='block'; err.textContent='Nom et identifiant obligatoires'; return }
+  var body = { full_name:fullName, username:username }
   if (oldPass || newPass || confPass) {
-    if (!oldPass) {
-      err.style.display = 'block'
-      err.textContent = 'Saisissez votre mot de passe actuel'
-      return
-    }
-    if (newPass.length < 6) {
-      err.style.display = 'block'
-      err.textContent = 'Nouveau mot de passe : minimum 6 caractères'
-      return
-    }
-    if (newPass !== confPass) {
-      err.style.display = 'block'
-      err.textContent = 'Les mots de passe ne correspondent pas'
-      return
-    }
-    body.current_password = oldPass
-    body.new_password = newPass
+    if (!oldPass) { err.style.display='block'; err.textContent='Saisissez votre mot de passe actuel'; return }
+    if (newPass.length < 6) { err.style.display='block'; err.textContent='Minimum 6 caractères'; return }
+    if (newPass !== confPass) { err.style.display='block'; err.textContent='Mots de passe différents'; return }
+    body.current_password = oldPass; body.new_password = newPass
   }
-
   try {
-    const result = await adminFetch('update-dashboard-profile', {
-      method: 'POST',
-      body: body
-    })
-
-    if (result.token) {
-      adminToken = result.token
-      currentUser = result.user
-    }
-
-    const scopeBadge = currentUser.scope === 'national'
-      ? '<span class="badge b-green">🌍 National</span>'
-      : `<span class="badge b-orange">📍 ${escapeHtml(currentUser.region)}</span>`
-
-    document.getElementById('topbarUname').innerHTML = `${escapeHtml(currentUser.full_name)} ${scopeBadge}`
-    document.getElementById('topbarAvatar').textContent = (currentUser.full_name?.[0] || 'U').toUpperCase()
-
-    document.getElementById('cmpOldPass').value = ''
-    document.getElementById('cmpNewPass').value = ''
-    document.getElementById('cmpConfPass').value = ''
-
-    succ.style.display = 'block'
-    setTimeout(() => { succ.style.display = 'none' }, 3000)
-    
+    var result = await adminFetch('update-dashboard-profile', {method:'POST', body:body})
+    if (result.token) { adminToken = result.token; currentUser = result.user }
+    var scopeBadge = currentUser.scope === 'national' ? '<span class="badge b-green">🌍 National</span>' : '<span class="badge b-orange">📍 ' + escapeHtml(currentUser.region) + '</span>'
+    document.getElementById('topbarUname').innerHTML = escapeHtml(currentUser.full_name) + ' ' + scopeBadge
+    document.getElementById('topbarAvatar').textContent = (currentUser.full_name && currentUser.full_name[0] || 'U').toUpperCase()
+    document.getElementById('cmpOldPass').value = ''; document.getElementById('cmpNewPass').value = ''; document.getElementById('cmpConfPass').value = ''
+    succ.style.display = 'block'; setTimeout(function(){ succ.style.display='none' }, 3000)
     toast('Profil mis à jour avec succès')
-
-  } catch (e) {
-    err.style.display = 'block'
-    err.textContent = e.message || 'Erreur lors de la sauvegarde'
-  }
+  } catch(e) { err.style.display='block'; err.textContent = e.message || 'Erreur lors de la sauvegarde' }
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1288,228 +954,99 @@ async function saveAccount() {
 // ════════════════════════════════════════════════════════════════════
 async function loadUsers() {
   try {
-    const users = await adminFetch('get-dashboard-users')
-    
-    const tbody = document.getElementById('usersTbody')
-    if (!tbody) return
-    
-    if (users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center">Aucun utilisateur trouvé</td></tr>'
-      return
-    }
-    
-    tbody.innerHTML = users.map(u => `
-      <tr>
-        <td style="font-family:var(--mono)"><strong>${escapeHtml(u.username)}</strong></td>
-        <td>${escapeHtml(u.full_name)}</td>
-        <td>${escapeHtml(u.department)}</td>
-        <td><span class="badge b-grey">${escapeHtml(u.role)}</span></td>
-        <td>${escapeHtml(u.scope || 'national')}</td>
-        <td style="color:var(--gris-text)">${escapeHtml(u.region || 'National')}</td>
-        <td><span class="badge ${u.is_active ? 'b-green' : 'b-grey'}">${u.is_active ? 'Actif' : 'Inactif'}</span></td>
-        <td style="font-size:11px">${u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'Jamais'}</td>
-        <td style="display:flex;gap:6px">
-          <button class="fbtn" style="padding:4px 10px;font-size:11px" onclick="editUser(${u.id})">Modifier</button>
-          <button class="ebtn" style="padding:4px 8px;font-size:11px" onclick="toggleUser(${u.id}, ${u.is_active})">${u.is_active ? 'Désactiver' : 'Activer'}</button>
-        </td>
-      </tr>
-    `).join('')
-    
-  } catch (e) {
-    console.error('Erreur chargement utilisateurs:', e)
-    document.getElementById('usersTbody').innerHTML = '<tr><td colspan="9" style="text-align:center">Erreur de chargement</td></tr>'
-  }
+    var users = await adminFetch('get-dashboard-users')
+    var tbody = document.getElementById('usersTbody'); if (!tbody) return
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center">Aucun utilisateur</td></tr>'; return }
+    tbody.innerHTML = users.map(function(u){ return '<tr><td style="font-family:var(--mono)"><strong>' + escapeHtml(u.username) + '</strong></td><td>' + escapeHtml(u.full_name) + '</td><td>' + escapeHtml(u.department) + '</td><td><span class="badge b-grey">' + escapeHtml(u.role) + '</span></td><td>' + escapeHtml(u.scope||'national') + '</td><td style="color:var(--gris-text)">' + escapeHtml(u.region||'National') + '</td><td><span class="badge ' + (u.is_active?'b-green':'b-grey') + '">' + (u.is_active?'Actif':'Inactif') + '</span></td><td style="font-size:11px">' + (u.last_login?new Date(u.last_login).toLocaleDateString('fr-FR'):'Jamais') + '</td><td style="display:flex;gap:6px"><button class="fbtn" style="padding:4px 10px;font-size:11px" onclick="editUser(' + u.id + ')">Modifier</button><button class="ebtn" style="padding:4px 8px;font-size:11px" onclick="toggleUser(' + u.id + ',' + u.is_active + ')">' + (u.is_active?'Désactiver':'Activer') + '</button></td></tr>' }).join('')
+  } catch(e) { console.error('Erreur users:', e); document.getElementById('usersTbody').innerHTML = '<tr><td colspan="9" style="text-align:center">Erreur</td></tr>' }
 }
 
 function showCreateUser() {
-  document.getElementById('userFormCard').style.display = 'block'
-  document.getElementById('userFormTitle').textContent = 'Nouvel utilisateur'
-  document.getElementById('editUserId').value = ''
-  document.getElementById('fuUsername').value = ''
-  document.getElementById('fuFullName').value = ''
-  document.getElementById('fuPass').value = ''
-  document.getElementById('fuDept').value = 'DGPV'
-  document.getElementById('fuRole').value = 'lecteur'
-  document.getElementById('fuScope').value = 'national'
-  document.getElementById('fuRegionGroup').style.display = 'none'
-  document.getElementById('fuSuccess').style.display = 'none'
-  document.getElementById('fuError').style.display = 'none'
+  document.getElementById('userFormCard').style.display='block'; document.getElementById('userFormTitle').textContent='Nouvel utilisateur'
+  document.getElementById('editUserId').value=''; document.getElementById('fuUsername').value=''; document.getElementById('fuFullName').value=''
+  document.getElementById('fuPass').value=''; document.getElementById('fuDept').value='DGPV'; document.getElementById('fuRole').value='lecteur'
+  document.getElementById('fuScope').value='national'; document.getElementById('fuRegionGroup').style.display='none'
+  document.getElementById('fuSuccess').style.display='none'; document.getElementById('fuError').style.display='none'
 }
 
 async function editUser(id) {
   try {
-    const users = await adminFetch('get-dashboard-users')
-    const user = users.find(u => u.id === id)
-    if (!user) return
-    
-    document.getElementById('userFormCard').style.display = 'block'
-    document.getElementById('userFormTitle').textContent = `Modifier : ${user.username}`
-    document.getElementById('editUserId').value = user.id
-    document.getElementById('fuUsername').value = user.username
-    document.getElementById('fuFullName').value = user.full_name
-    document.getElementById('fuPass').value = ''
-    document.getElementById('fuDept').value = user.department
-    document.getElementById('fuRole').value = user.role
-    document.getElementById('fuScope').value = user.scope || 'national'
-    
-    if (user.scope === 'regional') {
-      document.getElementById('fuRegionGroup').style.display = 'block'
-      document.getElementById('fuRegion').value = user.region || ''
-    } else {
-      document.getElementById('fuRegionGroup').style.display = 'none'
-    }
-    
-    document.getElementById('fuSuccess').style.display = 'none'
-    document.getElementById('fuError').style.display = 'none'
-  } catch (e) {
-    toast('Erreur lors du chargement de l\'utilisateur', 'error')
-  }
+    var users = await adminFetch('get-dashboard-users'); var user = users.find(function(u){ return u.id===id }); if(!user) return
+    document.getElementById('userFormCard').style.display='block'; document.getElementById('userFormTitle').textContent='Modifier : ' + user.username
+    document.getElementById('editUserId').value=user.id; document.getElementById('fuUsername').value=user.username; document.getElementById('fuFullName').value=user.full_name
+    document.getElementById('fuPass').value=''; document.getElementById('fuDept').value=user.department; document.getElementById('fuRole').value=user.role; document.getElementById('fuScope').value=user.scope||'national'
+    if (user.scope==='regional') { document.getElementById('fuRegionGroup').style.display='block'; document.getElementById('fuRegion').value=user.region||'' } else { document.getElementById('fuRegionGroup').style.display='none' }
+    document.getElementById('fuSuccess').style.display='none'; document.getElementById('fuError').style.display='none'
+  } catch(e) { toast('Erreur chargement utilisateur', 'error') }
 }
 
 async function toggleUser(id, isActive) {
-  try {
-    await adminFetch('update-dashboard-user', {
-      method: 'POST',
-      body: { id, is_active: !isActive }
-    })
-    await loadUsers()
-    toast(`Utilisateur ${!isActive ? 'activé' : 'désactivé'} avec succès`)
-  } catch (e) {
-    toast('Erreur lors du changement de statut', 'error')
-  }
+  try { await adminFetch('update-dashboard-user', {method:'POST', body:{id, is_active:!isActive}}); await loadUsers(); toast('Utilisateur ' + (!isActive?'activé':'désactivé') + ' avec succès') }
+  catch(e) { toast('Erreur changement statut', 'error') }
 }
 
 function toggleRegionField() {
-  const scope = document.getElementById('fuScope').value
-  document.getElementById('fuRegionGroup').style.display = scope === 'regional' ? 'block' : 'none'
+  document.getElementById('fuRegionGroup').style.display = document.getElementById('fuScope').value==='regional' ? 'block' : 'none'
+}
+
+var PROVINCES_MAP = {
+  "Centre":["Kadiogo (Ouagadougou)","Bazèga (Kombissiri)","Ganzourgou (Zorgho)","Kourwéogo (Boussé)","Bassitenga (Ziniaré)"],
+  "Nord":["Yatenga (Ouahigouya)","Loroum (Titao)","Passoré (Yako)","Zondoma (Gourcy)"],
+  "Hauts-Bassins":["Houet (Bobo-Dioulasso)","Kénédougou (Orodara)","Tuy (Houndé)"],
+  "Est":["Gourma (Fada N'Gourma)","Gnagna (Bogandé)","Komondjari (Gayéri)","Kompienga (Pama)","Tapoa (Diapaga)","Dyamongou (Kantchari)"],
+  "Sahel":["Oudalan (Gorom-Gorom)","Séno (Dori)","Djelgodji (Djibo)","Yagha (Sebba)","Karo-Peli (Arbinda)"],
+  "Cascades":["Comoé (Banfora)","Léraba (Sindou)"],
+  "Sud-Ouest":["Bougouriba (Diébougou)","Ioba (Dano)","Noumbiel (Batié)","Poni (Gaoua)"],
+  "Boucle du Mouhoun":["Balé (Boromo)","Banwa (Solenzo)","Kossin (Nouna)","Mouhoun (Dédougou)","Nayala (Toma)","Sourou (Tougan)"],
+  "Centre-Nord":["Bam (Kongoussi)","Namentenga (Boulsa)","Sandbondtenga (Kaya)"],
+  "Centre-Ouest":["Boulkiemdé (Koudougou)","Sanguié (Réo)","Sissili (Léo)","Ziro (Sapouy)"],
+  "Centre-Sud":["Bazèga (Kombissiri)","Nahouri (Pô)","Zoundwéogo (Manga)"],
+  "Centre-Est":["Boulgou (Tenkodogo)","Koulpélogo (Ouargaye)","Kouritenga (Koupéla)"],
+  "Plateau-Central":["Ganzourgou (Zorgho)","Kourwéogo (Boussé)","Bassitenga (Ziniaré)"]
 }
 
 async function saveUser() {
-  const succ = document.getElementById('fuSuccess')
-  const err = document.getElementById('fuError')
-  succ.style.display = 'none'
-  err.style.display = 'none'
-
-  const username = document.getElementById('fuUsername').value.trim()
-  const fullName = document.getElementById('fuFullName').value.trim()
-  const pass = document.getElementById('fuPass').value
-  const dept = document.getElementById('fuDept').value
-  const role = document.getElementById('fuRole').value
-  const scope = document.getElementById('fuScope').value
-  const region = scope === 'regional' ? document.getElementById('fuRegion').value : null
-  const editId = document.getElementById('editUserId').value
-
-  if (!username || !fullName || !dept) {
-    err.style.display = 'block'
-    err.textContent = 'Identifiant, nom et département obligatoires'
-    return
-  }
-
-  const PROVINCES_MAP = {
-    "Centre": ["Kadiogo (Ouagadougou)", "Bazèga (Kombissiri)", "Ganzourgou (Zorgho)", "Kourwéogo (Boussé)", "Bassitenga (Ziniaré)"],
-    "Nord": ["Yatenga (Ouahigouya)", "Loroum (Titao)", "Passoré (Yako)", "Zondoma (Gourcy)"],
-    "Hauts-Bassins": ["Houet (Bobo-Dioulasso)", "Kénédougou (Orodara)", "Tuy (Houndé)"],
-    "Est": ["Gourma (Fada N'Gourma)", "Gnagna (Bogandé)", "Komondjari (Gayéri)", "Kompienga (Pama)", "Tapoa (Diapaga)", "Dyamongou (Kantchari)"],
-    "Sahel": ["Oudalan (Gorom-Gorom)", "Séno (Dori)", "Djelgodji (Djibo)", "Yagha (Sebba)", "Karo-Peli (Arbinda)"],
-    "Cascades": ["Comoé (Banfora)", "Léraba (Sindou)"],
-    "Sud-Ouest": ["Bougouriba (Diébougou)", "Ioba (Dano)", "Noumbiel (Batié)", "Poni (Gaoua)"],
-    "Boucle du Mouhoun": ["Balé (Boromo)", "Banwa (Solenzo)", "Kossin (Nouna)", "Mouhoun (Dédougou)", "Nayala (Toma)", "Sourou (Tougan)"],
-    "Centre-Nord": ["Bam (Kongoussi)", "Namentenga (Boulsa)", "Sandbondtenga (Kaya)"],
-    "Centre-Ouest": ["Boulkiemdé (Koudougou)", "Sanguié (Réo)", "Sissili (Léo)", "Ziro (Sapouy)"],
-    "Centre-Sud": ["Bazèga (Kombissiri)", "Nahouri (Pô)", "Zoundwéogo (Manga)"],
-    "Centre-Est": ["Boulgou (Tenkodogo)", "Koulpélogo (Ouargaye)", "Kouritenga (Koupéla)"],
-    "Plateau-Central": ["Ganzourgou (Zorgho)", "Kourwéogo (Boussé)", "Bassitenga (Ziniaré)"]
-  }
-
-  const provinces = scope === 'regional' && region ? (PROVINCES_MAP[region] || []) : null
-  
-  const body = {
-    username,
-    full_name: fullName,
-    department: dept,
-    role: role,
-    scope: scope,
-    region: region,
-    provinces: provinces
-  }
-  
+  var succ = document.getElementById('fuSuccess'); var err = document.getElementById('fuError')
+  succ.style.display='none'; err.style.display='none'
+  var username = document.getElementById('fuUsername').value.trim(); var fullName = document.getElementById('fuFullName').value.trim()
+  var pass = document.getElementById('fuPass').value; var dept = document.getElementById('fuDept').value
+  var role = document.getElementById('fuRole').value; var scope = document.getElementById('fuScope').value
+  var region = scope==='regional' ? document.getElementById('fuRegion').value : null
+  var editId = document.getElementById('editUserId').value
+  if (!username || !fullName || !dept) { err.style.display='block'; err.textContent='Identifiant, nom et département obligatoires'; return }
+  var provinces = scope==='regional' && region ? (PROVINCES_MAP[region]||[]) : null
+  var body = {username, full_name:fullName, department:dept, role, scope, region, provinces}
   if (pass) body.password_hash = pass
-
   try {
-    if (editId) {
-      body.id = parseInt(editId)
-      await adminFetch('update-dashboard-user', { method: 'POST', body })
-      toast('Utilisateur modifié avec succès')
-    } else {
-      if (!pass) {
-        err.style.display = 'block'
-        err.textContent = 'Mot de passe obligatoire pour un nouvel utilisateur'
-        return
-      }
-      body.is_active = true
-      body.created_by = currentUser.username
-      await adminFetch('create-dashboard-user', { method: 'POST', body })
-      toast('Utilisateur créé avec succès')
+    if (editId) { body.id = parseInt(editId); await adminFetch('update-dashboard-user',{method:'POST',body}); toast('Utilisateur modifié') }
+    else {
+      if (!pass) { err.style.display='block'; err.textContent='Mot de passe obligatoire'; return }
+      body.is_active=true; body.created_by=currentUser.username
+      await adminFetch('create-dashboard-user',{method:'POST',body}); toast('Utilisateur créé')
     }
-    
-    document.getElementById('userFormCard').style.display = 'none'
-    await loadUsers()
-  } catch (e) {
-    err.style.display = 'block'
-    err.textContent = e.message || 'Erreur lors de l\'enregistrement'
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════
-// EXPORT CSV (alertes et diagnostics)
-// ════════════════════════════════════════════════════════════════════
-function exportData(type) {
-  let csv = ""
-  if (type === "alertes") {
-    csv = "Niveau,Maladie,Culture,Province,Cas,Mise à jour\n"
-    alertData.forEach(a => {
-      csv += [a.alert_level, a.disease_name, a.culture_name, a.province, a.case_count,
-        a.last_updated ? new Date(a.last_updated).toLocaleDateString("fr-FR") : ""].join(",") + "\n"
-    })
-  } else if (type === "diagnostics") {
-    csv = "Date,Culture,Variété,Maladie,Urgence,Province,Région,Latitude,Longitude\n"
-    diagData.forEach(d => {
-      csv += [d.created_at ? new Date(d.created_at).toLocaleString("fr-FR") : "",
-        d.culture_name, d.variety_name, d.rule_matched, d.urgency,
-        d.province, d.region, d.latitude || "", d.longitude || ""].join(",") + "\n"
-    })
-  }
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = "cultivatech_maerah_" + type + "_" + new Date().toISOString().slice(0,10) + ".csv"
-  a.click()
+    document.getElementById('userFormCard').style.display='none'; await loadUsers()
+  } catch(e) { err.style.display='block'; err.textContent = e.message || 'Erreur enregistrement' }
 }
 
 // ════════════════════════════════════════════════════════════════════
 // TOAST
 // ════════════════════════════════════════════════════════════════════
-function toast(msg, type = 'success') {
-  const toastDiv = document.getElementById('toast') || (() => {
-    const d = document.createElement('div')
-    d.id = 'toast'
-    d.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999'
-    document.body.appendChild(d)
-    return d
+function toast(msg, type) {
+  var toastDiv = document.getElementById('toast') || (function(){
+    var d = document.createElement('div'); d.id='toast'; d.style.cssText='position:fixed;bottom:20px;right:20px;z-index:9999'
+    document.body.appendChild(d); return d
   })()
-  const el = document.createElement('div')
-  el.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-top:8px;font-size:12px;color:var(--text);box-shadow:0 4px 12px rgba(0,0,0,.2)'
-  el.textContent = msg
-  toastDiv.appendChild(el)
-  setTimeout(() => el.remove(), 3000)
+  var el = document.createElement('div')
+  el.style.cssText = 'background:#fff;border:1px solid #d4ddd8;border-radius:10px;padding:12px 16px;margin-top:8px;font-size:12px;color:#1a2e22;box-shadow:0 4px 12px rgba(0,0,0,.15)'
+  el.textContent = msg; toastDiv.appendChild(el)
+  setTimeout(function(){ el.remove() }, 3000)
 }
 
 // ════════════════════════════════════════════════════════════════════
 // ENTER KEY
 // ════════════════════════════════════════════════════════════════════
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Enter" && document.getElementById("loginScreen").style.display !== "none") doLogin()
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') doLogin()
 })
 </script>
 </body>
