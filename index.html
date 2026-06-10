@@ -249,6 +249,11 @@
       <div class="nav-section">Données</div>
       <div class="nav-item" onclick="showPage('users')" id="nav-users"><span class="nav-icon">👥</span> Utilisateurs</div>
       <div class="nav-item" onclick="showPage('diagnostics')" id="nav-diagnostics"><span class="nav-icon">🔍</span> Diagnostics</div>
+      <div class="nav-section">Marché</div>
+      <div class="nav-item" onclick="showPage('marche')" id="nav-marche"><span class="nav-icon">🛒</span> Marché numérique</div>
+      <div class="nav-section">Système</div>
+      <div class="nav-item" onclick="showPage('regles')" id="nav-regles"><span class="nav-icon">🧠</span> Règles diagnostic</div>
+      <div class="nav-item" onclick="showPage('admins')" id="nav-admins" data-nav="admins"><span class="nav-icon">👤</span> Admins</div>
     </div>
     <div class="sidebar-bottom">
       <div class="sidebar-user-info">
@@ -537,6 +542,104 @@
       </div>
     </div>
 
+
+    <!-- PAGE MARCHÉ NUMÉRIQUE -->
+    <div class="page" id="page-marche">
+      <div class="page-header">
+        <div><div class="page-title">Marché numérique</div><div class="page-sub">Annonces de vente et d'achat des agriculteurs</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadMarchePage()"><span class="spin" id="marcheRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="exportMarcheCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">📋</span><div class="kpi-value kpi-loading" id="mKpiTotal">—</div><div class="kpi-label">Annonces totales</div><div class="kpi-trend trend-neutral" id="mKpiTotalSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🟢</span><div class="kpi-value kpi-loading" id="mKpiActives">—</div><div class="kpi-label">Actives</div><div class="kpi-trend trend-up" id="mKpiActivesSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🤝</span><div class="kpi-value kpi-loading" id="mKpiInterets">—</div><div class="kpi-label">Intérêts exprimés</div><div class="kpi-trend trend-neutral" id="mKpiInteretsSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">📦</span><div class="kpi-value kpi-loading" id="mKpiBesoins">—</div><div class="kpi-label">Demandes d'achat</div><div class="kpi-trend trend-neutral" id="mKpiBesoinsSub"></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="marcheSearch" placeholder="🔍  Rechercher par culture ou localité..." oninput="filterMarche()"/>
+        <select class="filter-select" id="marcheTypeFilter" onchange="filterMarche()">
+          <option value="">Tous types</option>
+          <option value="offer">🌾 Offres de vente</option>
+          <option value="need">🛒 Demandes d'achat</option>
+        </select>
+        <select class="filter-select" id="marcheDispoFilter" onchange="filterMarche()">
+          <option value="">Tous statuts</option>
+          <option value="true">✅ Disponibles</option>
+          <option value="false">❌ Indisponibles</option>
+        </select>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Annonces <span class="badge badge-blue" id="marcheCountBadge">0</span></div>
+          <div class="users-count" id="marcheCountText"></div>
+        </div>
+        <table><thead><tr><th>Culture</th><th>Type</th><th>Quantité</th><th>Prix/unité</th><th>Localité</th><th>Vendeur</th><th>Intérêts</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead><tbody id="marcheTableBody"><tr><td colspan="10" class="td-muted">Chargement...</td></tr></tbody></table>
+        <div class="pagination" id="marchePagination"></div>
+      </div>
+    </div>
+
+    <!-- PAGE RÈGLES DIAGNOSTIC -->
+    <div class="page" id="page-regles">
+      <div class="page-header">
+        <div><div class="page-title">Règles de diagnostic</div><div class="page-sub">Base de connaissances phytosanitaires — IPR/IFRA Mali + INERA Burkina Faso</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadReglesPage()"><span class="spin" id="reglesRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="exportReglesCSV()">⬇ Export CSV</button>
+          <button class="export-btn" onclick="addRegleModal()">+ Ajouter une règle</button>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">🧠</span><div class="kpi-value kpi-loading" id="rKpiTotal">—</div><div class="kpi-label">Règles totales</div><div class="kpi-trend trend-neutral" id="rKpiTotalSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🌾</span><div class="kpi-value kpi-loading" id="rKpiCultures">—</div><div class="kpi-label">Cultures couvertes</div><div class="kpi-trend trend-neutral" id="rKpiCulturesSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">🚨</span><div class="kpi-value kpi-loading" id="rKpiHaute">—</div><div class="kpi-label">Urgence haute</div><div class="kpi-trend trend-neutral" id="rKpiHauteSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">⚠️</span><div class="kpi-value kpi-loading" id="rKpiMoyenne">—</div><div class="kpi-label">Urgence moyenne</div><div class="kpi-trend trend-neutral" id="rKpiMoyenneSub"></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="regleSearch" placeholder="🔍  Rechercher par maladie, culture ou mot-clé..." oninput="filterRegles()"/>
+        <select class="filter-select" id="regleCultureFilter" onchange="filterRegles()"><option value="">Toutes les cultures</option></select>
+        <select class="filter-select" id="regleUrgenceFilter" onchange="filterRegles()">
+          <option value="">Toutes urgences</option>
+          <option value="haute">🚨 Haute</option>
+          <option value="moyenne">⚠️ Moyenne</option>
+          <option value="basse">✅ Basse</option>
+        </select>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Base de règles <span class="badge badge-green" id="reglesCountBadge">0</span></div>
+          <div class="users-count" id="reglesCountText"></div>
+        </div>
+        <table><thead><tr><th>Culture</th><th>Maladie / Problème</th><th>Mots-clés (aperçu)</th><th>Urgence</th><th>Actions</th></tr></thead><tbody id="reglesTableBody"><tr><td colspan="5" class="td-muted">Chargement...</td></tr></tbody></table>
+        <div class="pagination" id="reglesPagination"></div>
+      </div>
+    </div>
+
+    <!-- PAGE ADMINS (super_admin seulement) -->
+    <div class="page" id="page-admins">
+      <div class="page-header">
+        <div><div class="page-title">Gestion des administrateurs</div><div class="page-sub">Accès réservé au Super Admin — Créer et gérer les comptes admin</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadAdminsPage()"><span class="spin" id="adminsRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="addAdminModal()">+ Créer un admin</button>
+        </div>
+      </div>
+      <div class="users-kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">👤</span><div class="kpi-value kpi-loading" id="aKpiTotal">—</div><div class="kpi-label">Administrateurs</div><div class="kpi-trend trend-neutral" id="aKpiTotalSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🔑</span><div class="kpi-value kpi-loading" id="aKpiActifs">—</div><div class="kpi-label">Actifs</div><div class="kpi-trend trend-neutral" id="aKpiActifsSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">👁</span><div class="kpi-value kpi-loading" id="aKpiViewers">—</div><div class="kpi-label">Lecture seule</div><div class="kpi-trend trend-neutral" id="aKpiViewersSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">⭐</span><div class="kpi-value kpi-loading" id="aKpiSuper">—</div><div class="kpi-label">Super Admins</div><div class="kpi-trend trend-neutral" id="aKpiSuperSub"></div></div>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Comptes admin <span class="badge badge-amber" id="adminsCountBadge">0</span></div>
+        </div>
+        <table><thead><tr><th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Département</th><th>Dernier accès</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="adminsTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -680,6 +783,68 @@
     <div style="display:flex;gap:8px;margin-top:8px">
       <button onclick="saveFormation()" class="export-btn" style="flex:1;padding:12px;font-size:13px" id="fSaveBtn">Enregistrer</button>
       <button class="modal-close" onclick="document.getElementById('formationModal').classList.remove('open')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL RÈGLE DIAGNOSTIC -->
+<div class="modal-overlay" id="regleModal" onclick="if(event.target.id==='regleModal')document.getElementById('regleModal').classList.remove('open')">
+  <div class="modal" style="width:640px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="rModalTitle">Règle de diagnostic</div>
+    <div class="modal-sub" id="rModalSub">Définir la règle de détection</div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Culture *</div><input class="login-input" id="rFieldCulture" placeholder="Ex: Maïs, Sorgho, Niébé..." style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Urgence *</div>
+        <select id="rFieldUrgence" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--font)">
+          <option value="haute">🚨 Haute</option><option value="moyenne">⚠️ Moyenne</option><option value="basse">✅ Basse</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin:10px 0"><div class="modal-label" style="margin-bottom:4px">Maladie / Problème *</div><input class="login-input" id="rFieldMaladie" placeholder="Ex: Mildiou du mil (Sclerospora graminicola)" style="margin-bottom:0;width:100%"/></div>
+    <div style="margin:10px 0"><div class="modal-label" style="margin-bottom:4px">Mots-clés (séparés par |) *</div><input class="login-input" id="rFieldKeywords" placeholder="Ex: feuilles blanches|poudre|duvet|sporulation|mildiou" style="margin-bottom:0;width:100%"/></div>
+    <div style="margin:10px 0"><div class="modal-label" style="margin-bottom:4px">Causes</div><textarea class="login-input" id="rFieldCauses" placeholder="Description des causes..." style="height:65px;resize:vertical;margin-bottom:0;width:100%"></textarea></div>
+    <div style="margin:10px 0"><div class="modal-label" style="margin-bottom:4px">Traitement</div><textarea class="login-input" id="rFieldTraitement" placeholder="1. Retirer les parties atteintes
+2. Appliquer fongicide..." style="height:85px;resize:vertical;margin-bottom:0;width:100%"></textarea></div>
+    <div style="margin:10px 0"><div class="modal-label" style="margin-bottom:4px">Prévention</div><textarea class="login-input" id="rFieldPrevention" placeholder="Mesures préventives à conseiller..." style="height:65px;resize:vertical;margin-bottom:0;width:100%"></textarea></div>
+    <div id="rModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="saveRegle()" class="export-btn" style="flex:1;padding:12px;font-size:13px" id="rSaveBtn">Enregistrer</button>
+      <button class="modal-close" onclick="document.getElementById('regleModal').classList.remove('open')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div class="modal-overlay" id="adminModal" onclick="if(event.target.id==='adminModal')document.getElementById('adminModal').classList.remove('open')">
+  <div class="modal" style="width:540px;max-width:95vw">
+    <div class="modal-title" id="aModalTitle">Administrateur</div>
+    <div class="modal-sub" id="aModalSub">Compte accès au panneau admin</div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Identifiant *</div><input class="login-input" id="aFieldUsername" placeholder="admin_terrain" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Mot de passe</div><input class="login-input" id="aFieldPassword" type="password" placeholder="Laisser vide = inchangé" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Nom complet</div><input class="login-input" id="aFieldFullName" placeholder="Prénom Nom" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Département</div><input class="login-input" id="aFieldDepartment" placeholder="Ex: Terrain, Finance, Tech..." style="margin-bottom:0"/></div>
+    </div>
+    <div style="margin:10px 0"><div class="modal-label" style="margin-bottom:6px">Rôle *</div>
+      <select id="aFieldRole" onchange="updatePermissionsPreset()" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--font)">
+        <option value="viewer">👁 Viewer — Lecture seule</option>
+        <option value="admin">🔑 Admin — Gestion complète</option>
+        <option value="super_admin">⭐ Super Admin — Accès total</option>
+      </select>
+    </div>
+    <div style="margin:10px 0;padding:10px;background:var(--bg2);border-radius:8px">
+      <div class="modal-label" style="margin-bottom:6px">Tables autorisées en lecture (séparées par virgule, * = tout)</div>
+      <input class="login-input" id="aFieldReadPerms" placeholder="Ex: users,diagnostic_logs ou *" style="margin-bottom:0;width:100%"/>
+      <div class="modal-label" style="margin-bottom:6px;margin-top:10px">Tables autorisées en écriture</div>
+      <input class="login-input" id="aFieldWritePerms" placeholder="Ex: pdf_documents,shops ou *" style="margin-bottom:0;width:100%"/>
+    </div>
+    <div id="aModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="saveAdmin()" class="export-btn" style="flex:1;padding:12px;font-size:13px" id="aSaveBtn">Enregistrer</button>
+      <button class="modal-close" onclick="document.getElementById('adminModal').classList.remove('open')">Annuler</button>
     </div>
   </div>
 </div>
@@ -885,6 +1050,8 @@ function startAutoRefresh() {
     else if (activePage==='page-diagnostics')  loadDiagnosticsPage();
     else if (activePage==='page-formations')   loadFormationsPage();
     else if (activePage==='page-workers')      loadWorkersPage();
+    else if (activePage==='page-marche')       loadMarchePage();
+    else if (activePage==='page-regles')       loadReglesPage();
   }, 300000);
 }
 
@@ -931,6 +1098,9 @@ if (restrictedPages.includes(name) && currentUser?.role !== 'super_admin') {
   if (name==='formations')   loadFormationsPage();
   if (name==='diagnostics')  loadDiagnosticsPage();
   if (name==='workers')      loadWorkersPage();
+  if (name==='marche')       loadMarchePage();
+  if (name==='regles')       loadReglesPage();
+  if (name==='admins')       loadAdminsPage();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2324,6 +2494,327 @@ function dlCSV(csv, filename) {
   a.download=`${filename}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
+
+// ════════════════════════════════════════════════════════════════════
+// MARCHÉ NUMÉRIQUE
+// ════════════════════════════════════════════════════════════════════
+let allMarche=[],filteredMarche=[],marcheCurrentPage=1;
+const MARCHE_PER_PAGE=10;
+
+async function loadMarchePage(){
+  const icon=document.getElementById('marcheRefreshIcon');icon.classList.add('spinning');
+  try{
+    allMarche=await adminFetch('get-market-listings');
+    const actives=allMarche.filter(l=>l.is_available&&!l.is_deleted).length;
+    const besoins=allMarche.filter(l=>l.listing_type==='need').length;
+    const totalInterets=allMarche.reduce((s,l)=>s+(l._interests||0),0);
+    setKPI('mKpiTotal',allMarche.length,'mKpiTotalSub',`${allMarche.length} annonces`);
+    setKPI('mKpiActives',actives,'mKpiActivesSub',`${allMarche.length-actives} inactives`);
+    setKPI('mKpiInterets',totalInterets,'mKpiInteretsSub','contacts établis');
+    setKPI('mKpiBesoins',besoins,'mKpiBesoinsSub',`${allMarche.length-besoins} offres`);
+    filteredMarche=[...allMarche];marcheCurrentPage=1;renderMarcheTable();
+  }catch(e){
+    document.getElementById('marcheTableBody').innerHTML='<tr><td colspan="10" class="td-muted" style="text-align:center;padding:20px">Table market_listings non disponible — '+esc(e.message)+'</td></tr>';
+    ['mKpiTotal','mKpiActives','mKpiInterets','mKpiBesoins'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='0';el.classList.remove('kpi-loading');}});
+  }
+  icon.classList.remove('spinning');
+}
+
+function filterMarche(){
+  const search=document.getElementById('marcheSearch').value.toLowerCase();
+  const type=document.getElementById('marcheTypeFilter').value;
+  const dispo=document.getElementById('marcheDispoFilter').value;
+  filteredMarche=allMarche.filter(l=>{
+    const ms=!search||l.culture_name.toLowerCase().includes(search)||(l.seller_name||'').toLowerCase().includes(search)||(l.location||'').toLowerCase().includes(search);
+    const mt=!type||l.listing_type===type;
+    const md=dispo===''||String(l.is_available&&!l.is_deleted)===dispo;
+    return ms&&mt&&md;
+  });
+  marcheCurrentPage=1;renderMarcheTable();
+}
+
+function renderMarcheTable(){
+  const total=filteredMarche.length;
+  const start=(marcheCurrentPage-1)*MARCHE_PER_PAGE;
+  const page=filteredMarche.slice(start,start+MARCHE_PER_PAGE);
+  document.getElementById('marcheCountBadge').textContent=total;
+  document.getElementById('marcheCountText').textContent=`${start+1}–${Math.min(start+MARCHE_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('marcheTableBody').innerHTML=page.map(l=>{
+    const typeBadge=l.listing_type==='offer'?'<span class="badge badge-green">🌾 Offre</span>':'<span class="badge badge-amber">🛒 Besoin</span>';
+    const statusBadge=l.is_available&&!l.is_deleted?'<span class="badge badge-green">Actif</span>':'<span class="badge badge-red">Inactif</span>';
+    const date=new Date(l.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+    const prix=l.price_per_unit?`${Number(l.price_per_unit).toLocaleString('fr-FR')} F/${l.unit}`:'—';
+    return `<tr>
+      <td><strong>${esc(l.culture_name)}</strong></td>
+      <td>${typeBadge}</td>
+      <td>${l.quantity} ${esc(l.unit)}</td>
+      <td class="trend-up">${prix}</td>
+      <td class="td-muted">${esc(l.location||'—')}</td>
+      <td class="td-muted" style="font-size:11px">${esc(l.seller_name||'#'+l.seller_id)}</td>
+      <td style="text-align:center">${l._interests||0}</td>
+      <td>${statusBadge}</td>
+      <td class="td-muted">${date}</td>
+      <td><button onclick="deleteMarche(${l.id},'${esc(l.culture_name).replace(/'/g,"\'")}')" class="btn-action btn-danger">🗑</button></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="10" class="td-muted" style="text-align:center;padding:20px">Aucune annonce trouvée</td></tr>';
+  buildPagination('marchePagination',total,MARCHE_PER_PAGE,marcheCurrentPage,n=>{marcheCurrentPage=n;renderMarcheTable();});
+}
+
+async function deleteMarche(id,culture){
+  if(!confirm(`Supprimer l'annonce de "${culture}" ?`))return;
+  try{
+    await adminFetch('delete-market-listing',{method:'POST',body:{id}});
+    await loadMarchePage();toast('Annonce supprimée');
+  }catch(e){toast('Erreur : '+e.message,'error');}
+}
+
+function exportMarcheCSV(){
+  const h=['Culture','Type','Quantité','Unité','Prix/unité FCFA','Localité','Vendeur','Intérêts','Disponible','Date'];
+  const r=filteredMarche.map(l=>[l.culture_name,l.listing_type==='offer'?'Offre':'Besoin',l.quantity,l.unit,l.price_per_unit||0,l.location||'',l.seller_name||l.seller_id,l._interests||0,l.is_available&&!l.is_deleted?'Oui':'Non',new Date(l.created_at).toLocaleDateString('fr-FR')]);
+  dlCSV([h,...r].map(x=>x.join(';')).join('\n'),'cultivatech_marche');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RÈGLES DE DIAGNOSTIC
+// ════════════════════════════════════════════════════════════════════
+let allRegles=[],filteredRegles=[],reglesCurrentPage=1,editingRegleId=null;
+const REGLES_PER_PAGE=12;
+
+async function loadReglesPage(){
+  const icon=document.getElementById('reglesRefreshIcon');icon.classList.add('spinning');
+  try{
+    allRegles=await adminFetch('get-diagnostic-rules');
+    const cultures=[...new Set(allRegles.map(r=>r.culture_name).filter(Boolean))].length;
+    const haute=allRegles.filter(r=>r.urgency==='haute').length;
+    const moyenne=allRegles.filter(r=>r.urgency==='moyenne').length;
+    setKPI('rKpiTotal',allRegles.length,'rKpiTotalSub',`${allRegles.length} règles actives`);
+    setKPI('rKpiCultures',cultures,'rKpiCulturesSub','cultures couvertes');
+    setKPI('rKpiHaute',haute,'rKpiHauteSub',`${Math.round(haute/Math.max(allRegles.length,1)*100)}% du total`);
+    setKPI('rKpiMoyenne',moyenne,'rKpiMoyenneSub','urgence modérée');
+    const cultureSet=[...new Set(allRegles.map(r=>r.culture_name).filter(Boolean))].sort();
+    document.getElementById('regleCultureFilter').innerHTML='<option value="">Toutes les cultures</option>'+cultureSet.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    filteredRegles=[...allRegles];reglesCurrentPage=1;renderReglesTable();
+  }catch(e){
+    document.getElementById('reglesTableBody').innerHTML='<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Table diagnostic_rules non disponible — '+esc(e.message)+'</td></tr>';
+    ['rKpiTotal','rKpiCultures','rKpiHaute','rKpiMoyenne'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='0';el.classList.remove('kpi-loading');}});
+  }
+  icon.classList.remove('spinning');
+}
+
+function filterRegles(){
+  const search=document.getElementById('regleSearch').value.toLowerCase();
+  const culture=document.getElementById('regleCultureFilter').value;
+  const urgence=document.getElementById('regleUrgenceFilter').value;
+  filteredRegles=allRegles.filter(r=>(!search||(r.disease_name||'').toLowerCase().includes(search)||(r.culture_name||'').toLowerCase().includes(search)||(r.keywords||'').toLowerCase().includes(search))&&(!culture||r.culture_name===culture)&&(!urgence||r.urgency===urgence));
+  reglesCurrentPage=1;renderReglesTable();
+}
+
+function renderReglesTable(){
+  const total=filteredRegles.length;
+  const start=(reglesCurrentPage-1)*REGLES_PER_PAGE;
+  const page=filteredRegles.slice(start,start+REGLES_PER_PAGE);
+  document.getElementById('reglesCountBadge').textContent=total;
+  document.getElementById('reglesCountText').textContent=`${start+1}–${Math.min(start+REGLES_PER_PAGE,total)} sur ${total}`;
+  document.getElementById('reglesTableBody').innerHTML=page.map(r=>{
+    const badge=r.urgency==='haute'?'badge-red':r.urgency==='moyenne'?'badge-amber':'badge-green';
+    const urgLabel=r.urgency==='haute'?'🚨 Haute':r.urgency==='moyenne'?'⚠️ Moyenne':'✅ Basse';
+    const kw=(r.keywords||'').split('|').slice(0,4).join(', ');
+    return `<tr>
+      <td><strong>${esc(r.culture_name||'(générique)')}</strong></td>
+      <td>${esc(r.disease_name)}</td>
+      <td class="td-muted" style="font-size:11px">${esc(kw.length>60?kw.slice(0,60)+'…':kw)}</td>
+      <td><span class="badge ${badge}">${urgLabel}</span></td>
+      <td><div style="display:flex;gap:5px">
+        <button onclick="editRegle(${r.id})" class="btn-action">✏️</button>
+        <button onclick="deleteRegle(${r.id},'${esc(r.disease_name).replace(/'/g,"\'")}')" class="btn-action btn-danger">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="5" class="td-muted" style="text-align:center;padding:20px">Aucune règle trouvée</td></tr>';
+  buildPagination('reglesPagination',total,REGLES_PER_PAGE,reglesCurrentPage,n=>{reglesCurrentPage=n;renderReglesTable();});
+}
+
+function addRegleModal(){
+  editingRegleId=null;
+  document.getElementById('rModalTitle').textContent='Nouvelle règle de diagnostic';
+  document.getElementById('rModalSub').textContent='Ajouter une règle à la base';
+  ['rFieldCulture','rFieldMaladie','rFieldKeywords','rFieldCauses','rFieldTraitement','rFieldPrevention'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rFieldUrgence').value='moyenne';
+  document.getElementById('rModalError').style.display='none';
+  document.getElementById('rSaveBtn').textContent='Ajouter';
+  document.getElementById('regleModal').classList.add('open');
+}
+
+function editRegle(id){
+  const r=allRegles.find(x=>x.id===id);if(!r)return;
+  editingRegleId=id;
+  document.getElementById('rModalTitle').textContent='Modifier la règle';
+  document.getElementById('rModalSub').textContent=r.disease_name;
+  document.getElementById('rFieldCulture').value=r.culture_name||'';
+  document.getElementById('rFieldMaladie').value=r.disease_name||'';
+  document.getElementById('rFieldKeywords').value=r.keywords||'';
+  document.getElementById('rFieldCauses').value=r.causes||'';
+  document.getElementById('rFieldTraitement').value=r.treatment||'';
+  document.getElementById('rFieldPrevention').value=r.prevention||'';
+  document.getElementById('rFieldUrgence').value=r.urgency||'moyenne';
+  document.getElementById('rModalError').style.display='none';
+  document.getElementById('rSaveBtn').textContent='Enregistrer';
+  document.getElementById('regleModal').classList.add('open');
+}
+
+async function saveRegle(){
+  const maladie=document.getElementById('rFieldMaladie').value.trim();
+  const keywords=document.getElementById('rFieldKeywords').value.trim();
+  if(!maladie||!keywords){document.getElementById('rModalError').textContent='Maladie et mots-clés obligatoires';document.getElementById('rModalError').style.display='block';return;}
+  const body={
+    culture_name:document.getElementById('rFieldCulture').value.trim()||null,
+    disease_name:maladie,keywords,
+    causes:document.getElementById('rFieldCauses').value.trim(),
+    treatment:document.getElementById('rFieldTraitement').value.trim(),
+    prevention:document.getElementById('rFieldPrevention').value.trim(),
+    urgency:document.getElementById('rFieldUrgence').value
+  };
+  document.getElementById('rSaveBtn').textContent='⏳...';document.getElementById('rSaveBtn').disabled=true;
+  try{
+    if(editingRegleId) body.id=editingRegleId;
+    await adminFetch('save-diagnostic-rule',{method:'POST',body});
+    document.getElementById('regleModal').classList.remove('open');
+    await loadReglesPage();toast(editingRegleId?'Règle modifiée':'Règle ajoutée');
+  }catch(e){document.getElementById('rModalError').textContent='Erreur : '+e.message;document.getElementById('rModalError').style.display='block';}
+  document.getElementById('rSaveBtn').textContent='Enregistrer';document.getElementById('rSaveBtn').disabled=false;
+}
+
+async function deleteRegle(id,name){
+  if(!confirm(`Supprimer la règle "${name}" ?`))return;
+  try{await adminFetch('delete-diagnostic-rule',{method:'POST',body:{id}});await loadReglesPage();toast('Règle supprimée');}
+  catch(e){toast('Erreur : '+e.message,'error');}
+}
+
+function exportReglesCSV(){
+  const h=['Culture','Maladie','Mots-clés','Causes','Traitement','Prévention','Urgence'];
+  const r=filteredRegles.map(x=>[x.culture_name||'',x.disease_name,x.keywords||'',x.causes||'',x.treatment||'',x.prevention||'',x.urgency]);
+  dlCSV([h,...r].map(x=>x.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(';')).join('\n'),'cultivatech_regles_diagnostic');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// GESTION DES ADMINS (super_admin seulement)
+// ════════════════════════════════════════════════════════════════════
+let allAdmins=[],editingAdminId=null;
+
+async function loadAdminsPage(){
+  if(currentUser?.role!=='super_admin'){toast('Accès réservé au Super Admin','error');showPage('dashboard');return;}
+  const icon=document.getElementById('adminsRefreshIcon');icon.classList.add('spinning');
+  try{
+    allAdmins=await adminFetch('get-admin-users');
+    const actifs=allAdmins.filter(a=>a.is_active).length;
+    const viewers=allAdmins.filter(a=>a.role==='viewer').length;
+    const supers=allAdmins.filter(a=>a.role==='super_admin').length;
+    setKPI('aKpiTotal',allAdmins.length,'aKpiTotalSub',`${allAdmins.length} comptes`);
+    setKPI('aKpiActifs',actifs,'aKpiActifsSub',`${allAdmins.length-actifs} désactivés`);
+    setKPI('aKpiViewers',viewers,'aKpiViewersSub','lecture seule');
+    setKPI('aKpiSuper',supers,'aKpiSuperSub','accès total');
+    document.getElementById('adminsCountBadge').textContent=allAdmins.length;
+    renderAdminsTable();
+  }catch(e){
+    document.getElementById('adminsTableBody').innerHTML='<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Erreur : '+esc(e.message)+'</td></tr>';
+    ['aKpiTotal','aKpiActifs','aKpiViewers','aKpiSuper'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='—';el.classList.remove('kpi-loading');}});
+  }
+  icon.classList.remove('spinning');
+}
+
+function renderAdminsTable(){
+  document.getElementById('adminsTableBody').innerHTML=allAdmins.map(a=>{
+    const roleBadge=a.role==='super_admin'?'<span class="badge badge-amber">⭐ Super Admin</span>':a.role==='admin'?'<span class="badge badge-green">Admin</span>':'<span class="badge badge-blue">Viewer</span>';
+    const statusBadge=a.is_active?'<span class="badge badge-green">Actif</span>':'<span class="badge badge-red">Désactivé</span>';
+    const lastLogin=a.last_login?new Date(a.last_login).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}):'Jamais';
+    const isSelf=a.id===currentUser?.id;
+    return `<tr ${isSelf?'style="background:rgba(54,175,59,0.06)"':''}>
+      <td><strong>${esc(a.username)}</strong>${isSelf?' <span class="badge badge-green" style="font-size:9px">Vous</span>':''}</td>
+      <td>${esc(a.full_name||'—')}</td>
+      <td>${roleBadge}</td>
+      <td class="td-muted">${esc(a.department||'—')}</td>
+      <td class="td-muted">${lastLogin}</td>
+      <td>${statusBadge}</td>
+      <td><div style="display:flex;gap:5px">
+        <button onclick="editAdmin(${a.id})" class="btn-action">✏️</button>
+        ${!isSelf?`<button onclick="toggleAdminStatus(${a.id},${a.is_active})" class="btn-action" style="color:${a.is_active?'var(--amber)':'var(--vert2)'}" title="${a.is_active?'Désactiver':'Réactiver'}">${a.is_active?'⛔':'✅'}</button><button onclick="deleteAdmin(${a.id},'${esc(a.username).replace(/'/g,"\'")}')" class="btn-action btn-danger">🗑</button>`:'<span class="td-muted" style="font-size:11px">—</span>'}
+      </div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Aucun administrateur</td></tr>';
+}
+
+function addAdminModal(){
+  editingAdminId=null;
+  document.getElementById('aModalTitle').textContent='Créer un administrateur';
+  document.getElementById('aModalSub').textContent='Nouveau compte accès admin';
+  ['aFieldUsername','aFieldPassword','aFieldFullName','aFieldDepartment','aFieldReadPerms','aFieldWritePerms'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aFieldRole').value='viewer';
+  document.getElementById('aModalError').style.display='none';
+  document.getElementById('aSaveBtn').textContent='Créer';
+  document.getElementById('adminModal').classList.add('open');
+}
+
+function editAdmin(id){
+  const a=allAdmins.find(x=>x.id===id);if(!a)return;
+  editingAdminId=id;
+  document.getElementById('aModalTitle').textContent="Modifier l'administrateur";
+  document.getElementById('aModalSub').textContent=a.username;
+  document.getElementById('aFieldUsername').value=a.username||'';
+  document.getElementById('aFieldPassword').value='';
+  document.getElementById('aFieldFullName').value=a.full_name||'';
+  document.getElementById('aFieldDepartment').value=a.department||'';
+  document.getElementById('aFieldRole').value=a.role||'viewer';
+  const perms=a.table_permissions||{read:[],write:[]};
+  document.getElementById('aFieldReadPerms').value=(perms.read||[]).join(',');
+  document.getElementById('aFieldWritePerms').value=(perms.write||[]).join(',');
+  document.getElementById('aModalError').style.display='none';
+  document.getElementById('aSaveBtn').textContent='Enregistrer';
+  document.getElementById('adminModal').classList.add('open');
+}
+
+function updatePermissionsPreset(){
+  const role=document.getElementById('aFieldRole').value;
+  if(role==='super_admin'){document.getElementById('aFieldReadPerms').value='*';document.getElementById('aFieldWritePerms').value='*';}
+  else if(role==='admin'){document.getElementById('aFieldReadPerms').value='*';document.getElementById('aFieldWritePerms').value='pdf_documents,shops,workers,external_trainings,market_listings,diagnostic_rules';}
+  else{document.getElementById('aFieldReadPerms').value='users,diagnostic_logs,market_listings';document.getElementById('aFieldWritePerms').value='';}
+}
+
+async function saveAdmin(){
+  const username=document.getElementById('aFieldUsername').value.trim();
+  if(!username){document.getElementById('aModalError').textContent='Identifiant obligatoire';document.getElementById('aModalError').style.display='block';return;}
+  const readPerms=document.getElementById('aFieldReadPerms').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const writePerms=document.getElementById('aFieldWritePerms').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const body={
+    username,
+    full_name:document.getElementById('aFieldFullName').value.trim(),
+    department:document.getElementById('aFieldDepartment').value.trim(),
+    role:document.getElementById('aFieldRole').value,
+    table_permissions:{read:readPerms,write:writePerms},
+    is_active:true
+  };
+  const pwd=document.getElementById('aFieldPassword').value;
+  if(pwd) body.password=pwd;
+  if(editingAdminId) body.id=editingAdminId;
+  document.getElementById('aSaveBtn').textContent='⏳...';document.getElementById('aSaveBtn').disabled=true;
+  try{
+    await adminFetch('save-admin-user',{method:'POST',body});
+    document.getElementById('adminModal').classList.remove('open');
+    await loadAdminsPage();toast(editingAdminId?'Admin modifié':'Admin créé');
+  }catch(e){document.getElementById('aModalError').textContent='Erreur : '+e.message;document.getElementById('aModalError').style.display='block';}
+  document.getElementById('aSaveBtn').textContent='Enregistrer';document.getElementById('aSaveBtn').disabled=false;
+}
+
+async function toggleAdminStatus(id,cur){
+  try{await adminFetch('save-admin-user',{method:'POST',body:{id,is_active:!cur}});await loadAdminsPage();toast(cur?'Admin désactivé':'Admin réactivé');}
+  catch(e){toast('Erreur : '+e.message,'error');}
+}
+
+async function deleteAdmin(id,username){
+  if(id===currentUser?.id){toast('Impossible de supprimer votre propre compte','error');return;}
+  if(!confirm(`Supprimer l'admin "${username}" définitivement ?`))return;
+  try{await adminFetch('delete-admin-user',{method:'POST',body:{id}});await loadAdminsPage();toast('Admin supprimé');}
+  catch(e){toast('Erreur : '+e.message,'error');}
+}
+
 </script>
 </body>
 </html>
