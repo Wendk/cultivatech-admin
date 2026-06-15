@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Wendk/cultivatech-admin/main/logo-MAERAH.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
 :root{
@@ -39,6 +41,15 @@ body{font-family:var(--font);background:var(--gris-bg);color:var(--noir);min-hei
 .dot{width:7px;height:7px;background:var(--vert);border-radius:50%;animation:pulse 1.5s infinite;display:inline-block}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+/* Leaflet dark theme */
+.leaflet-popup-content-wrapper{background:rgba(6,14,9,.97)!important;border:1px solid rgba(0,185,75,.35)!important;border-radius:12px!important;box-shadow:0 14px 44px rgba(0,0,0,.85)!important;padding:0!important;color:#fff!important}
+.leaflet-popup-tip-container{display:none!important}
+.leaflet-popup-close-button{color:rgba(255,255,255,.35)!important;top:10px!important;right:12px!important;font-size:16px!important}
+.leaflet-popup-content{margin:0!important;padding:14px 18px!important}
+.leaflet-container .leaflet-control-attribution{background:rgba(0,0,0,.45)!important;color:rgba(255,255,255,.25)!important;font-size:9px!important;border-radius:4px!important}
+.leaflet-container .leaflet-control-attribution a{color:rgba(0,160,60,.6)!important}
+.leaflet-bar a{background:rgba(8,20,10,.9)!important;color:rgba(0,200,80,.8)!important;border-color:rgba(0,180,70,.25)!important}
+.leaflet-bar a:hover{background:rgba(0,80,30,.5)!important}
 /* MAIN */
 #mainApp{display:none}
 /* TOPBAR */
@@ -892,7 +903,7 @@ async function loadProvinces() {
   } catch(e) { console.error('Erreur provinces:', e) }
 }
 
-// ── Carte Voronoi choroplèthe D3.js — 0 dépendance réseau ──────────────
+// ── Carte Leaflet — tuiles CartoDB Dark + choroplèthe GeoJSON ──────────
 async function renderBurkinaMap(stats) {
   if (!stats) stats = {}
   var provincesData = stats.provinces_data || []
@@ -933,226 +944,164 @@ async function renderBurkinaMap(stats) {
     return           {txt:'Critique',  col:'#e85050'}
   }
 
-  // ── Coordonnées géographiques des 13 capitales régionales ──────────
-  var REGIONS = [
-    {name:'Boucle du Mouhoun', lon:-3.467, lat:12.467},
-    {name:'Cascades',          lon:-4.766, lat:10.633},
-    {name:'Centre',            lon:-1.534, lat:12.365},
-    {name:'Centre-Est',        lon:-0.367, lat:11.783},
-    {name:'Centre-Nord',       lon:-1.100, lat:13.100},
-    {name:'Centre-Ouest',      lon:-2.364, lat:12.250},
-    {name:'Centre-Sud',        lon:-1.067, lat:11.667},
-    {name:'Est',               lon: 0.350, lat:12.060},
-    {name:'Hauts-Bassins',     lon:-4.298, lat:11.177},
-    {name:'Nord',              lon:-2.416, lat:13.583},
-    {name:'Plateau-Central',   lon:-1.300, lat:12.583},
-    {name:'Sahel',             lon:-0.033, lat:14.033},
-    {name:'Sud-Ouest',         lon:-3.183, lat:10.333}
-  ]
-
-  // ── Contour simplifié du Burkina Faso (sens horaire) ───────────────
-  var BFA_RING = [
-    [-5.47,10.90],[-5.36,11.84],[-5.21,12.20],[-5.04,12.60],
-    [-4.75,13.27],[-4.52,13.62],[-4.22,13.74],[-3.52,14.00],
-    [-3.02,14.27],[-2.83,14.73],[-2.10,14.85],[-1.46,15.07],
-    [-0.85,14.88],[-0.30,15.07],[ 0.23,14.99],[ 0.98,14.94],
-    [ 1.27,14.74],[ 1.88,13.97],[ 2.08,13.07],[ 2.39,12.63],
-    [ 2.08,12.20],[ 1.96,11.43],[ 1.38,11.47],[ 1.02,11.08],
-    [ 0.90,10.79],[ 0.21,11.03],[-0.06,10.79],[-0.61,10.21],
-    [-1.06, 9.50],[-1.61, 9.50],[-2.10, 9.79],[-2.55, 9.69],
-    [-2.84,10.43],[-2.97,10.62],[-3.24,10.02],[-3.75, 9.68],
-    [-4.04, 9.95],[-4.36,10.03],[-4.96,10.52],[-5.19,10.83],
-    [-5.47,10.90]
-  ]
-  var bfaFeature = {type:'Feature',geometry:{type:'Polygon',coordinates:[BFA_RING]}}
-
   var container = document.getElementById('burkinaMap')
   container.style.display=''; container.style.alignItems=''; container.style.justifyContent=''
   container.innerHTML=''
 
   try {
-    if (typeof d3 === 'undefined') throw new Error('D3 non chargé')
+    if (typeof L === 'undefined') throw new Error('Leaflet non chargé')
 
-    var W = Math.max(container.clientWidth||0, 680), H = 460
-
-    var svg = d3.select(container).append('svg')
-      .attr('width','100%').attr('height',H)
-      .attr('viewBox','0 0 '+W+' '+H).style('display','block')
-
-    var defs = svg.append('defs')
-
-    // Fond dégradé
-    var bg = defs.append('linearGradient').attr('id','mapBgV').attr('x1','0%').attr('y1','0%').attr('x2','70%').attr('y2','100%')
-    bg.append('stop').attr('offset','0%').attr('stop-color','#060d08')
-    bg.append('stop').attr('offset','100%').attr('stop-color','#0b1b0e')
-    svg.append('rect').attr('width',W).attr('height',H).attr('fill','url(#mapBgV)')
-
-    // Filtre glow — hover
-    var gf = defs.append('filter').attr('id','vGlow').attr('x','-25%').attr('y','-25%').attr('width','150%').attr('height','150%')
-    gf.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','3.5').attr('result','b')
-    var gfm = gf.append('feMerge')
-    gfm.append('feMergeNode').attr('in','b'); gfm.append('feMergeNode').attr('in','SourceGraphic')
-
-    // Filtre glow — bordure pays
-    var bf = defs.append('filter').attr('id','bGlow').attr('x','-8%').attr('y','-8%').attr('width','116%').attr('height','116%')
-    bf.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','2.5').attr('result','b')
-    var bfm = bf.append('feMerge')
-    bfm.append('feMergeNode').attr('in','b'); bfm.append('feMergeNode').attr('in','SourceGraphic')
-
-    // Projection Mercator ajustée sur le BF
-    var proj = d3.geoMercator().fitExtent([[26,18],[W-26,H-22]], bfaFeature)
-    var pathFn = d3.geoPath().projection(proj)
-
-    // ClipPath = contour BFA
-    var cid = 'bfaClip'
-    defs.append('clipPath').attr('id',cid)
-      .append('path').attr('d', pathFn(bfaFeature))
-
-    // Graticule (dans le clip)
-    var grat = d3.geoGraticule().step([2,2])
-    svg.append('path').datum(grat())
-      .attr('d', pathFn).attr('clip-path','url(#'+cid+')')
-      .attr('fill','none').attr('stroke','rgba(255,255,255,0.025)').attr('stroke-width',0.7)
-
-    // Ombre du pays
-    svg.append('path').datum(bfaFeature).attr('d', pathFn)
-      .attr('fill','rgba(0,0,0,0.45)').attr('transform','translate(3,4)')
-
-    // Projeter les capitales régionales
-    var projR = REGIONS.map(function(r) {
-      var nm = matchRegion(r.name)||r.name
-      var pt = proj([r.lon, r.lat])
-      return {name:r.name, normName:nm, px:pt[0], py:pt[1], count:regCounts[nm]||0}
+    var map = L.map(container, {
+      center: [12.4, -1.5], zoom: 6, minZoom: 5, maxZoom: 12,
+      zoomControl: true, scrollWheelZoom: false, attributionControl: true
     })
 
-    // Voronoi — cellules par région
-    var delaunay = d3.Delaunay.from(projR, function(d){return d.px}, function(d){return d.py})
-    var voronoi  = delaunay.voronoi([-10,-10,W+10,H+10])
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd', maxZoom: 19, detectRetina: true
+    }).addTo(map)
 
-    // Tooltip
+    // Tooltip personnalisé
     var oldTip = document.getElementById('mapTooltip')
     if (oldTip) oldTip.remove()
     var tip = document.createElement('div')
-    tip.id='mapTooltip'
-    tip.style.cssText='position:fixed;display:none;background:rgba(5,14,8,.97);border:1px solid rgba(0,185,75,.38);border-radius:12px;padding:14px 18px;pointer-events:none;z-index:9999;min-width:178px;box-shadow:0 14px 44px rgba(0,0,0,.85);font-family:IBM Plex Sans,sans-serif'
+    tip.id = 'mapTooltip'
+    tip.style.cssText = 'position:fixed;display:none;background:rgba(5,14,8,.97);border:1px solid rgba(0,185,75,.38);border-radius:12px;padding:14px 18px;pointer-events:none;z-index:9999;min-width:178px;box-shadow:0 14px 44px rgba(0,0,0,.85);font-family:IBM Plex Sans,sans-serif'
     document.body.appendChild(tip)
 
-    // Groupe cellules (clippé au contour BF)
-    var cellsG = svg.append('g').attr('clip-path','url(#'+cid+')')
-
-    projR.forEach(function(d,i) {
-      var cp = voronoi.renderCell(i); if (!cp) return
-      var col = diagColor(d.count)
-      cellsG.append('path').attr('d',cp)
-        .attr('fill',col)
-        .attr('stroke','rgba(0,230,90,0.08)').attr('stroke-width',1)
-        .attr('stroke-linejoin','round').style('cursor','pointer')
-        .on('mouseover', function(event) {
-          var lbl = diagLabel(d.count)
-          var vc = lbl ? lbl.col : 'rgba(255,255,255,.3)'
-          d3.select(this).attr('fill', lighten(col)).attr('stroke','rgba(0,240,90,0.75)').attr('stroke-width',2).attr('filter','url(#vGlow)')
-          tip.innerHTML =
-            '<div style="font-size:9.5px;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Région</div>'+
-            '<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;line-height:1.25">'+escapeHtml(d.name)+'</div>'+
-            '<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">'+
-              '<div><div style="font-size:9.5px;color:rgba(255,255,255,.38);margin-bottom:3px">Diagnostics (6 mois)</div>'+
-              '<div style="font-size:30px;font-weight:700;font-family:IBM Plex Mono,monospace;color:'+vc+';line-height:1">'+d.count+'</div></div>'+
-              (lbl?'<span style="background:rgba(255,255,255,.07);border-radius:7px;padding:4px 10px;font-size:10px;font-weight:700;color:'+lbl.col+'">'+lbl.txt+'</span>':'')+
-            '</div>'+
-            '<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.07)">'+
-              '<div style="height:100%;background:'+vc+';width:'+Math.min(100,Math.round(d.count/maxCount*100))+'%;border-radius:2px"></div>'+
-            '</div>'
-          tip.style.display='block'
-          tip.style.left=(event.clientX+18)+'px'; tip.style.top=(event.clientY-10)+'px'
-        })
-        .on('mousemove',function(event){ tip.style.left=(event.clientX+18)+'px'; tip.style.top=(event.clientY-10)+'px' })
-        .on('mouseout', function() {
-          d3.select(this).attr('fill',col).attr('stroke','rgba(0,230,90,0.08)').attr('stroke-width',1).attr('filter',null)
-          tip.style.display='none'
-        })
-    })
-
-    // Lignes de séparation entre régions (trait fin)
-    projR.forEach(function(d,i) {
-      var cp = voronoi.renderCell(i); if (!cp) return
-      cellsG.append('path').attr('d',cp)
-        .attr('fill','none')
-        .attr('stroke','rgba(0,200,80,0.14)').attr('stroke-width',1.2)
-        .attr('pointer-events','none')
-    })
-
-    // Labels (nom abrégé + compteur)
-    projR.forEach(function(d) {
-      if (d.px<20||d.px>W-20||d.py<20||d.py>H-20) return
-      var sn = d.name
-        .replace('Boucle du Mouhoun','B. Mouhoun')
-        .replace('Plateau-Central','Plateau C.')
-        .replace('Hauts-Bassins','H-Bassins')
-        .replace('Centre-','C-')
-      var g = svg.append('g').attr('transform','translate('+d.px+','+d.py+')').attr('pointer-events','none')
-      var op = d.count>0 ? 0.88 : 0.22
-      g.append('text').text(sn)
-        .attr('text-anchor','middle')
-        .attr('font-family','IBM Plex Sans,sans-serif').attr('font-size',d.count>0?9:8)
-        .attr('font-weight','600').attr('fill','rgba(255,255,255,'+op+')')
-        .attr('dy', d.count>0?'-4':'3').attr('letter-spacing','0.02em')
-      if (d.count>0) {
-        var lbl=diagLabel(d.count)
-        g.append('text').text(d.count)
-          .attr('text-anchor','middle')
-          .attr('font-family','IBM Plex Mono,monospace').attr('font-size',11).attr('font-weight','700')
-          .attr('fill',lbl?lbl.col:'#4de894').attr('dy','8')
-      }
-    })
-
-    // Bordure lumineuse du pays (double trait)
-    svg.append('path').datum(bfaFeature).attr('d',pathFn)
-      .attr('fill','none').attr('stroke','rgba(0,215,80,0.45)').attr('stroke-width',2.5)
-      .attr('stroke-linejoin','round').attr('filter','url(#bGlow)')
-    svg.append('path').datum(bfaFeature).attr('d',pathFn)
-      .attr('fill','none').attr('stroke','rgba(30,240,100,0.85)').attr('stroke-width',1.2)
-      .attr('stroke-linejoin','round')
-
-    // Points capitales
-    projR.forEach(function(d) {
-      if (d.px<10||d.px>W-10||d.py<10||d.py>H-10) return
-      svg.append('circle').attr('cx',d.px).attr('cy',d.py)
-        .attr('r', d.count>0?3.5:2)
-        .attr('fill', d.count>0?diagLabel(d.count).col:'rgba(255,255,255,.2)')
-        .attr('stroke','rgba(0,0,0,.5)').attr('stroke-width',0.8)
-        .attr('pointer-events','none')
-    })
-
-    // Animation d'entrée
-    cellsG.selectAll('path').style('opacity',0)
-      .transition().duration(560).delay(function(_,i){return i*38}).style('opacity',1)
-
-    // Titre et compteur total
-    svg.append('text').attr('x',14).attr('y',20)
-      .attr('font-family','IBM Plex Sans,sans-serif').attr('font-size',9.5)
-      .attr('font-weight','600').attr('fill','rgba(255,255,255,.25)').attr('letter-spacing','.09em')
-      .text('BURKINA FASO — SURVEILLANCE PHYTOSANITAIRE · 13 RÉGIONS')
-    var tot = Object.values(regCounts).reduce(function(a,b){return a+b},0)
-    if (tot>0)
-      svg.append('text').attr('x',W-14).attr('y',H-14)
-        .attr('text-anchor','end').attr('font-family','IBM Plex Mono,monospace')
-        .attr('font-size',10).attr('fill','rgba(0,210,80,.45)')
-        .text(tot+' diagnostics · '+Object.keys(regCounts).length+' régions actives')
-
-    // Légende couleurs (bas gauche)
-    var legData=[{c:diagColor(1),t:'Faible'},{c:diagColor(5),t:'Modéré'},{c:diagColor(15),t:'Élevé'},{c:diagColor(30),t:'Critique'}]
-    var lx=14, ly=H-14
-    legData.forEach(function(l,i){
-      svg.append('rect').attr('x',lx+i*65).attr('y',ly-11).attr('width',10).attr('height',10).attr('rx',2).attr('fill',l.c).attr('opacity',0.85)
-      svg.append('text').attr('x',lx+i*65+13).attr('y',ly-2)
-        .attr('font-family','IBM Plex Sans,sans-serif').attr('font-size',9).attr('fill','rgba(255,255,255,.35)').text(l.t)
-    })
-
     burkinaMap = {
-      _svg:svg, _tip:tip,
-      remove:function(){ container.innerHTML=''; var t=document.getElementById('mapTooltip'); if(t)t.remove(); burkinaMap=null },
-      invalidateSize:function(){}
+      _map: map, _tip: tip,
+      remove: function() {
+        try { map.remove() } catch(e) {}
+        var t = document.getElementById('mapTooltip'); if (t) t.remove()
+        burkinaMap = null
+      },
+      invalidateSize: function() { try { map.invalidateSize() } catch(e) {} }
     }
+    burkinaGeoLayer = true
+
+    // ── Overlay GeoJSON choroplèthe (non-bloquant) ────────────────────
+    ;(async function loadOverlay() {
+      var GEO_CACHE = 'bfa_geo_v3'
+      var URLS = [
+        'https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson',
+        'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson'
+      ]
+      var geojson = null
+      try { var c = sessionStorage.getItem(GEO_CACHE); if (c) geojson = JSON.parse(c) } catch(e){}
+
+      if (!geojson || !geojson.features) {
+        for (var i = 0; i < URLS.length; i++) {
+          try {
+            var ctrl = new AbortController()
+            var tid = setTimeout(function(){ ctrl.abort() }, 12000)
+            var resp = await fetch(URLS[i], {signal: ctrl.signal})
+            clearTimeout(tid)
+            if (resp.ok) {
+              var txt = await resp.text()
+              if (txt.trim()[0] !== '{' && txt.trim()[0] !== '[') continue
+              geojson = JSON.parse(txt)
+              try { sessionStorage.setItem(GEO_CACHE, JSON.stringify(geojson)) } catch(e){}
+              break
+            }
+          } catch(e) { console.warn('GeoJSON source #'+i+' échec:', e.message) }
+        }
+      }
+
+      // Si GeoJSON indisponible : marqueurs circulaires sur les capitales régionales
+      if (!geojson || !geojson.features) {
+        var REGION_CAPS = [
+          {name:'Boucle du Mouhoun', lat:12.367, lon:-3.467},
+          {name:'Cascades',          lat:10.633, lon:-4.766},
+          {name:'Centre',            lat:12.365, lon:-1.534},
+          {name:'Centre-Est',        lat:11.783, lon:-0.367},
+          {name:'Centre-Nord',       lat:13.100, lon:-1.100},
+          {name:'Centre-Ouest',      lat:12.250, lon:-2.364},
+          {name:'Centre-Sud',        lat:11.667, lon:-1.067},
+          {name:'Est',               lat:12.060, lon: 0.350},
+          {name:'Hauts-Bassins',     lat:11.177, lon:-4.298},
+          {name:'Nord',              lat:13.583, lon:-2.416},
+          {name:'Plateau-Central',   lat:12.583, lon:-1.300},
+          {name:'Sahel',             lat:14.033, lon:-0.033},
+          {name:'Sud-Ouest',         lat:10.333, lon:-3.183}
+        ]
+        REGION_CAPS.forEach(function(r) {
+          var nm = matchRegion(r.name) || r.name
+          var cnt = regCounts[nm] || 0
+          var col = diagColor(cnt)
+          var lbl = diagLabel(cnt)
+          var sz = cnt > 0 ? Math.min(10 + cnt * 0.6, 22) : 6
+          var marker = L.circleMarker([r.lat, r.lon], {
+            radius: sz, fillColor: col, fillOpacity: 0.82,
+            color: 'rgba(0,200,80,0.55)', weight: 1.5
+          }).addTo(map)
+          ;(function(rr, cc, lb, col2) {
+            marker.on('mouseover', function(ev) {
+              var vc = lb ? lb.col : 'rgba(255,255,255,.3)'
+              tip.innerHTML =
+                '<div style="font-size:9.5px;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Région</div>'+
+                '<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;line-height:1.25">'+escapeHtml(rr.name)+'</div>'+
+                '<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">'+
+                  '<div><div style="font-size:9.5px;color:rgba(255,255,255,.38);margin-bottom:3px">Diagnostics</div>'+
+                  '<div style="font-size:30px;font-weight:700;font-family:IBM Plex Mono,monospace;color:'+vc+';line-height:1">'+cc+'</div></div>'+
+                  (lb?'<span style="background:rgba(255,255,255,.07);border-radius:7px;padding:4px 10px;font-size:10px;font-weight:700;color:'+lb.col+'">'+lb.txt+'</span>':'')+
+                '</div>'
+              tip.style.display='block'
+              tip.style.left=(ev.originalEvent.clientX+18)+'px'
+              tip.style.top=(ev.originalEvent.clientY-10)+'px'
+            })
+            marker.on('mousemove', function(ev) {
+              tip.style.left=(ev.originalEvent.clientX+18)+'px'
+              tip.style.top=(ev.originalEvent.clientY-10)+'px'
+            })
+            marker.on('mouseout', function() { tip.style.display='none' })
+          })(r, cnt, lbl, col)
+        })
+        return
+      }
+
+      // GeoJSON disponible : choroplèthe par région
+      var geoLayer = L.geoJSON(geojson, {
+        style: function(f) {
+          var rn = matchRegion(f.properties.shapeName || f.properties.NAME_1 || f.properties.name || '')
+          var cnt = rn ? (regCounts[rn] || 0) : 0
+          return { fillColor: diagColor(cnt), fillOpacity: 0.72, color: 'rgba(0,200,80,0.4)', weight: 1.5 }
+        },
+        onEachFeature: function(f, layer) {
+          var rn = matchRegion(f.properties.shapeName || f.properties.NAME_1 || f.properties.name || '')
+          var cnt = rn ? (regCounts[rn] || 0) : 0
+          var lbl = diagLabel(cnt)
+          var displayName = rn || f.properties.shapeName || f.properties.NAME_1 || '?'
+          layer.on('mouseover', function(ev) {
+            var vc = lbl ? lbl.col : 'rgba(255,255,255,.3)'
+            layer.setStyle({fillOpacity: 0.9, color: 'rgba(0,230,90,0.75)', weight: 2.5})
+            tip.innerHTML =
+              '<div style="font-size:9.5px;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Région</div>'+
+              '<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;line-height:1.25">'+escapeHtml(displayName)+'</div>'+
+              '<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">'+
+                '<div><div style="font-size:9.5px;color:rgba(255,255,255,.38);margin-bottom:3px">Diagnostics</div>'+
+                '<div style="font-size:30px;font-weight:700;font-family:IBM Plex Mono,monospace;color:'+vc+';line-height:1">'+cnt+'</div></div>'+
+                (lbl?'<span style="background:rgba(255,255,255,.07);border-radius:7px;padding:4px 10px;font-size:10px;font-weight:700;color:'+lbl.col+'">'+lbl.txt+'</span>':'')+
+              '</div>'
+            tip.style.display='block'
+            tip.style.left=(ev.originalEvent.clientX+18)+'px'
+            tip.style.top=(ev.originalEvent.clientY-10)+'px'
+          })
+          layer.on('mousemove', function(ev) {
+            tip.style.left=(ev.originalEvent.clientX+18)+'px'
+            tip.style.top=(ev.originalEvent.clientY-10)+'px'
+          })
+          layer.on('mouseout', function() {
+            geoLayer.resetStyle(layer)
+            tip.style.display='none'
+          })
+        }
+      }).addTo(map)
+
+      burkinaGeoLayer = geoLayer
+      try { map.fitBounds(geoLayer.getBounds(), {padding: [15, 15]}) } catch(e){}
+    })()
+
     burkinaGeoLayer = true
 
   } catch(e) {
@@ -1181,15 +1130,6 @@ async function renderBurkinaMap(stats) {
       +'<th style="text-align:right;padding:6px 10px;color:rgba(255,255,255,.35);font-weight:500">Niveau</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
   }
-}
-
-// Éclaircit une couleur hex pour le hover
-function lighten(hex) {
-  try {
-    var c=d3.color(hex); if(!c) return hex
-    c.r=Math.min(255,c.r+40); c.g=Math.min(255,c.g+40); c.b=Math.min(255,c.b+35)
-    return c.formatHex()
-  } catch(e){ return hex }
 }
 
 // ════════════════════════════════════════════════════════════════════
