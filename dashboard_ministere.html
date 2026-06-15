@@ -38,6 +38,7 @@ body{font-family:var(--font);background:var(--gris-bg);color:var(--noir);min-hei
 .login-err{color:var(--rouge);font-size:12px;text-align:center;margin-top:10px;display:none}
 .dot{width:7px;height:7px;background:var(--vert);border-radius:50%;animation:pulse 1.5s infinite;display:inline-block}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* MAIN */
 #mainApp{display:none}
 /* TOPBAR */
@@ -893,6 +894,7 @@ async function loadProvinces() {
 
 // ── Carte choroplèthe D3.js ──────────────────────────────────────────
 async function renderBurkinaMap(stats) {
+  if (!stats) stats = {}
   var provincesData = stats.provinces_data || []
   var regCounts = {}
   provincesData.forEach(function(p) {
@@ -936,25 +938,42 @@ async function renderBurkinaMap(stats) {
     return {txt:'Critique', col:'#e85050'}
   }
 
+  var GEO_CACHE = 'bfa_adm1_v2'
   var GEOJSON_URLS = [
+    'https://cdn.jsdelivr.net/gh/codeforamerica/click_that_hood@master/public/data/burkina-faso-regions.geojson',
     'https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson',
     'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson',
     'https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_BFA_1.json'
   ]
   async function tryFetchGeoJSON() {
+    try { var cached = sessionStorage.getItem(GEO_CACHE); if (cached) return JSON.parse(cached) } catch(e) {}
     for (var i=0;i<GEOJSON_URLS.length;i++) {
       try {
-        var r = await fetch(GEOJSON_URLS[i])
-        if (r.ok) return await r.json()
-      } catch(e) { console.warn('GeoJSON #'+i+' échoué') }
+        console.log('GeoJSON essai #'+i, GEOJSON_URLS[i])
+        var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null
+        var tid = ctrl ? setTimeout(function(){ctrl.abort()}, 10000) : null
+        var r = await fetch(GEOJSON_URLS[i], ctrl ? {signal:ctrl.signal} : {})
+        if (tid) clearTimeout(tid)
+        if (r.ok) {
+          var data = await r.json()
+          try { sessionStorage.setItem(GEO_CACHE, JSON.stringify(data)) } catch(e) {}
+          console.log('GeoJSON OK source #'+i, data.features && data.features.length + ' features')
+          return data
+        }
+      } catch(e) { console.warn('GeoJSON #'+i+' échoué:', e.message||e) }
     }
     throw new Error('Aucune source GeoJSON disponible')
   }
 
   var container = document.getElementById('burkinaMap')
 
+  // Indicateur de chargement
+  container.style.display='flex'; container.style.alignItems='center'; container.style.justifyContent='center'
+  container.innerHTML='<div style="text-align:center;color:rgba(0,200,80,.5);font-size:12px"><div style="font-size:28px;margin-bottom:8px;animation:spin 1.5s linear infinite;display:inline-block">⟳</div><div>Chargement de la carte…</div></div>'
+
   try {
     var geojson = await tryFetchGeoJSON()
+    container.style.display=''; container.style.alignItems=''; container.style.justifyContent=''
     container.innerHTML = ''
 
     var W = container.clientWidth || 800
@@ -1117,8 +1136,37 @@ async function renderBurkinaMap(stats) {
 
   } catch(e) {
     console.error('Erreur carte D3:', e)
-    container.style.display='flex'; container.style.alignItems='center'; container.style.justifyContent='center'
-    container.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.4);padding:40px"><div style="font-size:36px;margin-bottom:12px">🗺️</div><div style="font-size:13px">Carte indisponible</div><div style="font-size:11px;margin-top:4px;color:rgba(255,255,255,.25)">Vérifiez la connexion internet</div></div>'
+    // Fallback professionnel : tableau de données régionales
+    var sortedReg = Object.entries(regCounts).sort(function(a,b){return b[1]-a[1]})
+    function regLvl(n) {
+      if (n >= 20) return {lbl:'CRITIQUE',col:'#ff6b6b',bg:'rgba(255,50,50,.15)'}
+      if (n >= 10) return {lbl:'ÉLEVÉ',col:'#f0a030',bg:'rgba(240,160,48,.12)'}
+      if (n >= 5)  return {lbl:'MODÉRÉ',col:'#f0d030',bg:'rgba(240,208,48,.10)'}
+      return {lbl:'FAIBLE',col:'#40c070',bg:'rgba(64,192,112,.10)'}
+    }
+    var rows = sortedReg.length ? sortedReg.map(function(entry,i){
+      var lv = regLvl(entry[1])
+      return '<tr style="border-bottom:1px solid rgba(0,200,80,.08)">'
+        +'<td style="padding:8px 10px;color:rgba(255,255,255,.85)"><span style="color:rgba(0,200,80,.5);margin-right:6px">'+(i+1)+'.</span>'+entry[0]+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;color:#90e0a0;font-weight:600">'+entry[1]+'</td>'
+        +'<td style="padding:8px 10px;text-align:right"><span style="background:'+lv.bg+';color:'+lv.col+';padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700">'+lv.lbl+'</span></td>'
+        +'</tr>'
+    }).join('') : '<tr><td colspan="3" style="padding:20px;text-align:center;color:rgba(255,255,255,.3)">Aucune donnée régionale</td></tr>'
+    container.style.display='block'; container.style.overflowY='auto'
+    container.innerHTML='<div style="padding:16px 18px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      +'<div style="color:rgba(255,200,80,.7);font-size:11px;font-weight:500">⚠ Visualisation carte non disponible — données régionales</div>'
+      +'<button onclick="sessionStorage.removeItem(\'bfa_adm1_v2\');renderBurkinaMap(mapStatsCache||cachedStats||{})" '
+      +'style="background:rgba(0,160,80,.2);border:1px solid rgba(0,200,80,.35);color:#60d090;padding:4px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">↻ Réessayer</button>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<thead><tr style="border-bottom:1.5px solid rgba(0,200,80,.2)">'
+      +'<th style="text-align:left;padding:6px 10px;color:rgba(255,255,255,.35);font-weight:500">Région</th>'
+      +'<th style="text-align:right;padding:6px 10px;color:rgba(255,255,255,.35);font-weight:500">Diagnostics</th>'
+      +'<th style="text-align:right;padding:6px 10px;color:rgba(255,255,255,.35);font-weight:500">Niveau de risque</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table>'
+      +'<div style="margin-top:12px;font-size:10px;color:rgba(255,255,255,.2)">Données en temps réel — 180 derniers jours</div>'
+      +'</div>'
   }
 }
 
