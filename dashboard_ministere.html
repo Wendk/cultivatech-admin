@@ -7,8 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Wendk/cultivatech-admin/main/logo-MAERAH.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
 :root{
   --vert:#009e4b;--vert-fonce:#006b32;--vert-pale:#e8f7ef;--vert-clair:#c8edd8;
@@ -151,11 +150,12 @@ tbody tr:last-child td{border-bottom:none}
   border-radius:8px;padding:10px 14px;font-size:12px;color:var(--vert-fonce);
   font-weight:500;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 /* MAP */
-#burkinaMap{height:440px;border-radius:8px;overflow:hidden;z-index:1}
-.map-legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px}
+#burkinaMap{height:460px;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,#0a1a10 0%,#0f2318 100%);position:relative}
+#burkinaMap svg{display:block}
+.map-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
 .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-text)}
 .legend-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0}
-.leaflet-tooltip{font-family:var(--font);font-size:12px}
+#mapTooltip{position:fixed;pointer-events:none;z-index:9999;display:none}
 /* FOOTER */
 .footer{text-align:center;padding:18px 24px;font-size:10px;color:var(--gris-text);
   border-top:1px solid var(--gris-bord);margin-top:12px}
@@ -321,11 +321,11 @@ tbody tr:last-child td{border-bottom:none}
         <div class="card-sub">Densité des diagnostics CultivaTech par région — 6 derniers mois</div>
         <div id="burkinaMap"></div>
         <div class="map-legend" id="mapLegend">
-          <div class="legend-item"><div class="legend-dot" style="background:#f0f4f0;border:1px solid #ccc"></div> Aucun diagnostic</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#a8d5b5"></div> Faible (1–5)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#5cb87a"></div> Modéré (6–15)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#e67e22"></div> Élevé (16–30)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#c0392b"></div> Critique (30+)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#0f2318;border:1px solid #2d4a35"></div> Aucun diagnostic</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#164d2e"></div> Faible (1–5)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1b7a42"></div> Modéré (6–15)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c87c1a"></div> Élevé (16–30)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#a82419"></div> Critique (30+)</div>
         </div>
       </div>
 
@@ -658,7 +658,8 @@ function stopAutoRefresh() { if (autoRefreshInterval) { clearInterval(autoRefres
 function doLogout() {
   adminToken = null; currentUser = null; allCharts = {}; cachedStats = null
   sessionStorage.removeItem('ministry_token'); sessionStorage.removeItem('ministry_user')
-  if (burkinaMap) { burkinaMap.remove(); burkinaMap = null; burkinaGeoLayer = null }
+  if (burkinaMap && burkinaMap.remove) { burkinaMap.remove() }
+  burkinaMap = null; burkinaGeoLayer = null
   document.getElementById('loginScreen').style.display = 'flex'
   document.getElementById('mainApp').style.display = 'none'
   document.getElementById('loginUser').value = ''; document.getElementById('loginPass').value = ''
@@ -694,7 +695,6 @@ function showTab(name) {
   if (name === 'diagnostics') loadDiagnostics()
   if (name === 'provinces') {
     loadProvinces()
-    setTimeout(function() { if (burkinaMap) burkinaMap.invalidateSize() }, 150)
   }
   if (name === 'rapports') loadRapports()
   if (name === 'maladies') buildDiseasesTab()
@@ -891,128 +891,234 @@ async function loadProvinces() {
   } catch(e) { console.error('Erreur provinces:', e) }
 }
 
-// ── Carte choroplèthe ────────────────────────────────────────────────
+// ── Carte choroplèthe D3.js ──────────────────────────────────────────
 async function renderBurkinaMap(stats) {
   var provincesData = stats.provinces_data || []
-
-  // Agréger par région (chaque province a un champ region)
   var regCounts = {}
   provincesData.forEach(function(p) {
     if (p.region) regCounts[p.region] = (regCounts[p.region] || 0) + p.count
   })
 
-  // Couleur selon densité
-  function diagColor(count) {
-    if (!count || count === 0) return '#f0f4f0'
-    if (count <= 5)  return '#a8d5b5'
-    if (count <= 15) return '#5cb87a'
-    if (count <= 30) return '#e67e22'
-    return '#c0392b'
-  }
+  var maxCount = Math.max.apply(null, Object.values(regCounts).concat([1]))
 
-  // Normalisation des noms de régions (GeoJSON geoBoundaries → noms locaux)
   var REGION_ALIASES = {
-    'Boucle du Mouhoun': ['Boucle du Mouhoun','Boucle De Mouhoun','Boucle Du Mouhoun'],
-    'Centre': ['Centre'],
-    'Centre-Est': ['Centre-Est','Centre Est'],
-    'Centre-Nord': ['Centre-Nord','Centre Nord'],
-    'Centre-Ouest': ['Centre-Ouest','Centre Ouest'],
-    'Centre-Sud': ['Centre-Sud','Centre Sud'],
-    'Est': ['Est'],
-    'Hauts-Bassins': ['Hauts-Bassins','Hauts Bassins','Haut-Bassins'],
-    'Nord': ['Nord'],
-    'Plateau-Central': ['Plateau-Central','Plateau Central'],
-    'Sahel': ['Sahel'],
-    'Cascades': ['Cascades'],
-    'Sud-Ouest': ['Sud-Ouest','Sud Ouest']
+    'Boucle du Mouhoun':['Boucle du Mouhoun','Boucle De Mouhoun','Boucle Du Mouhoun'],
+    'Centre':['Centre'],'Centre-Est':['Centre-Est','Centre Est'],
+    'Centre-Nord':['Centre-Nord','Centre Nord'],'Centre-Ouest':['Centre-Ouest','Centre Ouest'],
+    'Centre-Sud':['Centre-Sud','Centre Sud'],'Est':['Est'],
+    'Hauts-Bassins':['Hauts-Bassins','Hauts Bassins','Haut-Bassins'],
+    'Nord':['Nord'],'Plateau-Central':['Plateau-Central','Plateau Central'],
+    'Sahel':['Sahel'],'Cascades':['Cascades'],'Sud-Ouest':['Sud-Ouest','Sud Ouest']
   }
-
-  function matchRegion(geojsonName) {
-    if (!geojsonName) return null
-    var n = geojsonName.trim()
-    // Recherche directe
+  function matchRegion(n) {
+    if (!n) return null
+    n = n.trim()
     if (regCounts[n] !== undefined) return n
-    // Recherche dans les alias
-    for (var localName in REGION_ALIASES) {
-      var aliases = REGION_ALIASES[localName]
-      for (var i = 0; i < aliases.length; i++) {
-        if (aliases[i].toLowerCase() === n.toLowerCase()) return localName
-      }
+    for (var k in REGION_ALIASES) {
+      for (var i=0;i<REGION_ALIASES[k].length;i++) if (REGION_ALIASES[k][i].toLowerCase()===n.toLowerCase()) return k
     }
-    // Recherche insensible à la casse dans regCounts
-    for (var k in regCounts) {
-      if (k.toLowerCase() === n.toLowerCase()) return k
-    }
+    for (var k2 in regCounts) if (k2.toLowerCase()===n.toLowerCase()) return k2
     return null
   }
 
-  // Initialiser la carte Leaflet une seule fois
-  if (!burkinaMap) {
-    burkinaMap = L.map('burkinaMap', { zoomControl:true, attributionControl:true }).setView([12.3,-1.7], 6)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:'&copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a>',
-      opacity: 0.4
-    }).addTo(burkinaMap)
+  function diagColor(count) {
+    if (!count) return '#0f2318'
+    if (count <= 5)  return '#164d2e'
+    if (count <= 15) return '#1b7a42'
+    if (count <= 30) return '#c87c1a'
+    return '#a82419'
+  }
+  function diagLabel(count) {
+    if (!count) return null
+    if (count <= 5)  return {txt:'Faible', col:'#4de894'}
+    if (count <= 15) return {txt:'Modéré', col:'#6edfa0'}
+    if (count <= 30) return {txt:'Élevé', col:'#f0a030'}
+    return {txt:'Critique', col:'#e85050'}
   }
 
-  // Charger le GeoJSON des régions du Burkina Faso (geoBoundaries ADM1)
-  var GEOJSON_URL = 'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson'
+  var GEOJSON_URLS = [
+    'https://cdn.jsdelivr.net/gh/wmgeolab/geoBoundaries@main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson',
+    'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/BFA/ADM1/geoBoundaries-BFA-ADM1.geojson',
+    'https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_BFA_1.json'
+  ]
+  async function tryFetchGeoJSON() {
+    for (var i=0;i<GEOJSON_URLS.length;i++) {
+      try {
+        var r = await fetch(GEOJSON_URLS[i])
+        if (r.ok) return await r.json()
+      } catch(e) { console.warn('GeoJSON #'+i+' échoué') }
+    }
+    throw new Error('Aucune source GeoJSON disponible')
+  }
+
+  var container = document.getElementById('burkinaMap')
 
   try {
-    var res = await fetch(GEOJSON_URL)
-    if (!res.ok) throw new Error('GeoJSON non disponible')
-    var geojson = await res.json()
+    var geojson = await tryFetchGeoJSON()
+    container.innerHTML = ''
 
-    if (burkinaGeoLayer) { burkinaGeoLayer.remove(); burkinaGeoLayer = null }
+    var W = container.clientWidth || 800
+    var H = 460
 
-    burkinaGeoLayer = L.geoJSON(geojson, {
-      style: function(feature) {
-        var rawName = (feature.properties.shapeName || feature.properties.name || '')
-        var localName = matchRegion(rawName)
-        var count = localName ? (regCounts[localName] || 0) : 0
-        return {
-          fillColor: diagColor(count),
-          weight: 1.5,
-          opacity: 1,
-          color: '#4a7a5a',
-          fillOpacity: 0.82
-        }
-      },
-      onEachFeature: function(feature, layer) {
-        var rawName = (feature.properties.shapeName || feature.properties.name || '')
-        var localName = matchRegion(rawName) || rawName
-        var count = regCounts[localName] || 0
-        var urgLabel = count > 30 ? ' 🔴 Critique' : count > 15 ? ' 🟠 Élevé' : count > 5 ? ' 🟡 Modéré' : count > 0 ? ' 🟢 Faible' : ''
-        layer.bindTooltip(
-          '<div style="font-family:IBM Plex Sans,sans-serif;min-width:140px">' +
-          '<strong style="font-size:13px">' + escapeHtml(localName) + '</strong>' +
-          '<br><span style="font-size:12px">📊 ' + count + ' diagnostic' + (count !== 1 ? 's' : '') + urgLabel + '</span>' +
-          '</div>',
-          { sticky: true, opacity: 0.95 }
-        )
-        layer.on('mouseover', function(e) {
-          e.target.setStyle({ weight: 2.5, fillOpacity: 0.95, color: '#1a2e22' })
-          e.target.bringToFront()
-        })
-        layer.on('mouseout', function(e) { burkinaGeoLayer.resetStyle(e.target) })
-        layer.on('click', function() {
-          burkinaMap.fitBounds(layer.getBounds(), { padding: [40, 40] })
-        })
+    var svg = d3.select(container)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', H)
+      .attr('viewBox', '0 0 ' + W + ' ' + H)
+      .style('display','block')
+
+    // Fond dégradé sombre
+    var defs = svg.append('defs')
+    var bgGrad = defs.append('linearGradient').attr('id','bgGrad').attr('x1','0%').attr('y1','0%').attr('x2','100%').attr('y2','100%')
+    bgGrad.append('stop').attr('offset','0%').attr('stop-color','#080f0a')
+    bgGrad.append('stop').attr('offset','100%').attr('stop-color','#0d1f12')
+    svg.append('rect').attr('width',W).attr('height',H).attr('fill','url(#bgGrad)')
+
+    // Filtre glow pour hover
+    var glowF = defs.append('filter').attr('id','glow').attr('x','-20%').attr('y','-20%').attr('width','140%').attr('height','140%')
+    glowF.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','4').attr('result','blur')
+    var fm = glowF.append('feMerge')
+    fm.append('feMergeNode').attr('in','blur')
+    fm.append('feMergeNode').attr('in','SourceGraphic')
+
+    // Filtre glow rouge pour critiques
+    var glowR = defs.append('filter').attr('id','glowRed').attr('x','-20%').attr('y','-20%').attr('width','140%').attr('height','140%')
+    var gcb = glowR.append('feColorMatrix').attr('in','SourceGraphic').attr('type','matrix').attr('values','1 0 0 0 0.6  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0').attr('result','red')
+    glowR.append('feGaussianBlur').attr('in','red').attr('stdDeviation','6').attr('result','blur')
+    var fm2 = glowR.append('feMerge')
+    fm2.append('feMergeNode').attr('in','blur')
+    fm2.append('feMergeNode').attr('in','SourceGraphic')
+
+    // Projection Mercator
+    var proj = d3.geoMercator().fitExtent([[30,20],[W-30,H-30]], geojson)
+    var path = d3.geoPath().projection(proj)
+
+    // Graticule subtil
+    var graticule = d3.geoGraticule().step([3,3])
+    svg.append('path').datum(graticule()).attr('d',path)
+      .attr('fill','none').attr('stroke','rgba(255,255,255,0.025)').attr('stroke-width',0.7)
+
+    // Tooltip
+    var oldTip = document.getElementById('mapTooltip')
+    if (oldTip) oldTip.remove()
+    var tip = document.createElement('div')
+    tip.id = 'mapTooltip'
+    tip.style.cssText = 'position:fixed;display:none;background:rgba(8,20,12,.94);border:1px solid rgba(0,180,70,.3);border-radius:12px;padding:14px 18px;pointer-events:none;z-index:9999;min-width:170px;box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:IBM Plex Sans,sans-serif'
+    document.body.appendChild(tip)
+
+    // Régions
+    var regionGroups = svg.selectAll('.reg').data(geojson.features).enter().append('g').attr('class','reg')
+
+    regionGroups.append('path')
+      .attr('d', path)
+      .attr('fill', function(d) {
+        var rn = matchRegion(d.properties.shapeName||d.properties.NAME_1||d.properties.name||'')
+        return diagColor(rn ? regCounts[rn]||0 : 0)
+      })
+      .attr('stroke','rgba(0,200,80,0.18)')
+      .attr('stroke-width', 1.2)
+      .attr('stroke-linejoin','round')
+      .style('cursor','pointer')
+      .style('transition','stroke 0.2s, stroke-width 0.2s')
+      .on('mouseover', function(event, d) {
+        var raw = d.properties.shapeName||d.properties.NAME_1||d.properties.name||''
+        var rn = matchRegion(raw)||raw
+        var cnt = regCounts[rn]||0
+        var lbl = diagLabel(cnt)
+        d3.select(this).attr('stroke','rgba(0,230,90,0.9)').attr('stroke-width',2.5).raise()
+        var valColor = lbl ? lbl.col : 'rgba(255,255,255,.4)'
+        tip.innerHTML =
+          '<div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Région</div>'+
+          '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.2">'+escapeHtml(rn)+'</div>'+
+          '<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px">'+
+            '<div><div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Diagnostics</div>'+
+            '<div style="font-size:26px;font-weight:700;font-family:IBM Plex Mono,monospace;color:'+valColor+';line-height:1">'+cnt+'</div></div>'+
+            (lbl?'<div style="background:rgba(255,255,255,.08);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:600;color:'+lbl.col+';align-self:center">'+lbl.txt+'</div>':'')+
+          '</div>'+
+          '<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden">'+
+            '<div style="height:100%;background:'+valColor+';width:'+Math.min(100,Math.round((cnt/maxCount)*100))+'%;border-radius:2px;transition:width .4s"></div>'+
+          '</div>'
+        tip.style.display = 'block'
+        tip.style.left = (event.clientX+18)+'px'
+        tip.style.top  = (event.clientY-10)+'px'
+      })
+      .on('mousemove', function(event) {
+        tip.style.left = (event.clientX+18)+'px'
+        tip.style.top  = (event.clientY-10)+'px'
+      })
+      .on('mouseout', function() {
+        d3.select(this).attr('stroke','rgba(0,200,80,0.18)').attr('stroke-width',1.2)
+        tip.style.display = 'none'
+      })
+
+    // Labels régions (nom + count) — seulement si données
+    regionGroups.each(function(d) {
+      var raw = d.properties.shapeName||d.properties.NAME_1||d.properties.name||''
+      var rn = matchRegion(raw)||raw
+      var cnt = regCounts[rn]||0
+      var centroid = path.centroid(d)
+      if (isNaN(centroid[0])||isNaN(centroid[1])) return
+      var g = d3.select(this)
+      var shortName = rn.replace('Boucle du Mouhoun','B. Mouhoun').replace('Plateau-Central','Plateau C.').replace('Centre-','C-')
+      // Nom région
+      g.append('text')
+        .attr('x',centroid[0]).attr('y',centroid[1]-4)
+        .attr('text-anchor','middle').attr('dominant-baseline','middle')
+        .attr('font-family','IBM Plex Sans,sans-serif').attr('font-size',cnt?9:8)
+        .attr('font-weight','600').attr('fill',cnt?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.2)')
+        .attr('pointer-events','none').attr('letter-spacing','0.02em')
+        .text(shortName)
+      // Compteur
+      if (cnt > 0) {
+        var lbl = diagLabel(cnt)
+        g.append('text')
+          .attr('x',centroid[0]).attr('y',centroid[1]+8)
+          .attr('text-anchor','middle').attr('dominant-baseline','middle')
+          .attr('font-family','IBM Plex Mono,monospace').attr('font-size',11)
+          .attr('font-weight','700').attr('fill',lbl?lbl.col:'#4de894')
+          .attr('pointer-events','none')
+          .text(cnt)
       }
-    }).addTo(burkinaMap)
+    })
 
-    burkinaMap.fitBounds(burkinaGeoLayer.getBounds(), { padding: [10, 10] })
+    // Animation d'entrée
+    svg.selectAll('.reg path')
+      .style('opacity',0)
+      .transition().duration(500).delay(function(_,i){return i*35})
+      .style('opacity',1)
+
+    // Bordure de la carte (vignette)
+    svg.append('rect').attr('width',W).attr('height',H)
+      .attr('fill','none').attr('stroke','rgba(0,180,70,0.12)').attr('stroke-width',1.5)
+
+    // Titre incrusté
+    svg.append('text').attr('x',16).attr('y',22)
+      .attr('font-family','IBM Plex Sans,sans-serif').attr('font-size',10)
+      .attr('font-weight','600').attr('fill','rgba(255,255,255,.35)').attr('letter-spacing','.08em')
+      .text('BURKINA FASO — SURVEILLANCE PHYTOSANITAIRE CultivaTech × DGPV')
+
+    // Badge total en bas à droite
+    var total = Object.values(regCounts).reduce(function(a,b){return a+b},0)
+    if (total>0) {
+      var bx=W-16, by=H-16
+      svg.append('text').attr('x',bx).attr('y',by)
+        .attr('text-anchor','end').attr('font-family','IBM Plex Mono,monospace')
+        .attr('font-size',10).attr('fill','rgba(0,220,90,.4)')
+        .text(total+' diag. · '+Object.keys(regCounts).length+' régions')
+    }
+
+    // Référence pour doLogout
+    burkinaMap = {
+      _svg: svg, _tip: tip,
+      remove: function() { container.innerHTML=''; var t=document.getElementById('mapTooltip'); if(t)t.remove(); burkinaMap=null },
+      invalidateSize: function() {}
+    }
+    burkinaGeoLayer = true // marque "initialisé"
 
   } catch(e) {
-    console.error('Erreur carte:', e)
-    // Fallback : afficher un message dans le container
-    var mapEl = document.getElementById('burkinaMap')
-    if (mapEl && !burkinaGeoLayer) {
-      mapEl.style.display = 'flex'
-      mapEl.style.alignItems = 'center'
-      mapEl.style.justifyContent = 'center'
-      mapEl.innerHTML = '<div style="text-align:center;color:var(--gris-text);padding:40px"><div style="font-size:32px;margin-bottom:10px">🗺️</div><div style="font-size:13px">Carte indisponible — vérifiez la connexion</div><div style="font-size:11px;margin-top:4px">Les données provinces restent accessibles ci-dessous</div></div>'
-    }
+    console.error('Erreur carte D3:', e)
+    container.style.display='flex'; container.style.alignItems='center'; container.style.justifyContent='center'
+    container.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.4);padding:40px"><div style="font-size:36px;margin-bottom:12px">🗺️</div><div style="font-size:13px">Carte indisponible</div><div style="font-size:11px;margin-top:4px;color:rgba(255,255,255,.25)">Vérifiez la connexion internet</div></div>'
   }
 }
 
