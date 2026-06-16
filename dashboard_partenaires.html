@@ -228,6 +228,10 @@ var filteredRows = []
 var currentPage  = 1
 var PAGE_SIZE    = 15
 
+// Déclarés ici pour être disponibles dès showApp() au chargement de page
+var ROLE_TABS = { ong:['overview','terrain','formations','alertes','calendrier'], microfinance:['overview','credit','risque','simulateur'] }
+var TAB_META  = { overview:{icon:'📊',label:"Vue d'ensemble"}, terrain:{icon:'🌾',label:'Terrain'}, formations:{icon:'🎓',label:'Formations'}, credit:{icon:'💳',label:'Cr\xe9dit agricole'}, alertes:{icon:'🚨',label:'Alertes & Risques'}, calendrier:{icon:'📅',label:'Calendrier cultural'}, risque:{icon:'📉',label:'Risque portefeuille'}, simulateur:{icon:'🧮',label:'Simulateur cr\xe9dit'} }
+
 if (TOKEN && USER) { showApp(); fetchAndRender() }
 
 // ── LOGIN ────────────────────────────────────────────────────────────────────
@@ -261,9 +265,6 @@ document.getElementById('username').addEventListener('keydown', function(e){ if(
 document.getElementById('password').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin() })
 
 // ── APP ──────────────────────────────────────────────────────────────────────
-var ROLE_TABS = { ong:['overview','terrain','formations','alertes','calendrier'], microfinance:['overview','credit','risque','simulateur'] }
-var TAB_META  = { overview:{icon:'📊',label:"Vue d'ensemble"}, terrain:{icon:'🌾',label:'Terrain'}, formations:{icon:'🎓',label:'Formations'}, credit:{icon:'💳',label:'Cr\xe9dit agricole'}, alertes:{icon:'🚨',label:'Alertes & Risques'}, calendrier:{icon:'📅',label:'Calendrier cultural'}, risque:{icon:'📉',label:'Risque portefeuille'}, simulateur:{icon:'🧮',label:'Simulateur cr\xe9dit'} }
-
 function showApp() {
   document.getElementById('loginScreen').style.display = 'none'
   document.getElementById('app').style.display = 'block'
