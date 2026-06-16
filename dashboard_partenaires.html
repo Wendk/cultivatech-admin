@@ -261,8 +261,8 @@ document.getElementById('username').addEventListener('keydown', function(e){ if(
 document.getElementById('password').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin() })
 
 // ── APP ──────────────────────────────────────────────────────────────────────
-var ROLE_TABS = { ong:['overview','terrain','formations'], microfinance:['overview','credit'] }
-var TAB_META  = { overview:{icon:'📊',label:"Vue d'ensemble"}, terrain:{icon:'🌾',label:'Terrain'}, formations:{icon:'🎓',label:'Formations'}, credit:{icon:'💳',label:'Cr\xe9dit agricole'} }
+var ROLE_TABS = { ong:['overview','terrain','formations','alertes','calendrier'], microfinance:['overview','credit','risque','simulateur'] }
+var TAB_META  = { overview:{icon:'📊',label:"Vue d'ensemble"}, terrain:{icon:'🌾',label:'Terrain'}, formations:{icon:'🎓',label:'Formations'}, credit:{icon:'💳',label:'Cr\xe9dit agricole'}, alertes:{icon:'🚨',label:'Alertes & Risques'}, calendrier:{icon:'📅',label:'Calendrier cultural'}, risque:{icon:'📉',label:'Risque portefeuille'}, simulateur:{icon:'🧮',label:'Simulateur cr\xe9dit'} }
 
 function showApp() {
   document.getElementById('loginScreen').style.display = 'none'
@@ -312,7 +312,7 @@ async function fetchAndRender() {
 }
 
 function renderCurrentTab() {
-  ({overview:renderOverview, terrain:renderTerrain, formations:renderFormations, credit:renderCredit}[currentTab] || renderOverview)()
+  ({overview:renderOverview, terrain:renderTerrain, formations:renderFormations, credit:renderCredit, alertes:renderAlertes, calendrier:renderCalendrier, risque:renderRisqueMF, simulateur:renderSimulateur}[currentTab] || renderOverview)()
 }
 
 // ── CHARTS UTILS ─────────────────────────────────────────────────────────────
@@ -725,6 +725,371 @@ function exportCSV() {
   var HDR  = ['Pr\xe9nom','Nom','T\xe9l\xe9phone','Score','Statut','R\xe9gion','Province','Inscription']
   var csv  = BOM + [HDR].concat(rows.map(function(u){return [u.first_name,u.last_name,u.phone_number,u.score,u.statut,u.region,u.province,u.date_inscription?new Date(u.date_inscription).toLocaleDateString('fr-FR'):''];})).map(function(r){return r.map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"'}).join(';')}).join('\n')
   var a = document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='cultivatech_credit_'+new Date().toISOString().slice(0,10)+'.csv'; a.click()
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DONNÉES STATIQUES BURKINA FASO
+// ════════════════════════════════════════════════════════════════════════════
+var BFA_CALENDAR = [
+  {mois:'Janvier',  icon:'☀️', saison:'Saison s\xe8che froide',   soudure:false, activites:[{culture:'Coton',op:'R\xe9colte/\xe9grenage',type:'harvest'},{culture:'Maraîchage',op:'Cultures actives (oignons, tomates)',type:'grow'}]},
+  {mois:'F\xe9vrier', icon:'☀️', saison:'Saison s\xe8che',          soudure:false, activites:[{culture:'Maraîchage',op:'Cultures actives',type:'grow'},{culture:'Pr\xe9paration',op:'Labour et am\xe9nagement sols',type:'prep'}]},
+  {mois:'Mars',    icon:'🌤️', saison:'Saison s\xe8che chaude',    soudure:false, activites:[{culture:'Pr\xe9paration',op:'Achat semences et intrants',type:'prep'},{culture:'Maraîchage',op:'Fin saison s\xe8che',type:'harvest'}]},
+  {mois:'Avril',   icon:'🌤️', saison:'D\xe9but chaleurs',         soudure:false, activites:[{culture:'Maïs',op:'Semis (zones sud)',type:'sow'},{culture:'Pr\xe9paration',op:'Labour, compostage',type:'prep'}]},
+  {mois:'Mai',     icon:'🌦️', saison:'D\xe9but hivernage',        soudure:true,  activites:[{culture:'Mil/Sorgho',op:'Semis d\xe8s premi\xe8res pluies',type:'sow'},{culture:'Maïs',op:'Semis',type:'sow'},{culture:'Coton',op:'Semis',type:'sow'}]},
+  {mois:'Juin',    icon:'🌧️', saison:'Hivernage — Soudure critique', soudure:true, activites:[{culture:'Mil/Sorgho',op:'Sarclage 1er passage',type:'work'},{culture:'Maïs',op:'Sarclage',type:'work'},{culture:'Arachide',op:'Semis',type:'sow'},{culture:'Coton',op:'D\xe9mariage',type:'work'}]},
+  {mois:'Juillet', icon:'🌧️', saison:'Pleine saison des pluies',  soudure:true,  activites:[{culture:'Mil/Sorgho',op:'Sarclage 2e passage',type:'work'},{culture:'Haricot',op:'Semis',type:'sow'},{culture:'S\xe9same',op:'Semis',type:'sow'},{culture:'Coton',op:'Traitements phytosanitaires',type:'treat'}]},
+  {mois:'Août',    icon:'🌧️', saison:'Fin hivernage',             soudure:false, activites:[{culture:'Maïs',op:'R\xe9colte (pr\xe9coce)',type:'harvest'},{culture:'Coton',op:'Traitements phyto',type:'treat'},{culture:'Mil/Sorgho',op:'\xc9piaison',type:'grow'}]},
+  {mois:'Septembre',icon:'🌦️',saison:'Post-hivernage',           soudure:false, activites:[{culture:'Haricot',op:'R\xe9colte',type:'harvest'},{culture:'Arachide',op:'R\xe9colte',type:'harvest'},{culture:'S\xe9same',op:'R\xe9colte',type:'harvest'},{culture:'Maïs',op:'R\xe9colte',type:'harvest'}]},
+  {mois:'Octobre', icon:'🌤️', saison:'Saison s\xe8che d\xe9butante', soudure:false, activites:[{culture:'Mil/Sorgho',op:'R\xe9colte',type:'harvest'},{culture:'Coton',op:'R\xe9colte d\xe9but',type:'harvest'},{culture:'Maraîchage',op:'D\xe9but cultures maraîch\xe8res',type:'sow'}]},
+  {mois:'Novembre',icon:'☀️', saison:'Saison s\xe8che',            soudure:false, activites:[{culture:'Mil/Sorgho',op:'Battage/stockage',type:'prep'},{culture:'Coton',op:'\xc9grenage',type:'harvest'},{culture:'Maraîchage',op:'Cultures actives',type:'grow'}]},
+  {mois:'D\xe9cembre',icon:'☀️',saison:'Saison s\xe8che froide',   soudure:false, activites:[{culture:'Stockage',op:'Gestion greniers communautaires',type:'prep'},{culture:'Maraîchage',op:'Cultures actives',type:'grow'}]}
+]
+
+var SECURITY_ZONES = {
+  'Sahel':            {level:'critique', label:'Zone rouge',   desc:'Acc\xe8s humanitaire tr\xe8s limit\xe9 — pr\xe9sence groupes arm\xe9s non-\xe9tatiques'},
+  'Est':              {level:'eleve',    label:'Zone orange',  desc:'Acc\xe8s difficile, op\xe9rations civiles avec escorte uniquement'},
+  'Nord':             {level:'eleve',    label:'Zone orange',  desc:'Axe Ouaga-Dori partiellement s\xe9curis\xe9 — vigilance requise'},
+  'Centre-Nord':      {level:'modere',   label:'Zone jaune',   desc:'Surveillance renforc\xe9e — incidents sporadiques signal\xe9s'},
+  'Boucle du Mouhoun':{level:'modere',   label:'Zone jaune',   desc:'Infiltrations ponctuelles — pr\xe9sence FAMA renforc\xe9e'}
+}
+
+var IDP_DATA = {
+  'Sahel':380000,'Est':290000,'Nord':210000,'Centre-Nord':175000,
+  'Boucle du Mouhoun':140000,'Hauts-Bassins':85000,'Centre':52000,
+  'Cascades':28000,'Centre-Est':35000,'Centre-Ouest':22000,'Sud-Ouest':18000
+}
+
+var CREDIT_CALENDAR = [
+  {culture:'Mil / Sorgho', icon:'🌾', dec:'Avril – Mai',    remb:'Nov – D\xe9c',   duree:8,  taux:12, risque:'Mod\xe9r\xe9',    basePha:75000},
+  {culture:'Maïs',         icon:'🌽', dec:'Mars – Avril',   remb:'Oct – Nov',   duree:7,  taux:12, risque:'Mod\xe9r\xe9',    basePha:90000},
+  {culture:'Coton',        icon:'🌿', dec:'Avril – Mai',    remb:'D\xe9c – Jan',   duree:9,  taux:10, risque:'Faible (SOFITEX)',basePha:150000},
+  {culture:'Arachide',     icon:'🥜', dec:'Mai – Juin',     remb:'Octobre',     duree:5,  taux:14, risque:'Mod\xe9r\xe9',    basePha:80000},
+  {culture:'Maraîchage',   icon:'🥬', dec:'Nov – D\xe9c',   remb:'Mars – Avril', duree:5,  taux:14, risque:'Mod\xe9r\xe9',    basePha:100000},
+  {culture:'S\xe9same',    icon:'🌱', dec:'Juin',           remb:'Novembre',    duree:5,  taux:13, risque:'Faible',        basePha:70000},
+  {culture:'Haricot',      icon:'🫘', dec:'Juin – Juillet', remb:'Oct – Nov',   duree:4,  taux:15, risque:'\xc9lev\xe9',   basePha:60000},
+]
+
+// ════════════════════════════════════════════════════════════════════════════
+// ONG — ALERTES & RISQUES
+// ════════════════════════════════════════════════════════════════════════════
+function renderAlertes() {
+  var ong  = DATA.ong || {}
+  var vuln = (ong.diagnostics && ong.diagnostics.vulnerabilite) || []
+  var mi   = new Date().getMonth()
+  var mc   = BFA_CALENDAR[mi]
+  var mn   = BFA_CALENDAR[(mi+1)%12]
+  var urgHigh = vuln.filter(function(v){return v.urgency==='\xc9lev\xe9e'})
+
+  var html = '<div class="page-header"><h2 class="section-title">🚨 Alertes &amp; Risques</h2><p class="section-sub">Situation terrain consolid\xe9e — Burkina Faso · Mis \xe0 jour le '+fmtDate(DATA.last_updated)+'</p></div>'
+
+  // ── Phase saisonnière ──
+  html += '<div class="subsection-label">Phase saisonni\xe8re actuelle</div>'
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">'
+
+  html += '<div class="chart-card" style="border-left:4px solid var(--vert2)">'
+  html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Ce mois — '+esc(mc.mois)+'</div>'
+  html += '<div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:10px">'+mc.icon+' '+esc(mc.saison)+'</div>'
+  if (mc.soudure) html += '<div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:8px 12px;font-size:12px;color:#7D6608;margin-bottom:10px">⚠️ <strong>P\xe9riode de soudure</strong> — vuln\xe9rabilit\xe9 alimentaire accrue</div>'
+  mc.activites.forEach(function(a){ var ic={sow:'🌱',work:'⚒️',harvest:'🌾',treat:'💊',prep:'📋',grow:'🌿'}[a.type]||'•'; html+='<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f0f4f0;display:flex;gap:6px"><span>'+ic+'</span><span><strong>'+esc(a.culture)+'</strong> — '+esc(a.op)+'</span></div>' })
+  html += '</div>'
+
+  html += '<div class="chart-card">'
+  html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">\xc0 venir — '+esc(mn.mois)+'</div>'
+  html += '<div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:10px">'+mn.icon+' '+esc(mn.saison)+'</div>'
+  mn.activites.forEach(function(a){ var ic={sow:'🌱',work:'⚒️',harvest:'🌾',treat:'💊',prep:'📋',grow:'🌿'}[a.type]||'•'; html+='<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f0f4f0;display:flex;gap:6px"><span>'+ic+'</span><span><strong>'+esc(a.culture)+'</strong> — '+esc(a.op)+'</span></div>' })
+  html += '</div>'
+
+  html += '<div class="chart-card" style="background:linear-gradient(135deg,#F4FAF4,#EAF5EA)">'
+  html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Actions prioritaires ONG</div>'
+  var recs = mc.soudure
+    ? ['🆘 Activer l\'aide alimentaire d\'urgence','🌱 Distribuer semences certifi\xe9es et intrants','📋 Mettre \xe0 jour la liste des m\xe9nages vuln\xe9rables','💊 Intensifier la surveillance phytosanitaire']
+    : ['📊 Bilan de campagne et pertes post-r\xe9colte','🏪 Faciliter l\'acc\xe8s aux march\xe9s pour les producteurs','📚 Lancer les formations agricoles hors-saison','🏦 Pr\xe9-qualifier les agriculteurs pour le cr\xe9dit']
+  if (urgHigh.length) recs.push('🔬 Traitement urgent : '+urgHigh.slice(0,2).map(function(v){return v.name}).join(', '))
+  recs.forEach(function(r){ html += '<div style="font-size:12px;padding:5px 0;border-bottom:1px solid rgba(26,83,25,.08)">'+esc(r)+'</div>' })
+  html += '</div>'
+  html += '</div>'
+
+  // ── Situation sécuritaire ──
+  html += '<div class="subsection-label">Situation s\xe9curitaire par r\xe9gion (2025)</div>'
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin-bottom:20px">'
+  var secu_colors = {critique:{bg:'#FDECEA',bdr:'#FADBD8',txt:'#922B21',badge:'b-red'},eleve:{bg:'#FFF8E1',bdr:'#FFE082',txt:'#7D6608',badge:'b-amber'},modere:{bg:'#FFF3E0',bdr:'#FFE0B2',txt:'#6D4C00',badge:'b-gray'}}
+  Object.entries(SECURITY_ZONES).forEach(function(e) {
+    var reg=e[0], z=e[1], c=secu_colors[z.level]||secu_colors.modere
+    var idps=IDP_DATA[reg]
+    html += '<div style="background:'+c.bg+';border:1px solid '+c.bdr+';border-radius:12px;padding:14px 16px">'
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong style="color:'+c.txt+'">'+esc(reg)+'</strong><span class="badge '+c.badge+'">'+esc(z.label)+'</span></div>'
+    html += '<div style="font-size:12px;color:'+c.txt+';margin-bottom:6px">'+esc(z.desc)+'</div>'
+    if (idps) html += '<div style="font-size:11px;color:var(--muted)">👥 ~'+Number(idps).toLocaleString('fr-FR')+' d\xe9plac\xe9s internes (OCHA 2024)</div>'
+    html += '</div>'
+  })
+  html += '</div>'
+
+  var totalIdps = Object.values(IDP_DATA).reduce(function(a,b){return a+b},0)
+  html += '<div class="info-banner">👥 <strong>~'+Number(totalIdps).toLocaleString('fr-FR')+' personnes d\xe9plac\xe9es internes</strong> au Burkina Faso (OCHA 2024) — dont une majorit\xe9 d\'agriculteurs d\xe9racin\xe9s, prioritaires pour les programmes de r\xe9insertion agricole et filets de s\xe9curit\xe9 alimentaire.</div>'
+
+  // ── Recommandations d'intervention contextuelles ──
+  html += '<div class="subsection-label">Recommandations d\'intervention — '+esc(mc.mois)+'</div>'
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">'
+  var allRecs = mc.soudure ? [
+    {icon:'🆘',title:'Aide alimentaire d\'urgence',desc:'La soudure (mai–sept) est le pic de vuln\xe9rabilit\xe9. Prioriser les m\xe9nages avec enfants &lt;5 ans, femmes allaitantes, et nouveaux d\xe9plac\xe9s.',prio:'critique'},
+    {icon:'🌱',title:'Distribution d\'intrants',desc:'Semences certifi\xe9es de mil/sorgho, engrais de fond (DAP). Timing critique : les semis doivent se faire d\xe8s les premi\xe8res pluies significatives.',prio:'eleve'},
+    {icon:'💧',title:'Am\xe9nagement bas-fonds',desc:'Petite irrigation de compl\xe9ment pour s\xe9curiser les r\xe9coltes dans les zones \xe0 pluviom\xe9trie irr\xe9guli\xe8re (Sahel, Nord).',prio:'eleve'},
+    {icon:'📋',title:'Ciblage social actualis\xe9',desc:'Actualiser les listes de b\xe9n\xe9ficiaires avant le pic de soudure. Int\xe9grer les nouveaux d\xe9plac\xe9s non encore enregistr\xe9s.',prio:'modere'}
+  ] : [
+    {icon:'📊',title:'Bilan de campagne',desc:'\xc9valuer rendements et pertes post-r\xe9colte m\xe9nage par m\xe9nage. Ces donn\xe9es alimentent la planification de la prochaine saison.',prio:'eleve'},
+    {icon:'🏪',title:'Acc\xe8s aux march\xe9s',desc:'Accompagner les producteurs pour \xe9viter la vente forc\xe9e post-r\xe9colte \xe0 bas prix. Organiser des groupements de commercialisation.',prio:'eleve'},
+    {icon:'📚',title:'Formations hors-saison',desc:'P\xe9riode id\xe9ale : techniques post-r\xe9colte, maraîchage de saison s\xe8che, gestion des greniers communautaires.',prio:'modere'},
+    {icon:'🏦',title:'Cr\xe9dit de campagne',desc:'Identifier et pr\xe9-qualifier les agriculteurs pour les cr\xe9dits de la prochaine campagne. Score CultivaTech comme crit\xe8re d\'\xe9ligibilit\xe9.',prio:'faible'}
+  ]
+  var pcolors = {critique:'b-red',eleve:'b-amber',modere:'b-green',faible:'b-gray'}
+  allRecs.forEach(function(r){
+    html += '<div class="chart-card" style="display:flex;gap:14px;align-items:flex-start">'
+    html += '<div style="font-size:26px;flex-shrink:0">'+r.icon+'</div>'
+    html += '<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><strong style="font-size:13px">'+esc(r.title)+'</strong><span class="badge '+pcolors[r.prio]+'">'+esc(r.prio)+'</span></div>'
+    html += '<p style="font-size:12px;color:var(--muted);line-height:1.6">'+r.desc+'</p></div></div>'
+  })
+  html += '</div>'
+
+  document.getElementById('mainContent').innerHTML = html
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ONG — CALENDRIER CULTURAL
+// ════════════════════════════════════════════════════════════════════════════
+function renderCalendrier() {
+  var mi  = new Date().getMonth()
+  var html = '<div class="page-header"><h2 class="section-title">📅 Calendrier cultural</h2><p class="section-sub">Burkina Faso — planification agricole et des interventions ONG</p></div>'
+
+  // Bande visuelle annuelle
+  html += '<div class="table-card" style="margin-bottom:24px"><div class="table-head"><span class="table-title">Vue annuelle — filières principales</span></div>'
+  html += '<div style="overflow-x:auto;padding:16px 22px">'
+  html += '<table style="min-width:860px;border-collapse:collapse">'
+  html += '<thead><tr><th style="width:110px;text-align:left;background:none">Culture</th>'
+  BFA_CALENDAR.forEach(function(m,i){
+    html += '<th style="text-align:center;font-size:10px;padding:5px 2px;background:'+(i===mi?'rgba(54,175,59,.12)':'')+'">'+m.mois.slice(0,3)+(i===mi?'<br><span style="color:var(--vert2)">▲</span>':'')+'</th>'
+  })
+  html += '</tr></thead><tbody>'
+  var STRIPS = [
+    {name:'🌾 Mil / Sorgho', slots:[null,null,null,null,'sow','work','work','grow','harvest','harvest',null,null]},
+    {name:'🌽 Maïs',         slots:[null,null,null,'sow','sow','work','work','harvest','harvest',null,null,null]},
+    {name:'🌿 Coton',        slots:['harvest',null,null,null,'sow','work','treat','treat',null,'harvest','harvest',null]},
+    {name:'🥜 Arachide',     slots:[null,null,null,null,null,'sow','sow','grow','harvest','harvest',null,null]},
+    {name:'🥬 Maraîchage',   slots:['grow','grow','grow',null,null,null,null,null,null,'sow','grow','grow']},
+    {name:'🌱 S\xe9same',    slots:[null,null,null,null,null,null,'sow','grow','harvest','harvest',null,null]},
+  ]
+  var TC = {sow:'#36AF3B',work:'#2471A3',treat:'#7D3C98',harvest:'#C8A84B',grow:'#1A5319'}
+  STRIPS.forEach(function(c){
+    html += '<tr><td style="font-size:12px;font-weight:600;padding:6px 4px">'+c.name+'</td>'
+    c.slots.forEach(function(s,i){
+      var isCur = i===mi
+      html += '<td style="padding:3px 2px"><div style="height:26px;border-radius:5px;background:'+(s?TC[s]+'CC':'#EEF2EE')+';border:'+(isCur?'2px solid var(--vert2)':'1px solid transparent')+';display:flex;align-items:center;justify-content:center">'+(s&&isCur?'<span style="font-size:9px;color:#fff;font-weight:700">★</span>':'')+'</div></td>'
+    })
+    html += '</tr>'
+  })
+  html += '</tbody></table>'
+  html += '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px">'
+  var TL = {sow:'Semis',work:'Sarclage/Entretien',treat:'Traitement phyto',harvest:'R\xe9colte',grow:'Culture active'}
+  Object.entries(TC).forEach(function(e){ html+='<div style="display:flex;align-items:center;gap:5px"><div style="width:14px;height:14px;border-radius:3px;background:'+e[1]+'"></div><span style="font-size:11px;color:var(--muted)">'+TL[e[0]]+'</span></div>' })
+  html += '</div></div></div>'
+
+  // Alerte soudure
+  html += '<div class="alerte-strip" style="border-left-color:var(--amber);background:linear-gradient(135deg,#FFF8E1,#FFF3CD);margin-bottom:24px"><div class="alerte-icon">⚠️</div><div><div class="alerte-title" style="color:#7D6608">P\xe9riode de soudure — Mai \xe0 Septembre</div><div class="alerte-desc" style="color:#7D6608">Phase critique entre la fin des r\xe9serves et la nouvelle r\xe9colte. Les m\xe9nages sans stock et sans revenus sont les plus vuln\xe9rables. Intervention ONG prioritaire : aide alimentaire, semences, suivi nutritionnel, cash transfers.</div></div></div>'
+
+  // Calendrier mensuel
+  html += '<div class="subsection-label">D\xe9tail mensuel</div>'
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">'
+  BFA_CALENDAR.forEach(function(m,i){
+    var isCur = i===mi
+    html += '<div class="chart-card" style="'+(isCur?'border:2px solid var(--vert2);background:linear-gradient(135deg,#F4FAF4,#EAF5EA)':'')+'">'
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    html += '<strong style="font-size:13px;color:'+(isCur?'var(--vert)':'var(--text)')+'">'+m.icon+' '+esc(m.mois)+'</strong>'
+    html += '<div style="display:flex;gap:4px">'+(isCur?'<span class="badge b-green" style="font-size:9px">Actuel</span>':'')+(m.soudure?'<span class="badge b-amber" style="font-size:9px">Soudure</span>':'')+'</div>'
+    html += '</div>'
+    html += '<div style="font-size:10px;color:var(--muted);margin-bottom:8px">'+esc(m.saison)+'</div>'
+    m.activites.forEach(function(a){
+      var ic={sow:'🌱',work:'⚒️',harvest:'🌾',treat:'💊',prep:'📋',grow:'🌿'}[a.type]||'•'
+      html += '<div style="font-size:11px;padding:3px 0;display:flex;gap:4px;border-bottom:1px solid #f0f4f0"><span>'+ic+'</span><span><strong>'+esc(a.culture)+'</strong> — '+esc(a.op)+'</span></div>'
+    })
+    html += '</div>'
+  })
+  html += '</div>'
+
+  document.getElementById('mainContent').innerHTML = html
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MICROFINANCE — RISQUE PORTEFEUILLE
+// ════════════════════════════════════════════════════════════════════════════
+function renderRisqueMF() {
+  var mf    = DATA.microfinance || {}
+  var users = mf.users || []
+  var vuln  = (DATA.ong && DATA.ong.diagnostics && DATA.ong.diagnostics.vulnerabilite) || []
+  var mi    = new Date().getMonth()
+  var mc    = BFA_CALENDAR[mi]
+  var urgHigh = vuln.filter(function(v){return v.urgency==='\xc9lev\xe9e'})
+  var urgMed  = vuln.filter(function(v){return v.urgency==='Mod\xe9r\xe9e'})
+
+  var nElig  = users.filter(function(u){return u.statut==='\xc9ligible cr\xe9dit'}).length
+  var nRisk  = users.filter(function(u){return u.statut==='Insuffisant'}).length
+  var nEval  = users.filter(function(u){return u.statut==='\xc0 \xe9valuer'}).length
+  var nTotal = users.length
+
+  var html = '<div class="page-header"><h2 class="section-title">📉 Risque portefeuille</h2><p class="section-sub">Analyse de risque bas\xe9e sur le terrain — aide \xe0 la d\xe9cision cr\xe9dit</p></div>'
+
+  // KPI risques
+  html += '<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">'
+  html += kpiCard('','✅',nElig,'Dossiers sains')
+  html += kpiCard('kpi-amber','⏳',nEval,'\xc0 r\xe9\xe9valuer')
+  html += kpiCard('kpi-red','⚠️',nRisk,'Risque de d\xe9faut')
+  html += kpiCard(urgHigh.length>=2?'kpi-red':'kpi-amber','🔬',urgHigh.length+urgMed.length,'Menaces phyto actives')
+  html += kpiCard(mc.soudure?'kpi-amber':'','📅',null,mc.soudure?'⚠️ P\xe9riode soudure':'Saison stable')
+  html += '</div>'
+
+  // Alertes contextuelles
+  if (mc.soudure) html += '<div class="alerte-strip"><div class="alerte-icon">📅</div><div><div class="alerte-title">P\xe9riode de soudure — Risque de d\xe9faut accru</div><div class="alerte-desc">Les emprunteurs dont les cultures ne sont pas encore r\xe9colt\xe9es sont en tension financi\xe8re. Recommandations : gel des p\xe9nalit\xe9s, r\xe9\xe9chelonnement pr\xe9ventif pour les comptes fragiles, visite terrain prioritaire.</div></div></div>'
+  if (urgHigh.length > 0) html += '<div class="alerte-strip"><div class="alerte-icon">🔬</div><div><div class="alerte-title">Risque phytosanitaire — Impact potentiel sur les remboursements</div><div class="alerte-desc">'+urgHigh.length+' maladie(s) \xe0 urgence \xe9lev\xe9e : '+esc(urgHigh.slice(0,3).map(function(v){return v.name}).join(', '))+'. Les emprunteurs cultivant ces esp\xe8ces peuvent subir des pertes. Identifier le portefeuille expos\xe9 et pr\xe9voir des mesures de g\xe9n\xe9rosit\xe9.</div></div></div>'
+
+  // Exposition par région
+  html += '<div class="subsection-label">Exposition par r\xe9gion</div>'
+  var regMap = {}
+  users.forEach(function(u){
+    var r=u.region||'Non renseign\xe9e'
+    if(!regMap[r]) regMap[r]={total:0,elig:0,risk:0,eval:0,scores:[]}
+    regMap[r].total++; regMap[r].scores.push(u.score||0)
+    if(u.statut==='\xc9ligible cr\xe9dit') regMap[r].elig++
+    else if(u.statut==='Insuffisant') regMap[r].risk++
+    else regMap[r].eval++
+  })
+  var regList = Object.entries(regMap).sort(function(a,b){return b[1].total-a[1].total})
+  html += '<div class="table-card" style="margin-bottom:24px"><table>'
+  html += '<thead><tr><th>R\xe9gion</th><th>Dossiers</th><th>\xc9ligibles</th><th>Risque d\xe9faut</th><th>Score moy.</th><th>Risque s\xe9cu.</th><th>IDPs</th></tr></thead><tbody>'
+  regList.forEach(function(e){
+    var r=e[0],d=e[1]
+    var secZ=SECURITY_ZONES[r]
+    var scMoy=d.scores.length?Math.round(d.scores.reduce(function(a,b){return a+b},0)/d.scores.length):0
+    var pRisk=d.total?Math.round(d.risk/d.total*100):0
+    var sb=secZ?'<span class="badge '+(secZ.level==='critique'?'b-red':secZ.level==='eleve'?'b-amber':'b-gray')+'">'+esc(secZ.label)+'</span>':'<span style="color:var(--muted)">—</span>'
+    var idp=IDP_DATA[r]
+    html+='<tr><td><strong>'+esc(r)+'</strong></td><td style="font-family:\'DM Mono\',monospace">'+d.total+'</td><td><span class="badge b-green">'+d.elig+'</span></td><td><div class="score-row"><div class="score-bar"><div class="score-fill" style="width:'+pRisk+'%;background:var(--red)"></div></div><span class="score-num">'+d.risk+'</span></div></td><td style="font-family:\'DM Mono\',monospace;font-weight:700">'+scMoy+'</td><td>'+sb+'</td><td style="font-size:11px;color:var(--muted)">'+(idp?'~'+Number(idp).toLocaleString('fr-FR'):'—')+'</td></tr>'
+  })
+  html += '</tbody></table></div>'
+
+  // Calendrier de crédit optimal
+  html += '<div class="subsection-label">Fen\xeatre de d\xe9caissement optimale par fili\xe8re</div>'
+  html += '<div class="table-card" style="margin-bottom:24px"><table>'
+  html += '<thead><tr><th>Culture</th><th>D\xe9caissement optimal</th><th>Remboursement</th><th>Dur\xe9e</th><th>Taux recommand\xe9</th><th>Niveau de risque</th></tr></thead><tbody>'
+  CREDIT_CALENDAR.forEach(function(c){
+    var isOpen = c.dec.split('–').some(function(m){ var idx=['Jan','F\xe9v','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','D\xe9c'].findIndex(function(x){return m.trim().toLowerCase().startsWith(x.toLowerCase())}); return idx===-1?false:idx===mi||idx===(mi+1)%12 })
+    html += '<tr style="'+(isOpen?'background:rgba(54,175,59,.04)':'')+'">'
+    html += '<td><strong>'+c.icon+' '+esc(c.culture)+'</strong>'+(isOpen?' <span class="badge b-green" style="font-size:9px">Fen\xeatre ouverte</span>':'')+'</td>'
+    html += '<td style="font-size:12px">'+esc(c.dec)+'</td>'
+    html += '<td style="font-size:12px">'+esc(c.remb)+'</td>'
+    html += '<td style="font-family:\'DM Mono\',monospace">'+c.duree+' mois</td>'
+    html += '<td style="font-family:\'DM Mono\',monospace;color:var(--vert);font-weight:700">'+c.taux+'% / an</td>'
+    html += '<td><span class="badge '+(c.risque.includes('Faible')?'b-green':c.risque.includes('lev')?'b-red':'b-amber')+'">'+esc(c.risque)+'</span></td>'
+    html += '</tr>'
+  })
+  html += '</tbody></table></div>'
+
+  document.getElementById('mainContent').innerHTML = html
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MICROFINANCE — SIMULATEUR DE CRÉDIT
+// ════════════════════════════════════════════════════════════════════════════
+function renderSimulateur() {
+  var html = '<div class="page-header"><h2 class="section-title">🧮 Simulateur de cr\xe9dit agricole</h2><p class="section-sub">Calcul du montant \xe9ligible bas\xe9 sur le profil de l\'agriculteur</p></div>'
+  html += '<div class="warn-banner">📌 <strong>Outil d\'aide \xe0 la d\xe9cision</strong> — R\xe9sultats indicatifs. Validation obligatoire par un agent de cr\xe9dit terrain.</div>'
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">'
+
+  // Formulaire
+  html += '<div class="chart-card">'
+  html += '<div class="chart-title">📋 Param\xe8tres du dossier</div>'
+  html += field('Score agricole CultivaTech','<input type="range" id="simScore" min="0" max="100" value="60" oninput="calcSim()" style="width:100%;accent-color:var(--vert2)"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>0 (Insuffisant)</span><span id="simScoreVal" style="font-weight:700;color:var(--vert);font-size:15px">60</span><span>100 (Excellent)</span></div>')
+  html += field('Culture principale','<select id="simCulture" class="filter-select" style="width:100%;padding:10px" onchange="calcSim()">'+CREDIT_CALENDAR.map(function(c){return '<option value="'+esc(c.culture)+'">'+c.icon+' '+esc(c.culture)+'</option>'}).join('')+'</select>')
+  html += field('Surface cultiv\xe9e (hectares)','<input type="number" id="simSurface" min="0.5" max="100" step="0.5" value="2" oninput="calcSim()" class="search-input" style="width:100%;padding:10px">')
+  html += field('Historique de remboursement','<select id="simHisto" class="filter-select" style="width:100%;padding:10px" onchange="calcSim()"><option value="1.25">Excellent — jamais de retard</option><option value="1.0" selected>Bon — quelques retards mineurs</option><option value="0.75">Moyen — retards fr\xe9quents</option><option value="0.5">Insuffisant — incidents de paiement</option></select>')
+  html += field('R\xe9gion (risque s\xe9curitaire)','<select id="simRegion" class="filter-select" style="width:100%;padding:10px" onchange="calcSim()"><option value="1.0">Zone stable</option>'+Object.entries(SECURITY_ZONES).map(function(e){var m={critique:0.6,eleve:0.75,modere:0.9}[e[1].level]||0.9;return'<option value="'+m+'">'+esc(e[0])+' ('+esc(e[1].label)+')</option>'}).join('')+'</select>')
+  html += '</div>'
+
+  // Résultats
+  html += '<div>'
+  html += '<div class="chart-card" id="simResult" style="margin-bottom:16px;background:linear-gradient(135deg,#F4FAF4,#EAF5EA);border:2px solid var(--vert-pale)">'
+  html += '<div class="chart-title">📈 R\xe9sultat de l\'analyse</div>'
+  html += '<div id="simResultContent"></div></div>'
+  html += '<div class="chart-card" id="simPlanCard">'
+  html += '<div class="chart-title">📅 \xc9ch\xe9ancier de remboursement</div>'
+  html += '<div id="simPlanContent"></div></div>'
+  html += '</div>'
+  html += '</div>'
+
+  document.getElementById('mainContent').innerHTML = html
+  calcSim()
+}
+
+function field(label, content) {
+  return '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:7px">'+esc(label)+'</label>'+content+'</div>'
+}
+
+function calcSim() {
+  var score   = parseInt((document.getElementById('simScore')||{value:60}).value)||0
+  var culture = (document.getElementById('simCulture')||{value:'Mil / Sorgho'}).value
+  var surface = parseFloat((document.getElementById('simSurface')||{value:2}).value)||1
+  var histo   = parseFloat((document.getElementById('simHisto')||{value:1}).value)||1
+  var regM    = parseFloat((document.getElementById('simRegion')||{value:1}).value)||1
+  var sv = document.getElementById('simScoreVal'); if(sv) sv.textContent=score
+
+  var cd = CREDIT_CALENDAR.find(function(c){return c.culture===culture})||CREDIT_CALENDAR[0]
+  var eligible        = score >= 61
+  var eligiblePartiel = score >= 41 && score < 61
+  var rc = document.getElementById('simResultContent')
+  var pc = document.getElementById('simPlanContent')
+  if (!rc) return
+
+  if (!eligible && !eligiblePartiel) {
+    rc.innerHTML='<div style="background:#FDECEA;border-radius:10px;padding:16px"><strong style="color:#922B21">❌ Score insuffisant ('+score+'/100)</strong><br><span style="font-size:12px;color:#922B21;margin-top:6px;display:block">Score minimum requis : 41/100 pour l\'acc\xe8s partiel.<br>Recommander un programme de renforcement (formations, suivi) avant r\xe9\xe9valuation dans 6 mois.</span></div>'
+    if(pc) pc.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">—</div>'
+    return
+  }
+
+  var scoreMulti = 0.4 + (score/100)*0.9
+  var montant    = Math.round(cd.basePha * surface * scoreMulti * histo * regM / 5000)*5000
+  var mntMin     = Math.round(montant*0.75/5000)*5000
+  var mntMax     = Math.round(montant*1.20/5000)*5000
+  var taux       = cd.taux, duree = cd.duree
+  var tauxM      = taux/12/100
+  var mensualite = tauxM>0 ? Math.round(montant*tauxM*Math.pow(1+tauxM,duree)/(Math.pow(1+tauxM,duree)-1)/1000)*1000 : Math.round(montant/duree/1000)*1000
+  var totalR     = mensualite*duree
+  var interets   = totalR-montant
+
+  var statusHtml = eligible
+    ? '<div style="background:#E8F5E9;border-radius:10px;padding:12px 16px;margin-bottom:14px"><strong style="color:#1B5E20">✅ \xc9LIGIBLE AU CR\xc9DIT — score '+score+'/100</strong></div>'
+    : '<div style="background:#FFF8E1;border-radius:10px;padding:12px 16px;margin-bottom:14px"><strong style="color:#7D6608">⚠️ \xc9LIGIBLE PARTIEL — accord conditionnel ('+score+'/100)</strong><br><span style="font-size:11px;color:#7D6608">Suivi renforc\xe9 recommand\xe9 — montant plafonn\xe9</span></div>'
+
+  rc.innerHTML = statusHtml
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Montant recommand\xe9</div><div style="font-size:24px;font-weight:700;color:var(--vert);font-family:\'DM Mono\',monospace">'+Number(montant).toLocaleString('fr-FR')+'</div><div style="font-size:10px;color:var(--muted)">FCFA (fourchette : '+Number(mntMin).toLocaleString('fr-FR')+'–'+Number(mntMax).toLocaleString('fr-FR')+')</div></div>'
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Mensualit\xe9 estim\xe9e</div><div style="font-size:24px;font-weight:700;color:var(--blue);font-family:\'DM Mono\',monospace">'+Number(mensualite).toLocaleString('fr-FR')+'</div><div style="font-size:10px;color:var(--muted)">FCFA / mois sur '+duree+' mois \xe0 '+taux+'% / an</div></div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">'
+    + '<div><div style="font-size:10px;color:var(--muted)">Total rembours\xe9</div><div style="font-weight:700;font-family:\'DM Mono\',monospace;font-size:12px">'+Number(totalR).toLocaleString('fr-FR')+' FCFA</div></div>'
+    + '<div><div style="font-size:10px;color:var(--muted)">Coût du cr\xe9dit</div><div style="font-weight:700;font-family:\'DM Mono\',monospace;font-size:12px;color:var(--amber)">'+Number(interets).toLocaleString('fr-FR')+' FCFA</div></div>'
+    + '<div><div style="font-size:10px;color:var(--muted)">Culture financ\xe9e</div><div style="font-weight:700;font-size:13px">'+cd.icon+' '+esc(culture)+'</div></div>'
+    + '</div>'
+
+  // Échéancier
+  var now=new Date(), solde=montant, rows=''
+  for(var m=0;m<Math.min(duree,8);m++){
+    var dm=new Date(now.getFullYear(),now.getMonth()+m+1,1)
+    var intM=Math.round(solde*tauxM), capM=mensualite-intM
+    solde=Math.max(0,solde-capM)
+    rows+='<tr><td style="padding:6px 10px;font-size:11px;border-top:1px solid #f0f4f0">'+dm.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})+'</td>'
+    +'<td style="padding:6px 10px;font-size:11px;font-family:\'DM Mono\',monospace;text-align:right;border-top:1px solid #f0f4f0">'+Number(mensualite).toLocaleString('fr-FR')+'</td>'
+    +'<td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--amber);font-family:\'DM Mono\',monospace;border-top:1px solid #f0f4f0">'+Number(intM).toLocaleString('fr-FR')+'</td>'
+    +'<td style="padding:6px 10px;font-size:11px;text-align:right;color:var(--muted);font-family:\'DM Mono\',monospace;border-top:1px solid #f0f4f0">'+Number(Math.round(solde/1000)*1000).toLocaleString('fr-FR')+'</td></tr>'
+  }
+  if(duree>8) rows+='<tr><td colspan="4" style="padding:6px 10px;text-align:center;font-size:11px;color:var(--muted);border-top:1px solid #f0f4f0">… '+(duree-8)+' mois suppl\xe9mentaires</td></tr>'
+  if(pc) pc.innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr><th style="background:var(--vert-bg);font-size:10px;color:var(--muted);padding:7px 10px;text-align:left">Mois</th><th style="background:var(--vert-bg);font-size:10px;color:var(--muted);padding:7px 10px;text-align:right">Mensualit\xe9</th><th style="background:var(--vert-bg);font-size:10px;color:var(--muted);padding:7px 10px;text-align:right">Int\xe9r\xeats</th><th style="background:var(--vert-bg);font-size:10px;color:var(--muted);padding:7px 10px;text-align:right">Solde</th></tr></thead><tbody>'+rows+'</tbody></table>'
 }
 
 // ── PAGINATION ───────────────────────────────────────────────────────────────
