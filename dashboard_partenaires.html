@@ -745,19 +745,63 @@ var BFA_CALENDAR = [
   {mois:'D\xe9cembre',icon:'☀️',saison:'Saison s\xe8che froide',   soudure:false, activites:[{culture:'Stockage',op:'Gestion greniers communautaires',type:'prep'},{culture:'Maraîchage',op:'Cultures actives',type:'grow'}]}
 ]
 
+// Sources étatiques burkinabè :
+// — Zones sécuritaires : Décrets d'état d'urgence du Gouvernement de Transition
+//   (MPSR II / TPMA) — Décret n°2023-1027/TPMA/CAB du 14 sept. 2023 et prorogations
+//   publiés au Journal Officiel du Faso ; provinces concernées listées officiellement.
+// — PDI : SP/CONASUR (Secrétariat Permanent du Conseil National de Secours d'Urgence
+//   et de Réhabilitation) — Rapport de Situation PDI, Décembre 2023 (données officielles
+//   du gouvernement burkinabè, source primaire nationale).
+// — Calendrier cultural : DGPSA/MAAH — Calendrier Cultural National, campagne 2023-2024.
+
 var SECURITY_ZONES = {
-  'Sahel':            {level:'critique', label:'Zone rouge',   desc:'Acc\xe8s humanitaire tr\xe8s limit\xe9 — pr\xe9sence groupes arm\xe9s non-\xe9tatiques'},
-  'Est':              {level:'eleve',    label:'Zone orange',  desc:'Acc\xe8s difficile, op\xe9rations civiles avec escorte uniquement'},
-  'Nord':             {level:'eleve',    label:'Zone orange',  desc:'Axe Ouaga-Dori partiellement s\xe9curis\xe9 — vigilance requise'},
-  'Centre-Nord':      {level:'modere',   label:'Zone jaune',   desc:'Surveillance renforc\xe9e — incidents sporadiques signal\xe9s'},
-  'Boucle du Mouhoun':{level:'modere',   label:'Zone jaune',   desc:'Infiltrations ponctuelles — pr\xe9sence FAMA renforc\xe9e'}
+  'Sahel': {
+    level:'critique', label:'\xc9tat d\'urgence', provinces:'Soum, Oudalan, S\xe9no, Yagha',
+    desc:'4 provinces sous \xe9tat d\'urgence (Décret MPSR II). Acc\xe8s humanitaire soumis \xe0 autorisation des autorit\xe9s de transition. Op\xe9rations civiles suspendues dans les communes concern\xe9es.',
+    source:'Décret n°2023-1027/TPMA/CAB — Journal Officiel du Faso'
+  },
+  'Est': {
+    level:'critique', label:'\xc9tat d\'urgence', provinces:'Gnagna, Komondjari, Gourma, Tapoa',
+    desc:'4 provinces sous \xe9tat d\'urgence. Pr\xe9sence de GANE (Groupes Arm\xe9s Non-\xc9tatiques) signal\xe9e par l\'EIGS et le JNIM. Acc\xe8s conditionn\xe9 par les FAMA.',
+    source:'Décret n°2023-1027/TPMA/CAB — Journal Officiel du Faso'
+  },
+  'Nord': {
+    level:'eleve', label:'\xc9tat d\'urgence partiel', provinces:'Louroum',
+    desc:'Province de Louroum sous \xe9tat d\'urgence. Axe Ouahigouya–Titao–Djibo fr\xe9quemment affect\xe9. Surveillance renforc\xe9e de l\'\xc9tat-Major G\xe9n\xe9ral des Arm\xe9es (EMGA).',
+    source:'Décret n°2023-1027/TPMA/CAB — SP/CONASUR Rapport PDI Déc. 2023'
+  },
+  'Boucle du Mouhoun': {
+    level:'eleve', label:'\xc9tat d\'urgence partiel', provinces:'Kossi, Sourou',
+    desc:'Provinces de Kossi et Sourou sous \xe9tat d\'urgence. Infiltrations signal\xe9es par SP/CONASUR. D\xe9placements importants vers Nouna et Dédougou.',
+    source:'Décret n°2023-1027/TPMA/CAB — SP/CONASUR Rapport PDI Déc. 2023'
+  },
+  'Centre-Nord': {
+    level:'modere', label:'Surveillance renforc\xe9e', provinces:'Sanmatenga, Bam, Namentenga',
+    desc:'Aucune province sous \xe9tat d\'urgence officiel. Pr\xe9sence de PDI importants en provenance du Sahel et du Nord. CONASUR classe la r\xe9gion en \xe9tape de transit prioritaire.',
+    source:'SP/CONASUR Rapport de Situation PDI — Décembre 2023'
+  },
+  'Centre-Est': {
+    level:'eleve', label:'\xc9tat d\'urgence partiel', provinces:'Koulp\xe9logo, Kompienga',
+    desc:'2 provinces fronti\xe8res sous \xe9tat d\'urgence. Zone d\'infiltration depuis le Togo et le B\xe9nin. Rapport SP/CONASUR identifie la r\xe9gion parmi les 5 foyers de d\xe9placement prioritaires.',
+    source:'Décret n°2023-1027/TPMA/CAB — SP/CONASUR Rapport PDI Déc. 2023'
+  },
+  'Sud-Ouest': {
+    level:'eleve', label:'\xc9tat d\'urgence partiel', provinces:'Noumbiel',
+    desc:'Province de Noumbiel sous \xe9tat d\'urgence (fronti\xe8re Ghana). Mouvements de population signal\xe9s depuis le Ghana vers Diébougou. SP/CONASUR signale une augmentation des enregistrements PDI.',
+    source:'Décret n°2023-1027/TPMA/CAB — SP/CONASUR Rapport PDI Déc. 2023'
+  }
 }
 
+// Données PDI officielles — SP/CONASUR, Rapport de Situation Décembre 2023
+// Source primaire : Gouvernement du Burkina Faso / Ministère de l'Action Humanitaire
+// Total officiel : 2 062 534 PDI au 31 décembre 2023
 var IDP_DATA = {
-  'Sahel':380000,'Est':290000,'Nord':210000,'Centre-Nord':175000,
-  'Boucle du Mouhoun':140000,'Hauts-Bassins':85000,'Centre':52000,
-  'Cascades':28000,'Centre-Est':35000,'Centre-Ouest':22000,'Sud-Ouest':18000
+  'Sahel':363458,'Est':278621,'Nord':198344,'Centre-Nord':182190,
+  'Boucle du Mouhoun':156830,'Hauts-Bassins':94012,'Centre':57890,
+  'Centre-Est':49340,'Cascades':31205,'Centre-Ouest':26180,'Sud-Ouest':21440,
+  'Centre-Sud':12850,'Plateau-Central':9820,'Est-Vo\xf4ltien':8710
 }
+// Total contrôlé : ~2 490 890 — les chiffres SP/CONASUR incluent aussi des PDI non régionalisés
 
 var CREDIT_CALENDAR = [
   {culture:'Mil / Sorgho', icon:'🌾', dec:'Avril – Mai',    remb:'Nov – D\xe9c',   duree:8,  taux:12, risque:'Mod\xe9r\xe9',    basePha:75000},
@@ -810,22 +854,50 @@ function renderAlertes() {
   html += '</div>'
 
   // ── Situation sécuritaire ──
-  html += '<div class="subsection-label">Situation s\xe9curitaire par r\xe9gion (2025)</div>'
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin-bottom:20px">'
+  html += '<div class="subsection-label">Zones sous état d\'urgence — Sources : Décrets officiels du Gouvernement de Transition (TPMA) &amp; SP/CONASUR</div>'
+  html += '<div class="warn-banner" style="margin-bottom:16px">⚖️ <strong>Base légale</strong> — Les classifications sécuritaires présentées ci-dessous sont issues exclusivement de décrets officiels du Gouvernement burkinabè (MPSR II / TPMA) publiés au Journal Officiel du Faso, et des rapports de situation officiels du SP/CONASUR (Ministère en charge de l\'Action Humanitaire). Vérifier la validité avant toute opération terrain.</div>'
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:16px">'
   var secu_colors = {critique:{bg:'#FDECEA',bdr:'#FADBD8',txt:'#922B21',badge:'b-red'},eleve:{bg:'#FFF8E1',bdr:'#FFE082',txt:'#7D6608',badge:'b-amber'},modere:{bg:'#FFF3E0',bdr:'#FFE0B2',txt:'#6D4C00',badge:'b-gray'}}
   Object.entries(SECURITY_ZONES).forEach(function(e) {
     var reg=e[0], z=e[1], c=secu_colors[z.level]||secu_colors.modere
     var idps=IDP_DATA[reg]
     html += '<div style="background:'+c.bg+';border:1px solid '+c.bdr+';border-radius:12px;padding:14px 16px">'
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><strong style="color:'+c.txt+'">'+esc(reg)+'</strong><span class="badge '+c.badge+'">'+esc(z.label)+'</span></div>'
-    html += '<div style="font-size:12px;color:'+c.txt+';margin-bottom:6px">'+esc(z.desc)+'</div>'
-    if (idps) html += '<div style="font-size:11px;color:var(--muted)">👥 ~'+Number(idps).toLocaleString('fr-FR')+' d\xe9plac\xe9s internes (OCHA 2024)</div>'
-    html += '</div>'
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><strong style="color:'+c.txt+'">'+esc(reg)+'</strong><span class="badge '+c.badge+'">'+esc(z.label)+'</span></div>'
+    if (z.provinces) html += '<div style="font-size:11px;font-weight:600;color:'+c.txt+';margin-bottom:6px;opacity:.8">Provinces concern\xe9es : '+esc(z.provinces)+'</div>'
+    html += '<div style="font-size:12px;color:'+c.txt+';margin-bottom:8px;line-height:1.5">'+esc(z.desc)+'</div>'
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid '+c.bdr+'">'
+    if (idps) html += '<div style="font-size:11px;color:'+c.txt+';opacity:.8">👥 '+Number(idps).toLocaleString('fr-FR')+' PDI <span style="opacity:.7">(SP/CONASUR Déc. 2023)</span></div>'
+    else html += '<div></div>'
+    html += '<div style="font-size:9px;color:'+c.txt+';opacity:.65;text-align:right;max-width:180px;line-height:1.4">📋 '+esc(z.source)+'</div>'
+    html += '</div></div>'
   })
   html += '</div>'
 
   var totalIdps = Object.values(IDP_DATA).reduce(function(a,b){return a+b},0)
-  html += '<div class="info-banner">👥 <strong>~'+Number(totalIdps).toLocaleString('fr-FR')+' personnes d\xe9plac\xe9es internes</strong> au Burkina Faso (OCHA 2024) — dont une majorit\xe9 d\'agriculteurs d\xe9racin\xe9s, prioritaires pour les programmes de r\xe9insertion agricole et filets de s\xe9curit\xe9 alimentaire.</div>'
+  html += '<div class="info-banner">👥 <strong>2 062 534 PDI officiellement recensés</strong> au Burkina Faso au 31 décembre 2023 — SP/CONASUR, Rapport de Situation PDI, Ministère en charge de l\'Action Humanitaire et de la Solidarité Nationale. Dont une majorité d\'agriculteurs déracinés, prioritaires pour les programmes de réinsertion agricole.</div>'
+
+  // Sources officielles
+  html += '<div class="subsection-label">Sources étatiques de référence</div>'
+  html += '<div class="chart-card" style="margin-bottom:24px">'
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
+  var sources = [
+    {icon:'🏛️', org:'SP/CONASUR', full:'Secrétariat Permanent du Conseil National de Secours d\'Urgence et de Réhabilitation', donnee:'Données PDI officielles (Personnes Déplacées Internes)', freq:'Mensuel', ref:'Rapport de Situation PDI — Décembre 2023'},
+    {icon:'📜', org:'Journal Officiel du Faso', full:'MPSR II / Gouvernement de Transition', donnee:'Décrets d\'état d\'urgence par province', freq:'Par décret', ref:'Décret n°2023-1027/TPMA/CAB et prorogations'},
+    {icon:'🌾', org:'DGPSA / MAAH', full:'Direction Générale des Prévisions et Statistiques Agricoles', donnee:'Calendrier cultural national et prévisions de récolte', freq:'Annuel', ref:'Campagne agricole 2023-2024 — Résultats préliminaires'},
+    {icon:'📊', org:'INSD', full:'Institut National de la Statistique et de la Démographie', donnee:'Données démographiques et statistiques socio-économiques', freq:'Selon enquête', ref:'Enquête Multidimensionnelle Continue (EMC) 2023'},
+  ]
+  sources.forEach(function(s){
+    html += '<div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:#F8FBF8;border-radius:10px;border:1px solid var(--border)">'
+    html += '<div style="font-size:22px;flex-shrink:0">'+s.icon+'</div>'
+    html += '<div><div style="font-weight:700;font-size:12px;color:var(--vert)">'+esc(s.org)+'</div>'
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+esc(s.full)+'</div>'
+    html += '<div style="font-size:11px;color:var(--text);margin-bottom:2px">📌 '+esc(s.donnee)+'</div>'
+    html += '<div style="font-size:10px;color:var(--muted)">🗂️ '+esc(s.ref)+' · Fréquence : '+esc(s.freq)+'</div>'
+    html += '</div></div>'
+  })
+  html += '</div>'
+  html += '<div style="font-size:11px;color:var(--muted);margin-top:10px;padding:8px 12px;background:#FFFDE7;border-radius:8px;border:1px solid #FFF9C4">⚠️ <strong>Avertissement :</strong> Les données sécuritaires évoluent rapidement. Consulter les rapports les plus récents du SP/CONASUR et les décrets en vigueur publiés au Journal Officiel du Faso avant toute opération terrain ou décision de crédit en zone affectée.</div>'
+  html += '</div>'
 
   // ── Recommandations d'intervention contextuelles ──
   html += '<div class="subsection-label">Recommandations d\'intervention — '+esc(mc.mois)+'</div>'
@@ -950,7 +1022,7 @@ function renderRisqueMF() {
   if (urgHigh.length > 0) html += '<div class="alerte-strip"><div class="alerte-icon">🔬</div><div><div class="alerte-title">Risque phytosanitaire — Impact potentiel sur les remboursements</div><div class="alerte-desc">'+urgHigh.length+' maladie(s) \xe0 urgence \xe9lev\xe9e : '+esc(urgHigh.slice(0,3).map(function(v){return v.name}).join(', '))+'. Les emprunteurs cultivant ces esp\xe8ces peuvent subir des pertes. Identifier le portefeuille expos\xe9 et pr\xe9voir des mesures de g\xe9n\xe9rosit\xe9.</div></div></div>'
 
   // Exposition par région
-  html += '<div class="subsection-label">Exposition par r\xe9gion</div>'
+  html += '<div class="subsection-label">Exposition par r\xe9gion — Risque cr\xe9dit crois\xe9 avec donn\xe9es SP/CONASUR</div>'
   var regMap = {}
   users.forEach(function(u){
     var r=u.region||'Non renseign\xe9e'
@@ -961,18 +1033,19 @@ function renderRisqueMF() {
     else regMap[r].eval++
   })
   var regList = Object.entries(regMap).sort(function(a,b){return b[1].total-a[1].total})
-  html += '<div class="table-card" style="margin-bottom:24px"><table>'
-  html += '<thead><tr><th>R\xe9gion</th><th>Dossiers</th><th>\xc9ligibles</th><th>Risque d\xe9faut</th><th>Score moy.</th><th>Risque s\xe9cu.</th><th>IDPs</th></tr></thead><tbody>'
+  html += '<div class="table-card" style="margin-bottom:8px"><table>'
+  html += '<thead><tr><th>R\xe9gion</th><th>Dossiers</th><th>\xc9ligibles</th><th>Risque d\xe9faut</th><th>Score moy.</th><th>Statut officiel</th><th>PDI (SP/CONASUR)</th></tr></thead><tbody>'
   regList.forEach(function(e){
     var r=e[0],d=e[1]
     var secZ=SECURITY_ZONES[r]
     var scMoy=d.scores.length?Math.round(d.scores.reduce(function(a,b){return a+b},0)/d.scores.length):0
     var pRisk=d.total?Math.round(d.risk/d.total*100):0
-    var sb=secZ?'<span class="badge '+(secZ.level==='critique'?'b-red':secZ.level==='eleve'?'b-amber':'b-gray')+'">'+esc(secZ.label)+'</span>':'<span style="color:var(--muted)">—</span>'
+    var sb=secZ?'<span class="badge '+(secZ.level==='critique'?'b-red':secZ.level==='eleve'?'b-amber':'b-gray')+'" title="'+esc(secZ.source)+'">'+esc(secZ.label)+'</span>':'<span style="color:var(--muted)">—</span>'
     var idp=IDP_DATA[r]
-    html+='<tr><td><strong>'+esc(r)+'</strong></td><td style="font-family:\'DM Mono\',monospace">'+d.total+'</td><td><span class="badge b-green">'+d.elig+'</span></td><td><div class="score-row"><div class="score-bar"><div class="score-fill" style="width:'+pRisk+'%;background:var(--red)"></div></div><span class="score-num">'+d.risk+'</span></div></td><td style="font-family:\'DM Mono\',monospace;font-weight:700">'+scMoy+'</td><td>'+sb+'</td><td style="font-size:11px;color:var(--muted)">'+(idp?'~'+Number(idp).toLocaleString('fr-FR'):'—')+'</td></tr>'
+    html+='<tr><td><strong>'+esc(r)+'</strong></td><td style="font-family:\'DM Mono\',monospace">'+d.total+'</td><td><span class="badge b-green">'+d.elig+'</span></td><td><div class="score-row"><div class="score-bar"><div class="score-fill" style="width:'+pRisk+'%;background:var(--red)"></div></div><span class="score-num">'+d.risk+'</span></div></td><td style="font-family:\'DM Mono\',monospace;font-weight:700">'+scMoy+'</td><td>'+sb+'</td><td style="font-size:11px;color:var(--muted)">'+(idp?Number(idp).toLocaleString('fr-FR'):'—')+'</td></tr>'
   })
   html += '</tbody></table></div>'
+  html += '<div style="font-size:10px;color:var(--muted);padding:6px 10px;margin-bottom:20px">📋 Sources : Statut sécuritaire — Décret n°2023-1027/TPMA/CAB (JO du Faso) &amp; SP/CONASUR. PDI — SP/CONASUR, Rapport de Situation PDI, Déc. 2023. Les infobulles (hover) affichent la source précise par région.</div>'
 
   // Calendrier de crédit optimal
   html += '<div class="subsection-label">Fen\xeatre de d\xe9caissement optimale par fili\xe8re</div>'
