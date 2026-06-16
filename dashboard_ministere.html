@@ -944,7 +944,18 @@ async function renderBurkinaMap(stats) {
     return           {txt:'Critique',  col:'#e85050'}
   }
 
+  // Détruire l'ancienne instance Leaflet avant de recréer
+  if (burkinaMap && typeof burkinaMap.remove === 'function') {
+    try { burkinaMap.remove() } catch(e) {}
+  }
+  burkinaMap = null
+  burkinaGeoLayer = null
+
   var container = document.getElementById('burkinaMap')
+  // Nettoyer tout résidu Leaflet sur le conteneur
+  if (container._leaflet_id) {
+    try { container._leaflet_id = undefined } catch(e) {}
+  }
   container.style.display=''; container.style.alignItems=''; container.style.justifyContent=''
   container.innerHTML=''
 
