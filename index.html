@@ -254,6 +254,7 @@
       <div class="nav-section">Système</div>
       <div class="nav-item" onclick="showPage('regles')" id="nav-regles"><span class="nav-icon">🧠</span> Règles diagnostic</div>
       <div class="nav-item" onclick="showPage('admins')" id="nav-admins" data-nav="admins"><span class="nav-icon">👤</span> Admins</div>
+    <div class="nav-item" onclick="showPage('update')" id="nav-update"><span class="nav-icon">📱</span> Mise à jour App</div>
     </div>
     <div class="sidebar-bottom">
       <div class="sidebar-user-info">
@@ -637,6 +638,121 @@
           <div class="table-title" style="margin-bottom:0">Comptes admin <span class="badge badge-amber" id="adminsCountBadge">0</span></div>
         </div>
         <table><thead><tr><th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Département</th><th>Dernier accès</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="adminsTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+    </div>
+
+
+    <!-- PAGE MISE À JOUR APP -->
+    <div class="page" id="page-update">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Mise à jour de l'App</div>
+          <div class="page-sub">Publiez une nouvelle version — les utilisateurs seront notifiés au prochain démarrage</div>
+        </div>
+        <button class="refresh-btn" onclick="loadUpdatePage()"><span class="spin" id="updateRefreshIcon">↻</span> Actualiser</button>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+        <div class="kpi-card green">
+          <span class="kpi-icon">✅</span>
+          <div class="kpi-value kpi-loading" id="upKpiLatest" style="font-size:22px">—</div>
+          <div class="kpi-label">Version actuelle</div>
+          <div class="kpi-trend trend-up" id="upKpiLatestCode"></div>
+        </div>
+        <div class="kpi-card amber">
+          <span class="kpi-icon">⚠️</span>
+          <div class="kpi-value kpi-loading" id="upKpiMin" style="font-size:22px">—</div>
+          <div class="kpi-label">Version minimale</div>
+          <div class="kpi-trend trend-neutral" id="upKpiMinSub">En dessous = mise à jour forcée</div>
+        </div>
+        <div class="kpi-card blue">
+          <span class="kpi-icon">🕐</span>
+          <div class="kpi-value kpi-loading" id="upKpiDate" style="font-size:14px;margin-top:4px">—</div>
+          <div class="kpi-label">Dernière publication</div>
+          <div class="kpi-trend trend-neutral" id="upKpiDateSub"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+
+        <!-- Formulaire -->
+        <div class="table-card" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px">
+          <div class="table-title" style="margin-bottom:16px">
+            📤 Publier une mise à jour
+            <span class="badge badge-green">app_config</span>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <div class="modal-label" style="margin-bottom:5px">Code version (entier) *</div>
+            <input class="search-input" id="upFieldCode" type="number" min="1" placeholder="ex: 2" oninput="renderUpdatePreview()" style="width:100%"/>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">BuildConfig.VERSION_CODE dans Android Studio</div>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <div class="modal-label" style="margin-bottom:5px">Nom de version *</div>
+            <input class="search-input" id="upFieldName" placeholder="ex: 1.5.0" oninput="renderUpdatePreview()" style="width:100%"/>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <div class="modal-label" style="margin-bottom:5px">Code version minimale *</div>
+            <input class="search-input" id="upFieldMin" type="number" min="1" placeholder="ex: 1" oninput="renderUpdatePreview()" style="width:100%"/>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">Les codes inférieurs déclenchent une mise à jour <strong style="color:var(--red)">forcée et bloquante</strong></div>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <div class="modal-label" style="margin-bottom:5px">Nouveautés (affiché aux utilisateurs)</div>
+            <textarea id="upFieldWhatsNew" placeholder="• Calcul engrais par superficie&#10;• Ajustement NPK selon type de sol&#10;• Corrections de bugs" oninput="renderUpdatePreview()" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;resize:vertical;min-height:90px;transition:border .2s"></textarea>
+          </div>
+
+          <div style="margin-bottom:20px">
+            <div class="modal-label" style="margin-bottom:5px">Lien Play Store *</div>
+            <input class="search-input" id="upFieldUrl" placeholder="https://play.google.com/store/apps/details?id=com.example.cultivatech" style="width:100%;font-size:11px"/>
+          </div>
+
+          <div id="upError" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.2);border-radius:8px;padding:8px 12px"></div>
+
+          <button onclick="publishUpdate()" id="upPublishBtn" style="width:100%;background:linear-gradient(135deg,var(--vert),var(--vert2));border:none;border-radius:12px;padding:14px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .2s;letter-spacing:.3px">
+            🚀 Publier la mise à jour
+          </button>
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">
+            Les utilisateurs seront notifiés dans les 6 heures suivant la publication
+          </div>
+        </div>
+
+        <!-- Prévisualisation + Config actuelle -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="table-card" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px">
+            <div class="table-title" style="margin-bottom:14px">
+              👁 Aperçu — Dialog utilisateur
+              <span class="badge badge-blue" id="upPreviewType">Optionnel</span>
+            </div>
+            <div style="display:flex;justify-content:center">
+              <div style="width:260px;background:#1C1C1E;border-radius:20px;padding:24px 16px;box-shadow:0 12px 40px rgba(0,0,0,.5);border:1px solid #333">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-bottom:20px;padding:0 4px">
+                  <span>9:41</span><span>▐▐ ⬡</span>
+                </div>
+                <div style="background:#2C2C2E;border-radius:14px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.3)">
+                  <div id="prevTitle" style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px">Nouvelle version disponible</div>
+                  <div id="prevBody" style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:14px;min-height:40px">
+                    La version <span id="prevVersion" style="color:#fff;font-weight:600">—</span> est disponible.<br>
+                    <span id="prevWhatsNew" style="color:#ccc"></span>
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    <div style="flex:1;background:#1A5319;border-radius:8px;padding:9px;text-align:center;font-size:12px;font-weight:600;color:#4ADE80">Mettre à jour</div>
+                    <div id="prevLaterBtn" style="background:#3A3A3C;border-radius:8px;padding:9px;text-align:center;font-size:12px;color:#999">Plus tard</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-card" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px">
+            <div class="table-title" style="margin-bottom:12px">📋 Configuration actuelle</div>
+            <div id="upCurrentConfig" style="font-size:12px;color:var(--muted);font-family:monospace;background:var(--bg2);border-radius:8px;padding:12px;line-height:1.8;white-space:pre-wrap">Chargement...</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1101,6 +1217,7 @@ if (restrictedPages.includes(name) && currentUser?.role !== 'super_admin') {
   if (name==='marche')       loadMarchePage();
   if (name==='regles')       loadReglesPage();
   if (name==='admins')       loadAdminsPage();
+  if (name==='update')        loadUpdatePage();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2813,6 +2930,132 @@ async function deleteAdmin(id,username){
   if(!confirm(`Supprimer l'admin "${username}" définitivement ?`))return;
   try{await adminFetch('delete-admin-user',{method:'POST',body:{id}});await loadAdminsPage();toast('Admin supprimé');}
   catch(e){toast('Erreur : '+e.message,'error');}
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// MISE À JOUR APP — app_config
+// ════════════════════════════════════════════════════════════════════
+let currentAppConfig = null;
+
+async function loadUpdatePage() {
+  const icon = document.getElementById('updateRefreshIcon');
+  if (icon) icon.classList.add('spinning');
+  try {
+    const data = await adminFetch('admin-app-update');
+    currentAppConfig = data;
+
+    setKPI('upKpiLatest', data.latest_version_name || '—', 'upKpiLatestCode', 'Code : ' + data.latest_version_code);
+    setKPI('upKpiMin', 'v' + data.min_version_code, null, '');
+    const d = data.updated_at
+      ? new Date(data.updated_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      : '—';
+    setKPI('upKpiDate', d, null, '');
+
+    document.getElementById('upFieldCode').value     = data.latest_version_code || '';
+    document.getElementById('upFieldName').value     = data.latest_version_name || '';
+    document.getElementById('upFieldMin').value      = data.min_version_code || '';
+    document.getElementById('upFieldWhatsNew').value = data.whats_new || '';
+    document.getElementById('upFieldUrl').value      = data.play_store_url || '';
+
+    document.getElementById('upCurrentConfig').textContent =
+      'latest_version_code : ' + data.latest_version_code + '\n' +
+      'latest_version_name : ' + data.latest_version_name + '\n' +
+      'min_version_code    : ' + data.min_version_code + '\n' +
+      'play_store_url      : ' + (data.play_store_url || '—') + '\n' +
+      'updated_at          : ' + (data.updated_at || '—');
+
+    renderUpdatePreview();
+  } catch(e) {
+    document.getElementById('upCurrentConfig').textContent = 'Erreur : ' + e.message;
+    ['upKpiLatest','upKpiMin','upKpiDate'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) { el.textContent = '—'; el.classList.remove('kpi-loading'); }
+    });
+  }
+  if (icon) icon.classList.remove('spinning');
+}
+
+function renderUpdatePreview() {
+  var vname  = (document.getElementById('upFieldName').value || '').trim() || '?.?.?';
+  var vcode  = parseInt(document.getElementById('upFieldCode').value) || 0;
+  var vmin   = parseInt(document.getElementById('upFieldMin').value)  || 0;
+  var news   = (document.getElementById('upFieldWhatsNew').value || '').trim();
+  var forced = vmin >= vcode && vcode > 0;
+
+  var badge = document.getElementById('upPreviewType');
+  if (badge) {
+    badge.textContent = forced ? 'Forcé 🔒' : 'Optionnel';
+    badge.className = 'badge ' + (forced ? 'badge-red' : 'badge-blue');
+  }
+
+  var prevTitle = document.getElementById('prevTitle');
+  if (prevTitle) prevTitle.textContent = forced ? 'Mise à jour obligatoire' : 'Nouvelle version disponible';
+
+  var prevVersion = document.getElementById('prevVersion');
+  if (prevVersion) prevVersion.textContent = vname;
+
+  var prevWhatsNew = document.getElementById('prevWhatsNew');
+  if (prevWhatsNew) {
+    if (news) {
+      prevWhatsNew.innerHTML = '<br>Nouveautés :<br>' + news.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    } else {
+      prevWhatsNew.innerHTML = '';
+    }
+  }
+
+  var prevLater = document.getElementById('prevLaterBtn');
+  if (prevLater) prevLater.style.display = forced ? 'none' : 'block';
+}
+
+async function publishUpdate() {
+  var code  = parseInt(document.getElementById('upFieldCode').value);
+  var name  = (document.getElementById('upFieldName').value || '').trim();
+  var min   = parseInt(document.getElementById('upFieldMin').value);
+  var news  = (document.getElementById('upFieldWhatsNew').value || '').trim();
+  var url   = (document.getElementById('upFieldUrl').value || '').trim();
+  var errEl = document.getElementById('upError');
+  var btn   = document.getElementById('upPublishBtn');
+
+  errEl.style.display = 'none';
+
+  if (!code || code < 1)  { errEl.textContent = 'Code version requis (entier ≥ 1)'; errEl.style.display='block'; return; }
+  if (!name)              { errEl.textContent = 'Nom de version requis (ex: 1.5.0)'; errEl.style.display='block'; return; }
+  if (!min || min < 1)   { errEl.textContent = 'Code version minimale requis (entier ≥ 1)'; errEl.style.display='block'; return; }
+  if (min > code)        { errEl.textContent = 'La version minimale ne peut pas être supérieure à la version actuelle'; errEl.style.display='block'; return; }
+  if (!url)              { errEl.textContent = 'Lien Play Store requis'; errEl.style.display='block'; return; }
+
+  var forced = min === code;
+  var confirmMsg = forced
+    ? '⚠️ MISE À JOUR FORCÉE\n\nTous les utilisateurs ayant une version inférieure à ' + code + ' SERONT BLOQUÉS jusqu\'à mise à jour.\n\nConfirmer la publication ?'
+    : 'Publier la version ' + name + ' (code ' + code + ') ?\n\nLes utilisateurs verront un dialog dans les 6h.';
+
+  if (!confirm(confirmMsg)) return;
+
+  btn.textContent = '⏳ Publication...';
+  btn.disabled = true;
+
+  try {
+    await adminFetch('admin-app-update', {
+      method: 'POST',
+      body: {
+        latest_version_code: code,
+        latest_version_name: name,
+        min_version_code: min,
+        whats_new: news || null,
+        play_store_url: url
+      }
+    });
+    toast('Version ' + name + ' publiée avec succès ! Les utilisateurs seront notifiés.');
+    await loadUpdatePage();
+  } catch(e) {
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+    toast('Erreur de publication : ' + e.message, 'error');
+  }
+
+  btn.textContent = '🚀 Publier la mise à jour';
+  btn.disabled = false;
 }
 
 </script>
