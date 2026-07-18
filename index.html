@@ -450,13 +450,13 @@
       </div>
       <div class="users-kpi-grid">
         <div class="kpi-card green"><span class="kpi-icon">👷</span><div class="kpi-value kpi-loading" id="wKpiTotal">—</div><div class="kpi-label">Total ouvriers</div><div class="kpi-trend trend-neutral" id="wKpiTotalSub"></div></div>
-        <div class="kpi-card amber"><span class="kpi-icon">💵</span><div class="kpi-value kpi-loading" id="wKpiSalaire">—</div><div class="kpi-label">Salaire moy/jour</div><div class="kpi-trend trend-neutral" id="wKpiSalaireSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">✅</span><div class="kpi-value kpi-loading" id="wKpiDispos">—</div><div class="kpi-label">Disponibles</div><div class="kpi-trend trend-neutral" id="wKpiDisposSub"></div></div>
         <div class="kpi-card blue"><span class="kpi-icon">🏙️</span><div class="kpi-value kpi-loading" id="wKpiVilles">—</div><div class="kpi-label">Villes</div><div class="kpi-trend trend-neutral" id="wKpiVillesSub"></div></div>
-        <div class="kpi-card red"><span class="kpi-icon">🛠️</span><div class="kpi-value kpi-loading" id="wKpiSpecialites">—</div><div class="kpi-label">Spécialités</div><div class="kpi-trend trend-neutral" id="wKpiSpecialitesSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">🌾</span><div class="kpi-value kpi-loading" id="wKpiDomaines">—</div><div class="kpi-label">Domaines</div><div class="kpi-trend trend-neutral" id="wKpiDomainesSub"></div></div>
       </div>
       <div class="search-bar">
         <input class="search-input" type="text" id="workerSearch" placeholder="🔍  Rechercher..." oninput="filterWorkers()"/>
-        <select class="filter-select" id="workerSpecFilter" onchange="filterWorkers()"><option value="">Toutes spécialités</option></select>
+        <select class="filter-select" id="workerDomainFilter" onchange="filterWorkers()"><option value="">Tous domaines</option></select>
         <button class="export-btn" onclick="exportWorkersCSV()">⬇ Export CSV</button>
       </div>
       <div class="users-table-card">
@@ -464,7 +464,7 @@
           <div class="table-title" style="margin-bottom:0">Liste <span class="badge badge-green" id="workersCountBadge">0</span></div>
           <div class="users-count" id="workersCountText"></div>
         </div>
-        <table><thead><tr><th>Ouvrier</th><th>Téléphone</th><th>Ville</th><th>Spécialité</th><th>Salaire/jour</th><th>Actions</th></tr></thead><tbody id="workersTableBody"><tr><td colspan="6" class="td-muted">Chargement...</td></tr></tbody></table>
+        <table><thead><tr><th>Ouvrier</th><th>WhatsApp</th><th>Ville</th><th>Domaine</th><th>Contrat</th><th>Dispo</th><th>Actions</th></tr></thead><tbody id="workersTableBody"><tr><td colspan="6" class="td-muted">Chargement...</td></tr></tbody></table>
         <div class="pagination" id="workersPagination"></div>
       </div>
     </div>
@@ -842,19 +842,47 @@
   <div class="modal" style="width:520px;max-width:95vw">
     <div class="modal-title" id="wModalTitle">Ouvrier</div>
     <div class="modal-sub" id="wModalSub">Informations du travailleur</div>
-    <div class="modal-row">
-      <div class="modal-field"><div class="modal-label">Prénom</div><input class="login-input" id="wFieldFirstName" placeholder="Prénom" style="margin-bottom:0"/></div>
-      <div class="modal-field"><div class="modal-label">Nom</div><input class="login-input" id="wFieldLastName" placeholder="Nom de famille" style="margin-bottom:0"/></div>
+    <div style="text-align:center;margin-bottom:14px">
+      <div id="wPhotoPreview" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--vert),var(--vert2));display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;position:relative">
+        <span id="wPhotoInitials" style="font-size:26px;color:#fff;font-weight:700">👤</span>
+        <img id="wPhotoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0"/>
+      </div>
+      <div>
+        <label style="cursor:pointer;font-size:12px;color:var(--vert2);border:1px solid rgba(54,175,59,.3);border-radius:8px;padding:5px 12px;display:inline-block">
+          📷 Choisir une photo
+          <input type="file" id="wFieldPhoto" accept="image/*" onchange="previewWorkerPhoto(this)" style="display:none"/>
+        </label>
+        <div id="wPhotoStatus" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+        <input type="hidden" id="wFieldPhotoUrl"/>
+      </div>
     </div>
     <div class="modal-row">
-      <div class="modal-field"><div class="modal-label">Téléphone</div><input class="login-input" id="wFieldPhone" placeholder="+226 XX XX XX XX" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Prénom *</div><input class="login-input" id="wFieldFirstName" placeholder="Prénom" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Nom *</div><input class="login-input" id="wFieldLastName" placeholder="Nom de famille" style="margin-bottom:0"/></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">WhatsApp</div><input class="login-input" id="wFieldPhone" placeholder="+226 XX XX XX XX" style="margin-bottom:0"/></div>
       <div class="modal-field"><div class="modal-label">Ville</div><input class="login-input" id="wFieldCity" placeholder="Ex: Ouagadougou" style="margin-bottom:0"/></div>
     </div>
     <div class="modal-row">
-      <div class="modal-field"><div class="modal-label">Spécialité</div><input class="login-input" id="wFieldSpecialite" placeholder="Ex: Irrigation, Récolte" style="margin-bottom:0"/></div>
-      <div class="modal-field"><div class="modal-label">Salaire/jour (FCFA)</div><input class="login-input" id="wFieldSalaire" type="number" placeholder="2500" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Âge</div><input class="login-input" id="wFieldAge" type="number" min="16" max="80" placeholder="Ex: 28" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Expérience (ans)</div><input class="login-input" id="wFieldExperience" type="number" min="0" placeholder="Ex: 3" style="margin-bottom:0"/></div>
     </div>
-    <div style="margin:12px 0"><div class="modal-label" style="margin-bottom:6px">Notes</div><textarea class="login-input" id="wFieldNote" placeholder="Ex: Expérimenté en irrigation goutte à goutte..." style="height:60px;resize:vertical;margin-bottom:0"></textarea></div>
+    <div class="modal-row">
+      <div class="modal-field"><div class="modal-label">Domaine</div><input class="login-input" id="wFieldDomain" placeholder="Ex: Maraîchage, Irrigation" style="margin-bottom:0"/></div>
+      <div class="modal-field"><div class="modal-label">Type de contrat</div>
+        <select id="wFieldContractType" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--font)">
+          <option value="Journalier">Journalier</option>
+          <option value="Mensuel">Mensuel</option>
+          <option value="Par production">Par production</option>
+          <option value="Saisonnier">Saisonnier</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:10px;background:var(--bg2);border-radius:8px">
+      <input type="checkbox" id="wFieldAvailable" style="width:16px;height:16px;accent-color:var(--vert2)" checked/>
+      <label for="wFieldAvailable" style="font-size:13px;color:var(--text);cursor:pointer">✅ Disponible pour travailler</label>
+    </div>
     <div id="wModalError" style="color:var(--red);font-size:12px;margin-bottom:8px;display:none"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button onclick="saveWorker()" class="export-btn" style="flex:1;padding:12px;font-size:13px" id="wSaveBtn">Enregistrer</button>
@@ -2386,27 +2414,27 @@ async function loadWorkersPage(){
   const icon=document.getElementById('workersRefreshIcon');icon.classList.add('spinning');
   try{
     allWorkers=await adminFetch('get-workers');
-    const avgS=allWorkers.length>0?Math.round(allWorkers.reduce((s,w)=>s+(w.daily_wage||0),0)/allWorkers.length):0;
+    const dispos=allWorkers.filter(w=>w.available!==false).length;
     const villes=[...new Set(allWorkers.map(w=>w.city).filter(Boolean))].length;
-    const specs=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].length;
+    const domaines=[...new Set(allWorkers.map(w=>w.domain).filter(Boolean))].length;
     setKPI('wKpiTotal',allWorkers.length,'wKpiTotalSub',`${allWorkers.length} ouvriers`);
-    setKPI('wKpiSalaire',avgS.toLocaleString('fr-FR')+' F','wKpiSalaireSub','FCFA/jour');
+    setKPI('wKpiDispos',dispos,'wKpiDisposSub',`${dispos} disponibles`);
     setKPI('wKpiVilles',villes,'wKpiVillesSub','régions');
-    setKPI('wKpiSpecialites',specs,'wKpiSpecialitesSub','métiers');
-    const specSet=[...new Set(allWorkers.map(w=>w.specialite).filter(Boolean))].sort();
-    document.getElementById('workerSpecFilter').innerHTML='<option value="">Toutes spécialités</option>'+specSet.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    setKPI('wKpiDomaines',domaines,'wKpiDomainesSub','domaines');
+    const domSet=[...new Set(allWorkers.map(w=>w.domain).filter(Boolean))].sort();
+    document.getElementById('workerDomainFilter').innerHTML='<option value="">Tous domaines</option>'+domSet.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
     filteredWorkers=[...allWorkers];workersPage=1;renderWorkersTable();
   }catch(e){
-    document.getElementById('workersTableBody').innerHTML='<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Table workers non trouvée</td></tr>';
-    ['wKpiTotal','wKpiSalaire','wKpiVilles','wKpiSpecialites'].forEach(id=>{const el=document.getElementById(id);el.textContent='—';el.classList.remove('kpi-loading');});
+    document.getElementById('workersTableBody').innerHTML='<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Table workers non trouvée</td></tr>';
+    ['wKpiTotal','wKpiDispos','wKpiVilles','wKpiDomaines'].forEach(id=>{const el=document.getElementById(id);el.textContent='—';el.classList.remove('kpi-loading');});
   }
   icon.classList.remove('spinning');
 }
 
 function filterWorkers(){
   const search=document.getElementById('workerSearch').value.toLowerCase();
-  const spec=document.getElementById('workerSpecFilter').value;
-  filteredWorkers=allWorkers.filter(w=>{const name=`${w.first_name} ${w.last_name}`.toLowerCase();return(!search||name.includes(search)||(w.city||'').toLowerCase().includes(search)||(w.specialite||'').toLowerCase().includes(search))&&(!spec||w.specialite===spec);});
+  const domain=document.getElementById('workerDomainFilter').value;
+  filteredWorkers=allWorkers.filter(w=>{const name=`${w.first_name} ${w.last_name}`.toLowerCase();return(!search||name.includes(search)||(w.city||'').toLowerCase().includes(search)||(w.domain||'').toLowerCase().includes(search))&&(!domain||w.domain===domain);});
   workersPage=1;renderWorkersTable();
 }
 
@@ -2418,18 +2446,24 @@ function renderWorkersTable(){
   document.getElementById('workersCountText').textContent=`${start+1}–${Math.min(start+WORKERS_PER_PAGE,total)} sur ${total}`;
   document.getElementById('workersTableBody').innerHTML=page.map(w=>{
     const initials=`${(w.first_name||'?')[0]}${(w.last_name||'?')[0]}`.toUpperCase();
+    const avatarHtml=w.photo_url?`<img src="${esc(w.photo_url)}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display='none';this.nextSibling.style.display='inline-flex'">`:'' ;
+    const fallback=`<div class="user-avatar" ${w.photo_url?'style="display:none"':''}>${initials}</div>`;
+    const dispo=w.available!==false;
+    const dispoBadge=dispo?'<span class="badge badge-green">✅ Dispo</span>':'<span class="badge badge-red">❌ Indispo</span>';
+    const whatsapp=w.whatsapp_number||w.phone_number||'—';
     return `<tr>
-      <td><div class="user-name-cell"><div class="user-avatar">${initials}</div><div>${esc(w.first_name)} ${esc(w.last_name)}</div></div></td>
-      <td class="td-phone">${esc(w.phone_number||'—')}</td>
+      <td><div class="user-name-cell">${avatarHtml}${fallback}<div>${esc(w.first_name)} ${esc(w.last_name)}</div></div></td>
+      <td class="td-phone">${esc(whatsapp)}</td>
       <td class="td-muted">${esc(w.city||'—')}</td>
-      <td><span class="badge badge-blue">${esc(w.specialite||'—')}</span></td>
-      <td class="trend-up">${w.daily_wage?w.daily_wage.toLocaleString('fr-FR')+' F':'—'}</td>
+      <td><span class="badge badge-blue">${esc(w.domain||'—')}</span></td>
+      <td class="td-muted" style="font-size:11px">${esc(w.contract_type||'—')}</td>
+      <td>${dispoBadge}</td>
       <td><div style="display:flex;gap:5px">
         <button onclick="editWorker(${w.id})" class="btn-action">✏️</button>
         <button onclick="deleteWorker(${w.id},'${esc(w.first_name+' '+w.last_name).replace(/'/g,"&#39;")}')" class="btn-action btn-danger">🗑</button>
       </div></td>
     </tr>`;
-  }).join('')||`<tr><td colspan="6" class="td-muted" style="text-align:center;padding:20px">Aucun ouvrier trouvé</td></tr>`;
+  }).join('')||`<tr><td colspan="7" class="td-muted" style="text-align:center;padding:20px">Aucun ouvrier trouvé</td></tr>`;
   buildPagination('workersPagination',total,WORKERS_PER_PAGE,workersPage,n=>{workersPage=n;renderWorkersTable();});
 }
 
@@ -2437,7 +2471,14 @@ function addWorkerModal(){
   editingWorkerId=null;
   document.getElementById('wModalTitle').textContent='Ajouter un ouvrier';
   document.getElementById('wModalSub').textContent='Nouveau travailleur journalier';
-  ['wFieldFirstName','wFieldLastName','wFieldPhone','wFieldCity','wFieldSpecialite','wFieldNote','wFieldSalaire'].forEach(id=>document.getElementById(id).value='');
+  ['wFieldFirstName','wFieldLastName','wFieldPhone','wFieldCity','wFieldAge','wFieldDomain','wFieldExperience','wFieldPhotoUrl'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wFieldContractType').value='Journalier';
+  document.getElementById('wFieldAvailable').checked=true;
+  document.getElementById('wFieldPhoto').value='';
+  document.getElementById('wPhotoImg').style.display='none';
+  document.getElementById('wPhotoInitials').style.display='';
+  document.getElementById('wPhotoInitials').textContent='👤';
+  document.getElementById('wPhotoStatus').textContent='';
   document.getElementById('wModalError').style.display='none';document.getElementById('wSaveBtn').textContent='Ajouter';
   document.getElementById('workerModal').classList.add('open');
 }
@@ -2447,10 +2488,29 @@ function editWorker(id){
   editingWorkerId=id;
   document.getElementById('wModalTitle').textContent="Modifier l'ouvrier";
   document.getElementById('wModalSub').textContent=`${w.first_name} ${w.last_name}`;
-  document.getElementById('wFieldFirstName').value=w.first_name||'';document.getElementById('wFieldLastName').value=w.last_name||'';
-  document.getElementById('wFieldPhone').value=w.phone_number||'';document.getElementById('wFieldCity').value=w.city||'';
-  document.getElementById('wFieldSpecialite').value=w.specialite||'';document.getElementById('wFieldSalaire').value=w.daily_wage||'';
-  document.getElementById('wFieldNote').value=w.notes||'';
+  document.getElementById('wFieldFirstName').value=w.first_name||'';
+  document.getElementById('wFieldLastName').value=w.last_name||'';
+  document.getElementById('wFieldPhone').value=w.whatsapp_number||w.phone_number||'';
+  document.getElementById('wFieldCity').value=w.city||'';
+  document.getElementById('wFieldAge').value=w.age||'';
+  document.getElementById('wFieldDomain').value=w.domain||'';
+  document.getElementById('wFieldContractType').value=w.contract_type||'Journalier';
+  document.getElementById('wFieldExperience').value=w.experience_years||'';
+  document.getElementById('wFieldAvailable').checked=w.available!==false;
+  const photoUrl=w.photo_url||'';
+  document.getElementById('wFieldPhotoUrl').value=photoUrl;
+  document.getElementById('wFieldPhoto').value='';
+  if(photoUrl){
+    document.getElementById('wPhotoImg').src=photoUrl;
+    document.getElementById('wPhotoImg').style.display='block';
+    document.getElementById('wPhotoInitials').style.display='none';
+  } else {
+    document.getElementById('wPhotoImg').style.display='none';
+    document.getElementById('wPhotoInitials').style.display='';
+    const ini=`${(w.first_name||'?')[0]}${(w.last_name||'?')[0]}`.toUpperCase();
+    document.getElementById('wPhotoInitials').textContent=ini;
+  }
+  document.getElementById('wPhotoStatus').textContent='';
   document.getElementById('wModalError').style.display='none';document.getElementById('wSaveBtn').textContent='Enregistrer';
   document.getElementById('workerModal').classList.add('open');
 }
@@ -2459,12 +2519,32 @@ async function saveWorker(){
   const first=document.getElementById('wFieldFirstName').value.trim();
   const last=document.getElementById('wFieldLastName').value.trim();
   if(!first||!last){document.getElementById('wModalError').textContent='Prénom et nom obligatoires';document.getElementById('wModalError').style.display='block';return;}
-  const body={first_name:first,last_name:last,phone_number:document.getElementById('wFieldPhone').value.trim(),city:document.getElementById('wFieldCity').value.trim(),specialite:document.getElementById('wFieldSpecialite').value.trim(),daily_wage:parseFloat(document.getElementById('wFieldSalaire').value)||0,notes:document.getElementById('wFieldNote').value.trim(),is_deleted:false};
   document.getElementById('wSaveBtn').textContent='⏳...';document.getElementById('wSaveBtn').disabled=true;
   try{
-    if(editingWorkerId) body.id = editingWorkerId;
+    let photoUrl=document.getElementById('wFieldPhotoUrl').value||'';
+    const photoFile=document.getElementById('wFieldPhoto').files[0];
+    if(photoFile){
+      document.getElementById('wPhotoStatus').textContent='⏳ Upload photo...';
+      photoUrl=await uploadWorkerPhoto(photoFile);
+      document.getElementById('wPhotoStatus').textContent='✅ Photo uploadée';
+    }
+    const body={
+      first_name:first,last_name:last,
+      whatsapp_number:document.getElementById('wFieldPhone').value.trim(),
+      city:document.getElementById('wFieldCity').value.trim(),
+      age:parseInt(document.getElementById('wFieldAge').value)||null,
+      domain:document.getElementById('wFieldDomain').value.trim(),
+      contract_type:document.getElementById('wFieldContractType').value,
+      experience_years:parseInt(document.getElementById('wFieldExperience').value)||0,
+      available:document.getElementById('wFieldAvailable').checked,
+      photo_url:photoUrl||null,
+      is_deleted:false
+    };
+    if(editingWorkerId) body.id=editingWorkerId;
     await adminFetch('save-worker',{method:'POST',body});
-    document.getElementById('workerModal').classList.remove('open');await loadWorkersPage();toast(editingWorkerId?'Ouvrier modifié':'Ouvrier ajouté');
+    document.getElementById('workerModal').classList.remove('open');
+    await loadWorkersPage();
+    toast(editingWorkerId?'Ouvrier modifié':'Ouvrier ajouté');
   }catch(e){document.getElementById('wModalError').textContent='Erreur : '+e.message;document.getElementById('wModalError').style.display='block';}
   document.getElementById('wSaveBtn').textContent='Enregistrer';document.getElementById('wSaveBtn').disabled=false;
 }
@@ -2475,9 +2555,38 @@ async function deleteWorker(id,name){
   catch(e){toast('Erreur : '+e.message,'error');}
 }
 
+function previewWorkerPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    document.getElementById('wPhotoImg').src=e.target.result;
+    document.getElementById('wPhotoImg').style.display='block';
+    document.getElementById('wPhotoInitials').style.display='none';
+    document.getElementById('wPhotoStatus').textContent='📷 Prêt à uploader';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadWorkerPhoto(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      try{
+        const base64=e.target.result.split(',')[1];
+        const ext=file.name.split('.').pop().toLowerCase();
+        const result=await adminFetch('upload-worker-photo',{method:'POST',body:{base64,ext,mime:file.type}});
+        if(!result||!result.url) throw new Error('URL manquante');
+        resolve(result.url);
+      }catch(err){reject(err);}
+    };
+    reader.onerror=()=>reject(new Error('Lecture fichier impossible'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function exportWorkersCSV(){
-  const h=['Prénom','Nom','Téléphone','Ville','Spécialité','Salaire/jour FCFA','Notes'];
-  const r=filteredWorkers.map(w=>[w.first_name,w.last_name,w.phone_number||'',w.city||'',w.specialite||'',w.daily_wage||0,w.notes||'']);
+  const h=['Prénom','Nom','WhatsApp','Ville','Âge','Domaine','Contrat','Expérience (ans)','Disponible','Photo URL'];
+  const r=filteredWorkers.map(w=>[w.first_name,w.last_name,w.whatsapp_number||w.phone_number||'',w.city||'',w.age||'',w.domain||'',w.contract_type||'',w.experience_years||0,w.available!==false?'Oui':'Non',w.photo_url||'']);
   dlCSV([h,...r].map(x=>x.join(';')).join('\n'),'ouvriers');
 }
 
