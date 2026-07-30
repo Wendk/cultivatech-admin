@@ -243,6 +243,7 @@
       <div class="nav-section">Contenu</div>
       <div class="nav-item" onclick="showPage('pdfs')" id="nav-pdfs"><span class="nav-icon">📚</span> Formations PDF</div>
       <div class="nav-item" onclick="showPage('formations')" id="nav-formations"><span class="nav-icon">📋</span> Formations ext.</div>
+      <div class="nav-item" onclick="showPage('paiements')" id="nav-paiements"><span class="nav-icon">💰</span> Paiements</div>
       <div class="nav-section">Répertoires</div>
       <div class="nav-item" onclick="showPage('boutiques')" id="nav-boutiques"><span class="nav-icon">🏪</span> Boutiques</div>
       <div class="nav-item" onclick="showPage('workers')" id="nav-workers"><span class="nav-icon">👷</span> Ouvriers</div>
@@ -252,7 +253,10 @@
       <div class="nav-section">Marché</div>
       <div class="nav-item" onclick="showPage('marche')" id="nav-marche"><span class="nav-icon">🛒</span> Marché numérique</div>
       <div class="nav-section">Système</div>
+      <div class="nav-item" onclick="showPage('parcelles')" id="nav-parcelles"><span class="nav-icon">🗺️</span> Parcelles &amp; sols</div>
+      <div class="nav-item" onclick="showPage('correctifs')" id="nav-correctifs"><span class="nav-icon">🧪</span> Correctifs agro.</div>
       <div class="nav-item" onclick="showPage('regles')" id="nav-regles"><span class="nav-icon">🧠</span> Règles diagnostic</div>
+      <div class="nav-item" onclick="showPage('partenaires')" id="nav-partenaires" data-nav="partenaires"><span class="nav-icon">🤝</span> Partenaires</div>
       <div class="nav-item" onclick="showPage('admins')" id="nav-admins" data-nav="admins"><span class="nav-icon">👤</span> Admins</div>
     <div class="nav-item" onclick="showPage('update')" id="nav-update"><span class="nav-icon">📱</span> Mise à jour App</div>
     </div>
@@ -295,6 +299,15 @@
         <div class="chart-card"><div class="chart-title">Revenus mensuels</div><div class="chart-sub">Formations PDF et analyses de sol (FCFA)</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Cultures les plus plantées</div><div class="chart-sub">Répartition des productions actives</div><div class="chart-wrap"><canvas id="chartCultures"></canvas></div></div>
       </div>
+      <!-- Demandes de retrait des auteurs -->
+      <div class="users-table-card" id="retraitsCard" style="display:none;margin-bottom:16px">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Retraits à payer <span class="badge badge-amber" id="retraitsCountBadge">0</span></div>
+          <div class="users-count">Transférez depuis le compte marchand, puis marquez payé</div>
+        </div>
+        <div id="retraitsList"></div>
+      </div>
+
       <div class="tables-row">
         <div class="table-card"><div class="table-title">Top formations vendues <span class="badge badge-amber">Revenus</span></div><table><thead><tr><th>Formation</th><th>Ventes</th><th>FCFA</th></tr></thead><tbody id="tableFormations"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody></table></div>
         <div class="table-card"><div class="table-title">Revenus par source <span class="badge badge-amber">Consolidé</span></div><table><thead><tr><th>Source</th><th>Ventes</th><th>FCFA</th></tr></thead><tbody id="tableSources"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody></table></div>
@@ -371,6 +384,155 @@
     </div>
 
     <!-- PAGE PDFs -->
+    <div class="page" id="page-partenaires">
+      <div class="page-header">
+        <div><div class="page-title">Partenaires</div><div class="page-sub">Organisations, comptes de connexion et programmes d'inscription</div></div>
+        <button class="refresh-btn" onclick="loadPartenairesPage()"><span class="spin">↻</span> Actualiser</button>
+      </div>
+
+      <div class="users-table-card" style="margin-bottom:16px">
+        <div class="users-table-header"><div class="table-title" style="margin-bottom:0">1. Créer une organisation</div><div class="users-count">L'ONG, la microfinance ou le service de l'État</div></div>
+        <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label style="font-size:12px;color:#7A9A7A">Nom<br><input type="text" id="orgNom" class="search-input" style="width:220px;margin-top:4px" placeholder="ex. ONG Terre Verte"></label>
+          <label style="font-size:12px;color:#7A9A7A">Type<br>
+            <select class="filter-select" id="orgType" style="width:160px;margin-top:4px">
+              <option value="ong">ONG</option><option value="microfinance">Microfinance</option><option value="etat">Service de l'État</option>
+            </select></label>
+          <label style="font-size:12px;color:#7A9A7A">Contact (courriel)<br><input type="text" id="orgContact" class="search-input" style="width:220px;margin-top:4px" placeholder="pour le digest hebdomadaire"></label>
+          <label style="font-size:12px;color:#7A9A7A">Quota d'agriculteurs<br><input type="number" id="orgQuota" class="search-input" style="width:130px;margin-top:4px" value="50"></label>
+          <button class="export-btn" onclick="creerOrganisation()">Créer</button>
+        </div>
+        <table><thead><tr><th>Organisation</th><th>Type</th><th>Contact</th><th>Quota</th><th>État</th></tr></thead><tbody id="orgTableBody"><tr><td colspan="5" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+
+      <div class="users-table-card" style="margin-bottom:16px">
+        <div class="users-table-header"><div class="table-title" style="margin-bottom:0">2. Créer un compte de connexion</div><div class="users-count">Le mot de passe ne s'affiche qu'une fois</div></div>
+        <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label style="font-size:12px;color:#7A9A7A">Identifiant<br><input type="text" id="cptUser" class="search-input" style="width:180px;margin-top:4px" placeholder="terreverte"></label>
+          <label style="font-size:12px;color:#7A9A7A">Nom affiché<br><input type="text" id="cptNom" class="search-input" style="width:200px;margin-top:4px" placeholder="Awa Kaboré"></label>
+          <label style="font-size:12px;color:#7A9A7A">Organisation<br><select class="filter-select" id="cptOrg" style="width:220px;margin-top:4px"></select></label>
+          <label style="font-size:12px;color:#7A9A7A">Région<br><input type="text" id="cptRegion" class="search-input" style="width:170px;margin-top:4px" placeholder="National"></label>
+          <label style="font-size:12px;color:#7A9A7A">Tableau de bord<br>
+            <select class="filter-select" id="cptRole" style="width:170px;margin-top:4px">
+              <option value="ong">ONG</option><option value="microfinance">Microfinance</option><option value="etat">Ministère</option>
+            </select></label>
+          <label style="font-size:12px;color:#7A9A7A">Mot de passe<br><input type="text" id="cptMdp" class="search-input" style="width:200px;margin-top:4px" placeholder="laisser vide = généré"></label>
+          <button class="export-btn" onclick="creerCompte()">Créer le compte</button>
+        </div>
+        <table><thead><tr><th>Identifiant</th><th>Nom</th><th>Organisation</th><th>Rôle</th><th>Dernière connexion</th><th>Actions</th></tr></thead><tbody id="cptTableBody"><tr><td colspan="6" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+
+      <div class="users-table-card">
+        <div class="users-table-header"><div class="table-title" style="margin-bottom:0">3. Créer un programme</div><div class="users-count">Le code est saisi par l'agriculteur dans l'application</div></div>
+        <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label style="font-size:12px;color:#7A9A7A">Nom du programme<br><input type="text" id="prjNom" class="search-input" style="width:260px;margin-top:4px" placeholder="ex. Maraîchage Boucle du Mouhoun 2026"></label>
+          <label style="font-size:12px;color:#7A9A7A">Organisation<br><select class="filter-select" id="prjOrg" style="width:220px;margin-top:4px"></select></label>
+          <label style="font-size:12px;color:#7A9A7A">Bailleur (facultatif)<br><input type="text" id="prjBailleur" class="search-input" style="width:180px;margin-top:4px" placeholder="ex. AFD"></label>
+          <label style="font-size:12px;color:#7A9A7A">Code (facultatif)<br><input type="text" id="prjCode" class="search-input" style="width:180px;margin-top:4px" placeholder="généré si vide"></label>
+          <button class="export-btn" onclick="creerProjet()">Créer</button>
+        </div>
+        <table><thead><tr><th>Programme</th><th>Code</th><th>Bénéficiaires</th><th>État</th></tr></thead><tbody id="prjTableBody"><tr><td colspan="4" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="page" id="page-parcelles">
+      <div class="page-header">
+        <div><div class="page-title">Parcelles &amp; analyses de sol</div><div class="page-sub">Surfaces réellement suivies et analyses iSDAsoil</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadParcellesPage()"><span class="spin">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="copierChiffresParcelles()">📋 Copier les chiffres</button>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card green"><span class="kpi-icon">🌍</span><div class="kpi-value kpi-loading" id="paKpiHectares">—</div><div class="kpi-label">Hectares suivis</div><div class="kpi-trend trend-up" id="paKpiHectaresSub"></div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">🗺️</span><div class="kpi-value kpi-loading" id="paKpiParcelles">—</div><div class="kpi-label">Parcelles tracées</div><div class="kpi-trend trend-neutral" id="paKpiParcellesSub"></div></div>
+        <div class="kpi-card amber"><span class="kpi-icon">🛰️</span><div class="kpi-value kpi-loading" id="paKpiAnalyses">—</div><div class="kpi-label">Analyses de sol</div><div class="kpi-trend trend-neutral" id="paKpiAnalysesSub"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">💰</span><div class="kpi-value kpi-loading" id="paKpiPayees">—</div><div class="kpi-label">Analyses payées</div><div class="kpi-trend trend-up" id="paKpiPayeesSub"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><div class="chart-title">Hectares par région</div><div class="chart-sub">Surface cartographiée</div><div class="chart-wrap"><canvas id="chartParcellesRegion"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Types de sol dominants</div><div class="chart-sub">Parcelles analysées par type</div><div class="chart-wrap"><canvas id="chartParcellesSol"></canvas></div></div>
+      </div>
+      <div class="tables-row">
+        <div class="table-card"><div class="table-title">Répartition par région <span class="badge badge-green">Couverture</span></div><table><thead><tr><th>Région</th><th>Parcelles</th><th>Hectares</th></tr></thead><tbody id="paTableRegions"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody></table></div>
+        <div class="table-card"><div class="table-title">Dernières parcelles <span class="badge badge-blue">Activité</span></div><table><thead><tr><th>Parcelle</th><th>Surface</th><th>Tracé</th><th>Sol</th></tr></thead><tbody id="paTableDernieres"><tr><td colspan="4" class="td-muted">Chargement...</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-correctifs">
+      <div class="page-header">
+        <div><div class="page-title">Correctifs agronomiques</div><div class="page-sub">Corriger une valeur du référentiel sans rediffuser l'application</div></div>
+        <button class="refresh-btn" onclick="loadCorrectifsPage()"><span class="spin">↻</span> Actualiser</button>
+      </div>
+
+      <div class="users-table-card" style="margin-bottom:16px">
+        <div class="users-table-header"><div class="table-title" style="margin-bottom:0">Publier un correctif</div></div>
+        <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label style="font-size:12px;color:#7A9A7A">Champ à corriger<br>
+            <select class="filter-select" id="corChamp" style="margin-top:4px;width:190px"></select></label>
+          <label style="font-size:12px;color:#7A9A7A">Culture<br>
+            <input type="text" id="corCulture" class="search-input" style="width:150px;margin-top:4px" placeholder="ex. Riz"></label>
+          <label style="font-size:12px;color:#7A9A7A">Variété (facultatif)<br>
+            <input type="text" id="corVariete" class="search-input" style="width:150px;margin-top:4px" placeholder="toutes"></label>
+          <label style="font-size:12px;color:#7A9A7A">Ancienne valeur contient<br>
+            <input type="text" id="corMotif" class="search-input" style="width:190px;margin-top:4px" placeholder="ex. %pépinière%"></label>
+          <label style="font-size:12px;color:#7A9A7A;flex:1;min-width:280px">Nouvelle valeur<br>
+            <input type="text" id="corValeur" class="search-input" style="width:100%;margin-top:4px" placeholder="ex. 50 kg/ha en pépinière, repiquage à 25 jours"></label>
+          <label style="font-size:12px;color:#7A9A7A;flex:1;min-width:240px">Motif de la correction<br>
+            <input type="text" id="corCommentaire" class="search-input" style="width:100%;margin-top:4px" placeholder="Pourquoi cette valeur change"></label>
+          <label style="font-size:12px;color:#7A9A7A;display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="corFiches" checked> Appliquer aussi aux productions en cours</label>
+          <button class="export-btn" onclick="publierCorrectif()">Publier</button>
+        </div>
+        <div style="padding:0 16px 16px;font-size:12px;color:#7A9A7A;line-height:1.6">
+          Le correctif s'exécute sur la base de chaque téléphone au démarrage suivant, une seule fois par installation.
+          Les productions clôturées ne sont jamais modifiées : ce sont des archives.
+          Renseignez au moins une culture ou un filtre sur l'ancienne valeur — sans quoi la colonne serait écrasée partout.
+        </div>
+      </div>
+
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Correctifs publiés <span class="badge badge-amber" id="corCountBadge">0</span></div>
+          <div class="users-count">Désactiver n'annule rien sur les téléphones déjà passés</div>
+        </div>
+        <table><thead><tr><th>#</th><th>Champ</th><th>Portée</th><th>Nouvelle valeur</th><th>Motif</th><th>Publié</th><th>État</th></tr></thead><tbody id="corTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="page" id="page-paiements">
+      <div class="page-header">
+        <div><div class="page-title">Paiements Mobile Money</div><div class="page-sub">Validation, recherche et rapprochement avec le relevé marchand</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="refresh-btn" onclick="loadPaiementsPage()"><span class="spin" id="payRefreshIcon">↻</span> Actualiser</button>
+          <button class="export-btn" onclick="exportPaiementsCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card amber"><span class="kpi-icon">⏳</span><div class="kpi-value kpi-loading" id="payKpiAttente">—</div><div class="kpi-label">En attente</div><div class="kpi-trend trend-neutral">à traiter</div></div>
+        <div class="kpi-card green"><span class="kpi-icon">✅</span><div class="kpi-value kpi-loading" id="payKpiValide">—</div><div class="kpi-label">Validés</div><div class="kpi-trend trend-up" id="payKpiEncaisse"></div></div>
+        <div class="kpi-card red"><span class="kpi-icon">❌</span><div class="kpi-value kpi-loading" id="payKpiRejete">—</div><div class="kpi-label">Rejetés</div><div class="kpi-trend trend-neutral">introuvables au relevé</div></div>
+        <div class="kpi-card blue"><span class="kpi-icon">📄</span><div class="kpi-value kpi-loading" id="payKpiAffiches">—</div><div class="kpi-label">Affichés</div><div class="kpi-trend trend-neutral" id="payKpiAffichesSub"></div></div>
+      </div>
+      <div class="search-bar">
+        <input class="search-input" type="text" id="paySearch" placeholder="🔍  Numéro, nom ou identifiant..." onkeydown="if(event.key==='Enter')loadPaiementsPage()"/>
+        <select class="filter-select" id="payStatutFilter" onchange="loadPaiementsPage()">
+          <option value="attente">En attente</option>
+          <option value="valide">Validés</option>
+          <option value="rejete">Rejetés</option>
+          <option value="tous">Tous</option>
+        </select>
+        <button class="export-btn" onclick="loadPaiementsPage()">Rechercher</button>
+      </div>
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Paiements <span class="badge badge-amber" id="payCountBadge">0</span></div>
+          <div class="users-count">Le rapprochement se fait avec le relevé de votre compte marchand</div>
+        </div>
+        <table><thead><tr><th>Reçu</th><th>Montant</th><th>Opérateur</th><th>Payeur</th><th>Achat</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="payTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+    </div>
+
     <div class="page" id="page-pdfs">
       <div class="page-header">
         <div><div class="page-title">Formations PDF</div><div class="page-sub">Gestion du catalogue de formations agricoles</div></div>
@@ -379,6 +541,15 @@
           <button class="export-btn" onclick="addPdfModal()">+ Ajouter</button>
         </div>
       </div>
+      <!-- File d'attente de relecture -->
+      <div class="users-table-card" id="revueCard" style="display:none;margin-bottom:16px">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Documents à relire <span class="badge badge-amber" id="revueCountBadge">0</span></div>
+          <div class="users-count">Invisibles dans l'application tant qu'ils ne sont pas publiés</div>
+        </div>
+        <div id="revueList"></div>
+      </div>
+
       <div class="kpi-grid">
         <div class="kpi-card green"><span class="kpi-icon">📚</span><div class="kpi-value kpi-loading" id="pKpiTotal">—</div><div class="kpi-label">Formations</div><div class="kpi-trend trend-neutral" id="pKpiTotalSub"></div></div>
         <div class="kpi-card amber"><span class="kpi-icon">💰</span><div class="kpi-value kpi-loading" id="pKpiRevenu">—</div><div class="kpi-label">Revenus FCFA</div><div class="kpi-trend trend-up" id="pKpiRevenuSub"></div></div>
@@ -1228,7 +1399,9 @@ async function adminFetch(functionName, options = {}) {
 // ════════════════════════════════════════════════════════════════════
 function showPage(name) {
   // Vérifier si l'utilisateur a accès à cette page
-  const restrictedPages = ['admins'];
+  // Créer un compte partenaire ouvre l'accès aux données de bénéficiaires :
+  // même niveau de restriction que la gestion des administrateurs.
+  const restrictedPages = ['admins', 'partenaires'];
 if (restrictedPages.includes(name) && currentUser?.role !== 'super_admin') {
   toast('Accès non autorisé - Permissions insuffisantes', 'error');
   return;
@@ -1247,6 +1420,10 @@ if (restrictedPages.includes(name) && currentUser?.role !== 'super_admin') {
   if (name==='regles')       loadReglesPage();
   if (name==='admins')       loadAdminsPage();
   if (name==='update')        loadUpdatePage();
+  if (name==='paiements')    loadPaiementsPage();
+  if (name==='correctifs')   loadCorrectifsPage();
+  if (name==='parcelles')    loadParcellesPage();
+  if (name==='partenaires')  loadPartenairesPage();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1286,7 +1463,7 @@ async function loadDashboard() {
   icon.classList.add('spinning');
   try {
     paiementsStats = await loadPaiementsStats();
-    await Promise.all([loadKPIs(),loadRevenueChart(),loadCulturesChart(),loadTableFormations(),loadTableSources(),loadTableScores(),loadTableBoutiques(),loadTableDiagnostics()]);
+    await Promise.all([loadKPIs(),loadRevenueChart(),loadCulturesChart(),loadRetraits(),loadTableFormations(),loadTableSources(),loadTableScores(),loadTableBoutiques(),loadTableDiagnostics()]);
     document.getElementById('lastUpdate').textContent = `Mis à jour le ${new Date().toLocaleString('fr-FR')}`;
     document.getElementById('syncStatus').innerHTML = '<span class="dot dot-green"></span>Données à jour';
     document.getElementById('syncStatus').className = 'alert-chip ok';
@@ -1355,6 +1532,493 @@ async function loadTableFormations() {
   const pdfs=await adminFetch('get-pdfs');
   const rows=[...pdfs].sort((a,b)=>b._revenue-a._revenue).slice(0,5);
   document.getElementById('tableFormations').innerHTML=rows.map(r=>`<tr><td>${esc(r.title.length>28?r.title.slice(0,28)+'…':r.title)}</td><td>${r._sales}</td><td class="trend-up">${r._revenue.toLocaleString('fr-FR')}</td></tr>`).join('')||'<tr><td colspan="3" class="td-muted">Aucune vente</td></tr>';
+}
+
+// ── Partenaires : organisations, comptes, programmes ────────────────────────
+// Ces trois objets se créaient en SQL. Donner un accès SQL à quelqu'un pour
+// qu'il crée un compte revient à lui confier toute la base.
+let partenairesData = null;
+
+const PART_ROLES = { ong: 'ONG', microfinance: 'Microfinance', etat: 'Ministère' };
+
+async function loadPartenairesPage() {
+  try {
+    partenairesData = await adminFetch('admin-partenaires');
+  } catch(e) {
+    document.getElementById('orgTableBody').innerHTML =
+      `<tr><td colspan="5" class="td-muted">${esc(e.message)}</td></tr>`;
+    return;
+  }
+  const d = partenairesData;
+
+  document.getElementById('orgTableBody').innerHTML = d.organisations.length
+    ? d.organisations.map(o => `<tr>
+        <td>${esc(o.nom)}</td>
+        <td>${esc(PART_ROLES[o.type] || o.type || '—')}</td>
+        <td class="td-muted" style="font-size:12px">${esc(o.contact || '—')}</td>
+        <td>${o.user_quota || 50}</td>
+        <td>${o.is_active !== false
+          ? `<span class="badge badge-green">Active</span> <button class="export-btn" onclick="basculerPartenaire('organisation',${o.id},false)">Désactiver</button>`
+          : `<span class="badge badge-red">Inactive</span> <button class="export-btn" onclick="basculerPartenaire('organisation',${o.id},true)">Réactiver</button>`}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="td-muted">Aucune organisation</td></tr>';
+
+  // Les listes déroulantes se remplissent des organisations actives : créer un
+  // compte rattaché à une organisation désactivée n'aurait aucun sens.
+  const options = d.organisations.filter(o => o.is_active !== false)
+    .map(o => `<option value="${o.id}">${esc(o.nom)}</option>`).join('');
+  const cptOrg = document.getElementById('cptOrg');
+  const prjOrg = document.getElementById('prjOrg');
+  if (cptOrg) cptOrg.innerHTML = options || '<option value="">Créez d\'abord une organisation</option>';
+  if (prjOrg) prjOrg.innerHTML = options || '<option value="">Créez d\'abord une organisation</option>';
+
+  document.getElementById('cptTableBody').innerHTML = d.comptes.length
+    ? d.comptes.map(c => `<tr>
+        <td><strong>${esc(c.username)}</strong></td>
+        <td>${esc(c.name || '—')}</td>
+        <td>${esc(c.organisation || '—')}<br><span class="td-muted" style="font-size:11px">${esc(c.region || 'National')}</span></td>
+        <td>${esc(PART_ROLES[c.role] || c.role)}</td>
+        <td class="td-muted" style="font-size:12px">${c.last_login ? new Date(c.last_login).toLocaleDateString('fr-FR') : 'jamais'}</td>
+        <td>
+          <button class="export-btn" onclick="reinitialiserMotDePasse(${c.id}, '${esc(c.username)}')">🔑 Réinitialiser</button>
+          ${c.is_active !== false
+            ? `<button class="export-btn" onclick="basculerPartenaire('compte',${c.id},false)">Désactiver</button>`
+            : `<button class="export-btn" onclick="basculerPartenaire('compte',${c.id},true)">Réactiver</button>`}
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" class="td-muted">Aucun compte</td></tr>';
+
+  document.getElementById('prjTableBody').innerHTML = d.projets.length
+    ? d.projets.map(p => `<tr>
+        <td>${esc(p.nom)}<br><span class="td-muted" style="font-size:11px">${esc(p.organisation || '—')}</span></td>
+        <td><strong>${esc(p.code_inscription || '—')}</strong></td>
+        <td>${p.beneficiaires || 0}</td>
+        <td>${p.is_active !== false
+          ? `<span class="badge badge-green">Actif</span> <button class="export-btn" onclick="basculerPartenaire('projet',${p.id},false)">Clôturer</button>`
+          : `<span class="badge badge-red">Clôturé</span> <button class="export-btn" onclick="basculerPartenaire('projet',${p.id},true)">Rouvrir</button>`}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" class="td-muted">Aucun programme</td></tr>';
+}
+
+async function creerOrganisation() {
+  const nom = document.getElementById('orgNom')?.value.trim();
+  if (!nom) { toast('Indiquez le nom', 'error'); return; }
+  try {
+    await adminFetch('admin-partenaires', { method: 'POST', body: {
+      type: 'organisation',
+      nom,
+      type_org: document.getElementById('orgType')?.value,
+      contact: document.getElementById('orgContact')?.value.trim(),
+      user_quota: parseInt(document.getElementById('orgQuota')?.value || '50', 10),
+    }});
+    toast('Organisation créée');
+    ['orgNom','orgContact'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    await loadPartenairesPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function creerCompte() {
+  const username = document.getElementById('cptUser')?.value.trim();
+  if (!username) { toast("Indiquez l'identifiant", 'error'); return; }
+  const organisation_id = parseInt(document.getElementById('cptOrg')?.value || '0', 10);
+  try {
+    const r = await adminFetch('admin-partenaires', { method: 'POST', body: {
+      type: 'compte',
+      username,
+      name: document.getElementById('cptNom')?.value.trim(),
+      organisation_id: organisation_id || null,
+      region: document.getElementById('cptRegion')?.value.trim(),
+      role: document.getElementById('cptRole')?.value,
+      mot_de_passe: document.getElementById('cptMdp')?.value.trim(),
+    }});
+    // Le mot de passe n'existe plus qu'en empreinte après cet instant : s'il
+    // n'est pas noté maintenant, il faudra le réinitialiser.
+    prompt(
+      `Compte créé. Transmettez ces identifiants au partenaire — le mot de passe ne pourra plus être relu :`,
+      `Identifiant : ${username}\nMot de passe : ${r.mot_de_passe}`
+    );
+    ['cptUser','cptNom','cptMdp','cptRegion'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    await loadPartenairesPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function creerProjet() {
+  const nom = document.getElementById('prjNom')?.value.trim();
+  const organisation_id = parseInt(document.getElementById('prjOrg')?.value || '0', 10);
+  if (!nom) { toast('Indiquez le nom du programme', 'error'); return; }
+  if (!organisation_id) { toast("Créez d'abord une organisation", 'error'); return; }
+  try {
+    const r = await adminFetch('admin-partenaires', { method: 'POST', body: {
+      type: 'projet', nom, organisation_id,
+      bailleur: document.getElementById('prjBailleur')?.value.trim(),
+      code_inscription: document.getElementById('prjCode')?.value.trim(),
+    }});
+    prompt('Programme créé. Code à communiquer aux agriculteurs :', r.projet.code_inscription);
+    ['prjNom','prjCode','prjBailleur'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    await loadPartenairesPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function reinitialiserMotDePasse(id, username) {
+  if (!confirm(`Réinitialiser le mot de passe de ${username} ? L'ancien cessera immédiatement de fonctionner.`)) return;
+  try {
+    const r = await adminFetch('admin-partenaires', { method: 'PATCH', body: { type: 'motdepasse', id } });
+    prompt(`Nouveau mot de passe pour ${username} — notez-le, il ne sera plus lisible :`, r.mot_de_passe);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function basculerPartenaire(type, id, actif) {
+  try {
+    await adminFetch('admin-partenaires', { method: 'PATCH', body: { type, id, actif } });
+    toast(actif ? 'Réactivé' : 'Désactivé');
+    await loadPartenairesPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Parcelles et analyses de sol ────────────────────────────────────────────
+// « Combien d'hectares suivez-vous ? » est la première question d'un jury.
+// Ces chiffres n'existaient nulle part ailleurs que dans la base.
+let parcellesStats = null;
+let chartParcellesRegion = null, chartParcellesSol = null;
+
+async function loadParcellesPage() {
+  try {
+    parcellesStats = await adminFetch('admin-parcelles-stats');
+  } catch(e) {
+    document.getElementById('paTableRegions').innerHTML =
+      `<tr><td colspan="3" class="td-muted">${esc(e.message)}</td></tr>`;
+    return;
+  }
+  const s = parcellesStats;
+
+  setKPI('paKpiHectares', s.hectares_total.toLocaleString('fr-FR'));
+  document.getElementById('paKpiHectaresSub').textContent =
+    `${s.surface_moyenne_ha} ha en moyenne par parcelle`;
+  setKPI('paKpiParcelles', s.parcelles_total);
+  document.getElementById('paKpiParcellesSub').textContent =
+    `${s.agriculteurs_avec_parcelle} agriculteur(s) · ${s.par_methode.gps} au GPS`;
+  setKPI('paKpiAnalyses', s.analyses_lancees);
+  document.getElementById('paKpiAnalysesSub').textContent =
+    `${s.parcelles_total ? Math.round(s.analyses_lancees / s.parcelles_total * 100) : 0}% des parcelles`;
+  setKPI('paKpiPayees', s.analyses_payees);
+  document.getElementById('paKpiPayeesSub').textContent =
+    `${(s.revenu_analyses || 0).toLocaleString('fr-FR')} FCFA`;
+
+  document.getElementById('paTableRegions').innerHTML = s.par_region.length
+    ? s.par_region.map(r => `<tr><td>${esc(r.region)}</td><td>${r.parcelles}</td><td class="trend-up">${r.hectares.toLocaleString('fr-FR')} ha</td></tr>`).join('')
+    : '<tr><td colspan="3" class="td-muted">Aucune parcelle</td></tr>';
+
+  document.getElementById('paTableDernieres').innerHTML = s.dernieres.length
+    ? s.dernieres.map(p => `<tr>
+        <td>${esc(p.nom || 'Sans nom')}<br><span class="td-muted" style="font-size:11px">${esc(p.culture || p.region)}</span></td>
+        <td>${p.hectares.toLocaleString('fr-FR')} ha</td>
+        <td>${p.methode === 'gps' ? 'Marche GPS' : 'Carte'}</td>
+        <td>${p.analysee ? '<span class="badge badge-green">Analysée</span>' : '<span class="td-muted">—</span>'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" class="td-muted">Aucune parcelle</td></tr>';
+
+  const couleurs = ['#36AF3B','#C8A84B','#4A9EE0','#E05252','#9B59B6','#E67E22','#1ABC9C'];
+
+  const regions = s.par_region.slice(0, 7);
+  if (chartParcellesRegion) chartParcellesRegion.destroy();
+  chartParcellesRegion = new Chart(document.getElementById('chartParcellesRegion'), {
+    type: 'bar',
+    data: { labels: regions.map(r => r.region), datasets: [{ data: regions.map(r => r.hectares),
+      backgroundColor: 'rgba(54,175,59,0.2)', borderColor: '#36AF3B', borderWidth: 2, borderRadius: 6, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { grid: { color: '#2A3A2A' }, ticks: { color: '#7A9A7A', font: { size: 11 } } },
+                y: { grid: { color: '#2A3A2A' }, ticks: { color: '#7A9A7A', font: { size: 11 } } } } },
+  });
+
+  const sols = s.par_sol.slice(0, 7);
+  if (chartParcellesSol) chartParcellesSol.destroy();
+  chartParcellesSol = new Chart(document.getElementById('chartParcellesSol'), {
+    type: 'doughnut',
+    data: { labels: sols.map(x => x.sol), datasets: [{ data: sols.map(x => x.parcelles),
+      backgroundColor: couleurs.map(c => c + '99'), borderColor: couleurs, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#7A9A7A', font: { size: 11 }, boxWidth: 12, padding: 10 } } } },
+  });
+}
+
+function copierChiffresParcelles() {
+  // Pour un pitch ou une réponse à un partenaire : les chiffres formulés,
+  // pas un tableau à relire.
+  if (!parcellesStats) { toast('Chargez la page d\'abord', 'error'); return; }
+  const s = parcellesStats;
+  const texte = [
+    `${s.hectares_total.toLocaleString('fr-FR')} hectares suivis`,
+    `${s.parcelles_total} parcelles cartographiées par ${s.agriculteurs_avec_parcelle} agriculteurs`,
+    `${s.par_methode.gps} tracées à la marche GPS sur le terrain`,
+    `${s.analyses_lancees} analyses de sol lancées, dont ${s.analyses_payees} payées`,
+    `Surface moyenne : ${s.surface_moyenne_ha} ha`,
+  ].join('\n');
+  navigator.clipboard.writeText(texte)
+    .then(() => toast('Chiffres copiés'))
+    .catch(() => toast('Copie impossible', 'error'));
+}
+
+// ── Correctifs agronomiques ─────────────────────────────────────────────────
+// Le référentiel vit dans la base Room de chaque téléphone. Sans ce canal,
+// corriger un dosage d'engrais imposerait de rediffuser l'APK et l'erreur
+// resterait des semaines chez les utilisateurs.
+let correctifsChamps = [];
+
+const COR_LIBELLES = {
+  sowingDate: 'Date de semis', cultivationMode: 'Mode de culture',
+  rowSpacing: 'Écartement lignes', plantSpacing: 'Écartement plants',
+  seedDensity: 'Densité de semis', organicAmendment: 'Fumure organique',
+  ureaSupply: 'Apport urée', npkFirstSupply: 'NPK 1er apport',
+  npkSecondSupply: 'NPK 2e apport', weeding: 'Sarclage', hoeing: 'Binage',
+  herbicide: 'Désherbage', phytosanitary: 'Phytosanitaire',
+  harvestDate: 'Date de récolte', estimatedYield: 'Rendement estimé',
+};
+
+async function loadCorrectifsPage() {
+  const corps = document.getElementById('corTableBody');
+  if (!corps) return;
+  let r;
+  try {
+    r = await adminFetch('admin-correctifs');
+  } catch(e) {
+    corps.innerHTML = `<tr><td colspan="7" class="td-muted">${esc(e.message)}</td></tr>`;
+    return;
+  }
+
+  correctifsChamps = r.champs || [];
+  const select = document.getElementById('corChamp');
+  if (select && !select.options.length) {
+    select.innerHTML = correctifsChamps
+      .map(c => `<option value="${esc(c)}">${esc(COR_LIBELLES[c] || c)}</option>`).join('');
+  }
+
+  const liste = r.correctifs || [];
+  document.getElementById('corCountBadge').textContent = liste.length;
+  corps.innerHTML = liste.length ? liste.map(c => `
+    <tr>
+      <td>${c.id}</td>
+      <td>${esc(COR_LIBELLES[c.champ] || c.champ)}</td>
+      <td>${esc(c.culture || 'toutes cultures')}${c.variete ? ' · ' + esc(c.variete) : ''}${c.motif_like ? `<br><span class="td-muted" style="font-size:11px">contient ${esc(c.motif_like)}</span>` : ''}</td>
+      <td style="max-width:260px">${esc(c.nouvelle_valeur)}</td>
+      <td class="td-muted" style="font-size:12px;max-width:200px">${esc(c.commentaire || '—')}</td>
+      <td class="td-muted" style="font-size:12px">${new Date(c.created_at).toLocaleDateString('fr-FR')}<br>${esc(c.created_by || '')}</td>
+      <td>${c.actif
+        ? `<span class="badge badge-green">Actif</span><br><button class="export-btn" style="margin-top:6px" onclick="basculerCorrectif(${c.id}, false)">Désactiver</button>`
+        : `<span class="badge badge-red">Inactif</span><br><button class="export-btn" style="margin-top:6px" onclick="basculerCorrectif(${c.id}, true)">Réactiver</button>`}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="7" class="td-muted">Aucun correctif publié</td></tr>';
+}
+
+async function publierCorrectif() {
+  const champ = document.getElementById('corChamp')?.value;
+  const valeur = document.getElementById('corValeur')?.value.trim();
+  const culture = document.getElementById('corCulture')?.value.trim();
+  const motif = document.getElementById('corMotif')?.value.trim();
+
+  if (!valeur) { toast('Indiquez la nouvelle valeur', 'error'); return; }
+  if (!culture && !motif) {
+    toast("Indiquez une culture ou un filtre sur l'ancienne valeur", 'error');
+    return;
+  }
+  // La confirmation rappelle la portée : un correctif s'exécute chez tous les
+  // utilisateurs et ne se retire pas de ceux qui l'ont déjà appliqué.
+  if (!confirm(`Publier ce correctif ?\n\n${COR_LIBELLES[champ] || champ} → « ${valeur} »\nPortée : ${culture || 'toutes les cultures'}${motif ? ', valeurs contenant ' + motif : ''}\n\nIl s'appliquera sur tous les téléphones et ne pourra pas être annulé sur ceux qui l'auront déjà passé.`)) return;
+
+  try {
+    await adminFetch('admin-correctifs', { method: 'POST', body: {
+      champ,
+      nouvelle_valeur: valeur,
+      culture: culture || null,
+      variete: document.getElementById('corVariete')?.value.trim() || null,
+      motif_like: motif || null,
+      appliquer_aux_fiches: document.getElementById('corFiches')?.checked !== false,
+      commentaire: document.getElementById('corCommentaire')?.value.trim() || null,
+    }});
+    toast('Correctif publié');
+    ['corValeur','corCulture','corVariete','corMotif','corCommentaire']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    await loadCorrectifsPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function basculerCorrectif(id, actif) {
+  try {
+    await adminFetch('admin-correctifs', { method: 'PATCH', body: { id, actif } });
+    toast(actif ? 'Correctif réactivé' : 'Correctif désactivé');
+    await loadCorrectifsPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Paiements Mobile Money ──────────────────────────────────────────────────
+// Second chemin de validation, à côté des boutons Telegram. Le bot est le
+// chemin rapide ; celui-ci existe pour les jours où le téléphone est perdu,
+// le bot révoqué ou le réseau absent — un agriculteur qui a payé et reste
+// bloqué ne recommence pas.
+let paiementsAffiches = [];
+
+const PAY_OBJETS = {
+  analyse_sol: 'Analyse de sol',
+  pdf: 'Document PDF',
+  marche: 'Mise en relation',
+};
+
+const PAY_STATUTS = {
+  attente: { libelle: 'En attente', badge: 'badge-amber' },
+  valide:  { libelle: 'Validé',     badge: 'badge-green' },
+  rejete:  { libelle: 'Rejeté',     badge: 'badge-red'   },
+};
+
+async function loadPaiementsPage() {
+  const corps = document.getElementById('payTableBody');
+  if (!corps) return;
+  const statut = document.getElementById('payStatutFilter')?.value || 'attente';
+  const q = (document.getElementById('paySearch')?.value || '').trim();
+
+  corps.innerHTML = '<tr><td colspan="7" class="td-muted">Chargement...</td></tr>';
+  let r;
+  try {
+    r = await adminFetch(`admin-paiements?statut=${encodeURIComponent(statut)}&q=${encodeURIComponent(q)}`);
+  } catch(e) {
+    corps.innerHTML = `<tr><td colspan="7" class="td-muted">${esc(e.message)}</td></tr>`;
+    return;
+  }
+
+  paiementsAffiches = r.paiements || [];
+  const c = r.cumul || {};
+  setKPI('payKpiAttente', c.attente || 0);
+  setKPI('payKpiValide',  c.valide  || 0);
+  setKPI('payKpiRejete',  c.rejete  || 0);
+  setKPI('payKpiAffiches', paiementsAffiches.length);
+  document.getElementById('payKpiEncaisse').textContent = `${(c.encaisse || 0).toLocaleString('fr-FR')} FCFA encaissés`;
+  document.getElementById('payKpiAffichesSub').textContent = q ? `recherche « ${q} »` : 'sur ce filtre';
+  document.getElementById('payCountBadge').textContent = paiementsAffiches.length;
+
+  if (!paiementsAffiches.length) {
+    corps.innerHTML = '<tr><td colspan="7" class="td-muted">Aucun paiement</td></tr>';
+    return;
+  }
+
+  corps.innerHTML = paiementsAffiches.map(p => {
+    const st = PAY_STATUTS[p.statut] || { libelle: p.statut, badge: 'badge-amber' };
+    const recu = new Date(p.created_at);
+    const actions = p.statut === 'attente'
+      ? `<button class="export-btn" onclick="validerPaiement(${p.id})">✅ Valider</button>
+         <button class="export-btn" onclick="rejeterPaiement(${p.id})">❌ Rejeter</button>`
+      : `<span class="td-muted" style="font-size:12px">${esc(p.valide_par || '—')}${p.valide_le ? ' · ' + new Date(p.valide_le).toLocaleDateString('fr-FR') : ''}</span>`;
+    return `<tr>
+      <td>${recu.toLocaleDateString('fr-FR')}<br><span class="td-muted" style="font-size:11px">${recu.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td><strong>${(p.montant || 0).toLocaleString('fr-FR')}</strong> FCFA</td>
+      <td>${p.operateur === 'moov' ? 'Moov Money' : 'Orange Money'}</td>
+      <td>${esc(p.numero_payeur || '—')}<br><span class="td-muted" style="font-size:11px">${esc(p.nom_utilisateur || ('#' + p.user_id))}</span></td>
+      <td>${esc(PAY_OBJETS[p.objet_type] || p.objet_type)}</td>
+      <td><span class="badge ${st.badge}">${st.libelle}</span>${p.motif_rejet ? `<br><span class="td-muted" style="font-size:11px">${esc(p.motif_rejet)}</span>` : ''}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function validerPaiement(id) {
+  const p = paiementsAffiches.find(x => x.id === id);
+  // La confirmation rappelle le montant et le numéro : valider sans avoir
+  // constaté le versement ouvre un contenu payant que personne n'a payé.
+  if (!confirm(`Avez-vous bien reçu ${(p?.montant || 0).toLocaleString('fr-FR')} FCFA du ${p?.numero_payeur || '?'} sur le compte marchand ?`)) return;
+  try {
+    await adminFetch('admin-paiements', { method: 'POST', body: { id, action: 'valider' } });
+    toast('Paiement validé');
+    await loadPaiementsPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function rejeterPaiement(id) {
+  const motif = prompt("Motif du rejet — l'agriculteur le recevra :", "Versement introuvable sur le compte marchand.");
+  if (motif === null) return;
+  if (motif.trim().length < 5) { toast('Indiquez un motif', 'error'); return; }
+  try {
+    await adminFetch('admin-paiements', { method: 'POST', body: { id, action: 'rejeter', motif: motif.trim() } });
+    toast('Paiement rejeté');
+    await loadPaiementsPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function exportPaiementsCSV() {
+  if (!paiementsAffiches.length) { toast('Rien à exporter', 'error'); return; }
+  // Point-virgule et BOM : Excel en configuration française ouvre autrement
+  // tout sur une seule colonne, et mange les accents.
+  const entetes = ['id','date','montant','operateur','numero','client','achat','statut','valide_par','valide_le'];
+  const lignes = paiementsAffiches.map(p => [
+    p.id, p.created_at, p.montant, p.operateur, p.numero_payeur,
+    (p.nom_utilisateur || '').replace(/;/g, ','), p.objet_type, p.statut,
+    p.valide_par || '', p.valide_le || '',
+  ].join(';'));
+  const csv = '﻿' + entetes.join(';') + '\n' + lignes.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `paiements_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Retraits des auteurs ────────────────────────────────────────────────────
+// Doublon assumé avec les boutons Telegram : l'alerte prévient sur le
+// téléphone, cette file sert au traitement au calme. Les deux écrivent avec le
+// même filtre sur « attente », donc traiter d'un côté ferme l'autre.
+async function loadRetraits() {
+  const carte = document.getElementById('retraitsCard');
+  const liste = document.getElementById('retraitsList');
+  if (!carte || !liste) return;
+  let demandes = [];
+  try {
+    const r = await adminFetch('admin-retraits');
+    demandes = r.demandes || [];
+  } catch(e) {
+    console.warn('File des retraits indisponible :', e.message);
+    carte.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('retraitsCountBadge').textContent = demandes.length;
+  carte.style.display = demandes.length ? '' : 'none';
+  if (!demandes.length) return;
+
+  liste.innerHTML = demandes.map(d => `
+    <div style="padding:16px;border-bottom:1px solid #2A3A2A">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:600">${(d.montant||0).toLocaleString('fr-FR')} FCFA — ${d.operateur === 'moov' ? 'Moov Money' : 'Orange Money'}</div>
+          <div class="td-muted" style="font-size:12px;margin-top:2px">${esc(d.auteur || d.auteur_id)} · ${esc(d.numero)} · ${new Date(d.created_at).toLocaleDateString('fr-FR')}</div>
+        </div>
+        <div class="td-muted" style="font-size:13px">Code : <strong>${esc(d.code_ussd)}</strong></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+        <label style="font-size:12px;color:#7A9A7A">Référence du transfert (facultative)<br>
+          <input type="text" id="ref_${d.id}" class="search-input" style="width:220px;margin-top:4px" placeholder="ex. OM240730.1543.A12345"></label>
+        <button class="export-btn" onclick="payerRetrait(${d.id})">✅ Marquer payé</button>
+        <button class="export-btn" onclick="refuserRetrait(${d.id})">❌ Refuser</button>
+      </div>
+    </div>`).join('');
+}
+
+async function payerRetrait(id) {
+  // La confirmation n'est pas décorative : marquer payé sans avoir transféré
+  // débite le solde de l'auteur sans qu'il ait rien reçu.
+  if (!confirm("Confirmez-vous avoir effectué le transfert ? Le solde de l'auteur sera débité.")) return;
+  const reference = document.getElementById('ref_' + id)?.value || '';
+  try {
+    await adminFetch('admin-retraits', { method: 'POST', body: { id, action: 'payer', reference } });
+    toast('Retrait marqué payé');
+    await loadRetraits();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function refuserRetrait(id) {
+  const motif = prompt("Motif du refus — l'auteur le lira :");
+  if (motif === null) return;
+  if (motif.trim().length < 5) { toast('Indiquez un motif', 'error'); return; }
+  try {
+    await adminFetch('admin-retraits', { method: 'POST', body: { id, action: 'refuser', motif: motif.trim() } });
+    toast('Demande refusée');
+    await loadRetraits();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function loadTableSources() {
@@ -1770,9 +2434,88 @@ let chartPdfVentes = null,
 // LOAD PAGE
 // ════════════════════════════════════════════════════════════════════
 
+// ── File d'attente de relecture ─────────────────────────────────────────────
+// Un document déposé par un créateur n'entre pas en vente tout seul : il est
+// relu ici, et c'est au moment de le publier qu'on lui donne son prix. Fixer
+// le prix après coup laisserait une fenêtre pendant laquelle il serait gratuit.
+let revueDocs = [];
+
+async function loadRevueQueue() {
+  const carte = document.getElementById('revueCard');
+  const liste = document.getElementById('revueList');
+  if (!carte || !liste) return;
+  try {
+    const r = await adminFetch('admin-pdf-revue');
+    revueDocs = r.documents || [];
+  } catch(e) {
+    // Fonction pas encore déployée : la section catalogue doit continuer de
+    // s'afficher normalement.
+    console.warn('File de relecture indisponible :', e.message);
+    carte.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('revueCountBadge').textContent = revueDocs.length;
+  carte.style.display = revueDocs.length ? '' : 'none';
+  if (!revueDocs.length) return;
+
+  liste.innerHTML = revueDocs.map(d => `
+    <div class="revue-item" style="padding:16px;border-bottom:1px solid #2A3A2A">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <div style="font-weight:600">${esc(d.title || 'Sans titre')}</div>
+          <div class="td-muted" style="font-size:12px;margin-top:2px">${esc(d.category || 'Formation')}${d.depose_le ? ' · déposé le ' + new Date(d.depose_le).toLocaleDateString('fr-FR') : ''}</div>
+          ${d.description ? `<div class="td-muted" style="font-size:12px;margin-top:6px">${esc(d.description)}</div>` : ''}
+        </div>
+        <div>
+          ${d.lien ? `<a href="${esc(d.lien)}" target="_blank" rel="noopener" class="export-btn">📄 Lire le document</a>` : '<span class="td-muted">Fichier introuvable</span>'}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+        <label style="font-size:12px;color:#7A9A7A">Prix de vente (FCFA)<br>
+          <input type="number" min="1" step="50" id="prix_${d.id}" class="search-input" style="width:150px;margin-top:4px" placeholder="ex. 1000"></label>
+        <label style="font-size:12px;color:#7A9A7A">Part de l'auteur (FCFA)<br>
+          <input type="number" min="0" step="50" id="part_${d.id}" class="search-input" style="width:150px;margin-top:4px" placeholder="ex. 500"></label>
+        <button class="export-btn" onclick="publierDocument(${d.id})">✅ Publier</button>
+        <button class="export-btn" onclick="refuserDocument(${d.id})">❌ Refuser</button>
+      </div>
+    </div>`).join('');
+}
+
+async function publierDocument(id) {
+  const prix = parseInt(document.getElementById('prix_' + id)?.value || '0', 10);
+  const part = parseInt(document.getElementById('part_' + id)?.value || '0', 10);
+  if (!prix || prix <= 0) { toast('Indiquez un prix de vente supérieur à zéro', 'error'); return; }
+  if (part > prix) { toast("La part de l'auteur ne peut pas dépasser le prix de vente", 'error'); return; }
+  try {
+    await adminFetch('admin-pdf-revue', {
+      method: 'POST',
+      body: { id, action: 'publier', price: prix, price_per_download: part },
+    });
+    toast('Document publié');
+    await loadPdfsPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function refuserDocument(id) {
+  const motif = prompt("Motif du refus — le créateur le lira pour corriger :");
+  if (motif === null) return;
+  if (motif.trim().length < 5) { toast('Indiquez un motif', 'error'); return; }
+  try {
+    await adminFetch('admin-pdf-revue', {
+      method: 'POST',
+      body: { id, action: 'refuser', motif: motif.trim() },
+    });
+    toast('Document refusé');
+    await loadPdfsPage();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 async function loadPdfsPage() {
 
   try {
+
+    await loadRevueQueue();
 
     // Chargement PDFs
     allPdfs = await adminFetch('get-pdfs');
