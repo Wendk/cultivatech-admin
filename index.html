@@ -292,11 +292,12 @@
         <div class="kpi-card red"><span class="kpi-icon">🔍</span><div class="kpi-value kpi-loading" id="kpiDiagnostics">—</div><div class="kpi-label">Diagnostics</div><div class="kpi-trend trend-neutral" id="kpiDiagnosticsSub"></div></div>
       </div>
       <div class="charts-row">
-        <div class="chart-card"><div class="chart-title">Revenus mensuels</div><div class="chart-sub">Achats formations PDF (FCFA)</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Revenus mensuels</div><div class="chart-sub">Formations PDF et analyses de sol (FCFA)</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
         <div class="chart-card"><div class="chart-title">Cultures les plus plantées</div><div class="chart-sub">Répartition des productions actives</div><div class="chart-wrap"><canvas id="chartCultures"></canvas></div></div>
       </div>
       <div class="tables-row">
         <div class="table-card"><div class="table-title">Top formations vendues <span class="badge badge-amber">Revenus</span></div><table><thead><tr><th>Formation</th><th>Ventes</th><th>FCFA</th></tr></thead><tbody id="tableFormations"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody></table></div>
+        <div class="table-card"><div class="table-title">Revenus par source <span class="badge badge-amber">Consolidé</span></div><table><thead><tr><th>Source</th><th>Ventes</th><th>FCFA</th></tr></thead><tbody id="tableSources"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody></table></div>
         <div class="table-card"><div class="table-title">Scores agricoles <span class="badge badge-green">Microfinance</span></div><table><thead><tr><th>Agriculteur</th><th>Score</th><th>Statut</th></tr></thead><tbody id="tableScores"><tr><td colspan="3" class="td-muted">Chargement...</td></tr></tbody></table></div>
       </div>
       <div class="tables-row">
@@ -1264,11 +1265,28 @@ function setKPI(vid, val, sid, sub) {
 // ════════════════════════════════════════════════════════════════════
 let chartRevenue=null, chartCultures=null;
 
+// Revenus Mobile Money : analyses de sol et mises en relation. Les achats de
+// PDF sont comptés à part par get-admin-stats — sans cette seconde source, le
+// KPI « Revenus » ignorait purement et simplement les analyses de sol vendues.
+let paiementsStats = null;
+
+async function loadPaiementsStats() {
+  try {
+    return await adminFetch('get-paiements-stats');
+  } catch(e) {
+    // Fonction pas encore déployée ou indisponible : le tableau de bord
+    // continue d'afficher les revenus PDF plutôt que de tomber en panne.
+    console.warn('Revenus Mobile Money indisponibles :', e.message);
+    return null;
+  }
+}
+
 async function loadDashboard() {
   const icon = document.getElementById('refreshIcon');
   icon.classList.add('spinning');
   try {
-    await Promise.all([loadKPIs(),loadRevenueChart(),loadCulturesChart(),loadTableFormations(),loadTableScores(),loadTableBoutiques(),loadTableDiagnostics()]);
+    paiementsStats = await loadPaiementsStats();
+    await Promise.all([loadKPIs(),loadRevenueChart(),loadCulturesChart(),loadTableFormations(),loadTableSources(),loadTableScores(),loadTableBoutiques(),loadTableDiagnostics()]);
     document.getElementById('lastUpdate').textContent = `Mis à jour le ${new Date().toLocaleString('fr-FR')}`;
     document.getElementById('syncStatus').innerHTML = '<span class="dot dot-green"></span>Données à jour';
     document.getElementById('syncStatus').className = 'alert-chip ok';
@@ -1286,8 +1304,18 @@ async function loadKPIs() {
   document.getElementById('kpiUsers').textContent = stats.users_total || 0
   document.getElementById('kpiUsersNew').innerHTML = `+${stats.users_new_this_month} ce mois`
   
-  document.getElementById('kpiRevenue').textContent = (stats.revenue_total || 0).toLocaleString('fr-FR')
-  document.getElementById('kpiRevenueSub').innerHTML = `${stats.purchases_count} achats`
+  const revenuPdf    = stats.revenue_total   || 0
+  const revenuMobile = paiementsStats?.revenu_total || 0
+  const ventesPdf    = stats.purchases_count || 0
+  const ventesMobile = paiementsStats?.ventes_total || 0
+
+  document.getElementById('kpiRevenue').textContent =
+    (revenuPdf + revenuMobile).toLocaleString('fr-FR')
+  // La ventilation s'affiche dès qu'il y a deux sources : un total consolidé
+  // sans détail est invérifiable, et c'est la première question qu'on pose.
+  document.getElementById('kpiRevenueSub').innerHTML = revenuMobile > 0
+    ? `${ventesPdf + ventesMobile} achats — dont ${revenuMobile.toLocaleString('fr-FR')} FCFA d'analyses`
+    : `${ventesPdf} achats`
   
   document.getElementById('kpiProductions').textContent = stats.productions_total || 0
   document.getElementById('kpiProductionsSub').innerHTML = `${stats.productions_active} en cours`
@@ -1303,6 +1331,10 @@ async function loadRevenueChart() {
     // Reconstruit une courbe approximative depuis les ventes
     if(p._sales>0){const k=new Date().toISOString().slice(0,7);monthly[k]=(monthly[k]||0)+p._revenue;}
   });
+  // Les paiements Mobile Money portent une vraie date : leur répartition
+  // mensuelle est exacte, là où celle des PDF est reconstituée faute de date
+  // de vente exploitable.
+  Object.entries(paiementsStats?.mensuel || {}).forEach(([k,v])=>{monthly[k]=(monthly[k]||0)+v;});
   const labels=Object.keys(monthly).sort().slice(-6);
   const display=labels.map(k=>{const[y,m]=k.split('-');return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});});
   if(chartRevenue)chartRevenue.destroy();
@@ -1323,6 +1355,35 @@ async function loadTableFormations() {
   const pdfs=await adminFetch('get-pdfs');
   const rows=[...pdfs].sort((a,b)=>b._revenue-a._revenue).slice(0,5);
   document.getElementById('tableFormations').innerHTML=rows.map(r=>`<tr><td>${esc(r.title.length>28?r.title.slice(0,28)+'…':r.title)}</td><td>${r._sales}</td><td class="trend-up">${r._revenue.toLocaleString('fr-FR')}</td></tr>`).join('')||'<tr><td colspan="3" class="td-muted">Aucune vente</td></tr>';
+}
+
+async function loadTableSources() {
+  const cible = document.getElementById('tableSources');
+  if(!cible) return;
+  const pdfs = await adminFetch('get-pdfs');
+  const revenuPdf = pdfs.reduce((s,p)=>s+(p._revenue||0),0);
+  const ventesPdf = pdfs.reduce((s,p)=>s+(p._sales||0),0);
+
+  const lignes = [];
+  if(ventesPdf>0||revenuPdf>0) lignes.push({libelle:'Formations PDF',ventes:ventesPdf,montant:revenuPdf});
+  (paiementsStats?.par_type||[]).forEach(t=>lignes.push({libelle:t.libelle,ventes:t.ventes,montant:t.montant}));
+  lignes.sort((a,b)=>b.montant-a.montant);
+
+  const total   = lignes.reduce((s,l)=>s+l.montant,0);
+  const ventes  = lignes.reduce((s,l)=>s+l.ventes,0);
+  const attente = paiementsStats?.en_attente || 0;
+
+  cible.innerHTML =
+    (lignes.map(l=>`<tr><td>${esc(l.libelle)}</td><td>${l.ventes}</td><td class="trend-up">${l.montant.toLocaleString('fr-FR')}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="td-muted">Aucune vente</td></tr>')
+    + (lignes.length>1
+        ? `<tr><td><strong>Total</strong></td><td><strong>${ventes}</strong></td><td class="trend-up"><strong>${total.toLocaleString('fr-FR')}</strong></td></tr>`
+        : '')
+    // Les déclarations en attente ne comptent pas dans le revenu : le rappel
+    // évite de croire à une erreur en comparant avec le relevé marchand.
+    + (attente>0
+        ? `<tr><td colspan="3" class="td-muted">${attente} paiement(s) en attente, non comptés</td></tr>`
+        : '');
 }
 
 async function loadTableScores() {
