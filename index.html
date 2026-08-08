@@ -255,6 +255,7 @@
       <div class="nav-section">Système</div>
       <div class="nav-item" onclick="showPage('parcelles')" id="nav-parcelles"><span class="nav-icon">🗺️</span> Parcelles &amp; sols</div>
       <div class="nav-item" onclick="showPage('correctifs')" id="nav-correctifs"><span class="nav-icon">🧪</span> Correctifs agro.</div>
+      <div class="nav-item" onclick="showPage('diffusions')" id="nav-diffusions"><span class="nav-icon">📢</span> Alertes &amp; diffusions</div>
       <div class="nav-item" onclick="showPage('regles')" id="nav-regles"><span class="nav-icon">🧠</span> Règles diagnostic</div>
       <div class="nav-item" onclick="showPage('partenaires')" id="nav-partenaires" data-nav="partenaires"><span class="nav-icon">🤝</span> Partenaires</div>
       <div class="nav-item" onclick="showPage('admins')" id="nav-admins" data-nav="admins"><span class="nav-icon">👤</span> Admins</div>
@@ -497,6 +498,50 @@
           <div class="users-count">Désactiver n'annule rien sur les téléphones déjà passés</div>
         </div>
         <table><thead><tr><th>#</th><th>Champ</th><th>Portée</th><th>Nouvelle valeur</th><th>Motif</th><th>Publié</th><th>État</th></tr></thead><tbody id="corTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="page" id="page-diffusions">
+      <div class="page-header">
+        <div><div class="page-title">Alertes &amp; diffusions</div><div class="page-sub">Prévenir les agriculteurs d'une alerte phytosanitaire ou d'une information</div></div>
+        <button class="refresh-btn" onclick="loadDiffusionsPage()"><span class="spin">↻</span> Actualiser</button>
+      </div>
+
+      <div class="users-table-card" style="margin-bottom:16px">
+        <div class="users-table-header"><div class="table-title" style="margin-bottom:0">Publier une diffusion</div></div>
+        <div style="padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label style="font-size:12px;color:#7A9A7A">Nature<br>
+            <select class="filter-select" id="difType" style="margin-top:4px;width:170px">
+              <option value="alerte">Alerte (urgent)</option>
+              <option value="info">Information</option>
+            </select></label>
+          <label style="font-size:12px;color:#7A9A7A">Région ciblée<br>
+            <input type="text" id="difRegion" class="search-input" style="width:190px;margin-top:4px" placeholder="vide = tout le pays"></label>
+          <label style="font-size:12px;color:#7A9A7A">Culture ciblée<br>
+            <input type="text" id="difCulture" class="search-input" style="width:170px;margin-top:4px" placeholder="vide = toutes"></label>
+          <label style="font-size:12px;color:#7A9A7A">Retirer le<br>
+            <input type="date" id="difExpire" class="search-input" style="width:160px;margin-top:4px"></label>
+          <label style="font-size:12px;color:#7A9A7A;flex:1;min-width:320px">Titre<br>
+            <input type="text" id="difTitre" class="search-input" style="width:100%;margin-top:4px" placeholder="ex. Chenille légionnaire signalée sur le maïs"></label>
+          <label style="font-size:12px;color:#7A9A7A;width:100%">Message<br>
+            <textarea id="difMessage" class="search-input" style="width:100%;margin-top:4px;height:88px;resize:vertical;font-family:inherit" placeholder="Ce que l'agriculteur doit faire, concrètement."></textarea></label>
+          <label style="font-size:12px;color:#7A9A7A;display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="difPousser" checked> Envoyer aussi une notification push</label>
+          <button class="export-btn" onclick="publierDiffusion()">Publier</button>
+        </div>
+        <div style="padding:0 16px 16px;font-size:12px;color:#7A9A7A;line-height:1.6">
+          La diffusion apparaît dans la cloche de l'accueil, et y reste jusqu'à sa date de retrait — un push manqué n'est donc jamais perdu.
+          Le ciblage par région filtre aussi le push ; le ciblage par culture ne s'applique qu'à l'affichage, les cultures suivies ne quittant pas le téléphone.
+          Une alerte périmée qui reste affichée décrédibilise les suivantes : renseignez une date de retrait.
+        </div>
+      </div>
+
+      <div class="users-table-card">
+        <div class="users-table-header">
+          <div class="table-title" style="margin-bottom:0">Diffusions <span class="badge badge-amber" id="difCountBadge">0</span></div>
+          <div class="users-count">Retirer une diffusion la fait disparaître de la cloche, pas du téléphone déjà notifié</div>
+        </div>
+        <table><thead><tr><th>#</th><th>Nature</th><th>Titre</th><th>Ciblage</th><th>Publiée</th><th>Retrait</th><th>État</th></tr></thead><tbody id="difTableBody"><tr><td colspan="7" class="td-muted">Chargement...</td></tr></tbody></table>
       </div>
     </div>
 
@@ -1422,6 +1467,7 @@ if (restrictedPages.includes(name) && currentUser?.role !== 'super_admin') {
   if (name==='update')        loadUpdatePage();
   if (name==='paiements')    loadPaiementsPage();
   if (name==='correctifs')   loadCorrectifsPage();
+  if (name==='diffusions')   loadDiffusionsPage();
   if (name==='parcelles')    loadParcellesPage();
   if (name==='partenaires')  loadPartenairesPage();
 }
@@ -1807,6 +1853,91 @@ async function loadCorrectifsPage() {
         : `<span class="badge badge-red">Inactif</span><br><button class="export-btn" style="margin-top:6px" onclick="basculerCorrectif(${c.id}, true)">Réactiver</button>`}</td>
     </tr>`).join('')
     : '<tr><td colspan="7" class="td-muted">Aucun correctif publié</td></tr>';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DIFFUSIONS — alertes phytosanitaires et informations
+// ════════════════════════════════════════════════════════════════════
+async function loadDiffusionsPage() {
+  const corps = document.getElementById('difTableBody');
+  if (!corps) return;
+  let r;
+  try {
+    r = await adminFetch('admin-diffusions');
+  } catch(e) {
+    corps.innerHTML = `<tr><td colspan="7" class="td-muted">${esc(e.message)}</td></tr>`;
+    return;
+  }
+
+  const liste = r.diffusions || [];
+  document.getElementById('difCountBadge').textContent = liste.length;
+  const jour = d => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+
+  corps.innerHTML = liste.length ? liste.map(d => {
+    // Une diffusion peut être active en base et déjà périmée : l'application
+    // ne la montre plus, le tableau doit le dire aussi.
+    const perimee = d.expire_le && new Date(d.expire_le) < new Date();
+    const cible = [d.region, d.culture].filter(Boolean).join(' · ') || 'tout le pays';
+    return `
+    <tr>
+      <td>${d.id}</td>
+      <td>${d.type === 'alerte'
+        ? '<span class="badge badge-red">Alerte</span>'
+        : '<span class="badge badge-green">Info</span>'}</td>
+      <td style="max-width:280px">${esc(d.titre)}<br><span class="td-muted" style="font-size:11px">${esc((d.message||'').slice(0,110))}${(d.message||'').length>110?'…':''}</span></td>
+      <td class="td-muted" style="font-size:12px">${esc(cible)}</td>
+      <td class="td-muted" style="font-size:12px">${jour(d.created_at)}<br>${esc(d.publie_par || '')}</td>
+      <td class="td-muted" style="font-size:12px">${jour(d.expire_le)}${perimee ? '<br><span class="badge badge-amber">périmée</span>' : ''}</td>
+      <td>${d.actif
+        ? `<span class="badge badge-green">Active</span><br><button class="export-btn" style="margin-top:6px" onclick="basculerDiffusion(${d.id}, false)">Retirer</button>`
+        : `<span class="badge badge-red">Retirée</span><br><button class="export-btn" style="margin-top:6px" onclick="basculerDiffusion(${d.id}, true)">Réactiver</button>`}</td>
+    </tr>`;
+  }).join('')
+    : '<tr><td colspan="7" class="td-muted">Aucune diffusion publiée</td></tr>';
+}
+
+async function publierDiffusion() {
+  const titre   = document.getElementById('difTitre')?.value.trim();
+  const message = document.getElementById('difMessage')?.value.trim();
+  if (!titre)   { toast('Le titre est obligatoire', 'error'); return; }
+  if (!message) { toast('Le message est obligatoire', 'error'); return; }
+
+  const type = document.getElementById('difType').value;
+  const region = document.getElementById('difRegion').value.trim();
+
+  // Une alerte nationale part à tous les appareils enregistrés. La confirmation
+  // n'est pas une formalité : c'est la seule étape qui reste avant le push.
+  const portee = region ? `la région « ${region} »` : 'TOUT LE PAYS';
+  if (!confirm(`Publier cette ${type === 'alerte' ? 'alerte' : 'information'} à ${portee} ?`)) return;
+
+  try {
+    const r = await adminFetch('admin-diffusions', {
+      method: 'POST',
+      body: {
+        titre, message, type,
+        region: region || null,
+        culture: document.getElementById('difCulture').value.trim() || null,
+        expire_le: document.getElementById('difExpire').value || null,
+        pousser: document.getElementById('difPousser').checked,
+      },
+    });
+    toast(`Diffusion publiée — ${r.appareils_notifies || 0} appareil(s) notifié(s)`, 'success');
+    document.getElementById('difTitre').value = '';
+    document.getElementById('difMessage').value = '';
+    loadDiffusionsPage();
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function basculerDiffusion(id, actif) {
+  try {
+    await adminFetch('admin-diffusions', { method: 'PATCH', body: { id, actif } });
+    toast(actif ? 'Diffusion réactivée' : 'Diffusion retirée', 'success');
+    loadDiffusionsPage();
+  } catch(e) {
+    toast(e.message, 'error');
+  }
 }
 
 async function publierCorrectif() {
